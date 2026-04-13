@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install:*)",
+      "Bash(curl -s http://localhost:8000/)",
+      "Bash(cmd.exe:*)",
+      "Read(//c/Users/Pichau/AppData/Local/Programs/**)",
+      "Bash(ls /c/Python*)",
+      "Bash(npm run:*)"
+    ]
+  }
+}

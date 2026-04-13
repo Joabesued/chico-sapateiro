@@ -1,0 +1,21 @@
+# Banco de dados
+backend/chico_sapateiro.db
+backend/*.db
+
+# Ambiente virtual Python
+backend/venv/
+
+# Variáveis de ambiente
+.env
+*.env
+
+# Node modules
+frontend/node_modules/
+
+# Build do frontend
+frontend/dist/
+
+# Cache
+__pycache__/
+*.pyc
+.pytest_cache/

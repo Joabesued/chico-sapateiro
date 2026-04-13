@@ -1,0 +1,40 @@
+==================================================
+  CHICO SAPATEIRO - Sistema de Gestão
+==================================================
+
+COMO INICIAR
+-----------
+1. Certifique-se de ter instalado:
+   - Python 3.10 ou superior
+   - Node.js 18 ou superior
+
+2. Dê dois cliques no arquivo "iniciar.bat"
+   (abre o backend e o frontend automaticamente)
+
+3. Abra o navegador em: http://localhost:5173
+
+LOGIN PADRÃO
+-----------
+  Usuário: chico
+  Senha:   sapateiro123
+
+FUNCIONALIDADES
+--------------
+- Login com usuário e senha
+- Cadastro de OS (nome, telefone, tipo de serviço, nº sapato, prazo, valor)
+- Status da OS: Aguardando > Em andamento > Pronto > Entregue > Pago
+- Painel com todas as OS e filtro por status
+- Busca por cliente ou número da OS
+- Histórico de clientes
+- Envio de resumo via WhatsApp (botão na OS)
+- Impressão de recibo simples (botão na OS)
+- Relatório financeiro mensal
+
+ESTRUTURA
+---------
+chico-sapateiro/
+  backend/         -> API Python (FastAPI + SQLite)
+  frontend/        -> Interface React + Tailwind
+  iniciar.bat      -> Atalho para iniciar tudo
+
+==================================================
