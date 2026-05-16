@@ -46,7 +46,7 @@ IF NOT EXIST venv (
 )
 
 echo Iniciando backend (porta 8000)...
-start "Backend - Chico Sapateiro" cmd /k "cd /d "%~dp0backend" && venv\Scripts\activate && pip install -r requirements.txt -q && !PYTHON_CMD! seed.py && uvicorn main:app --reload --port 8000"
+start "Backend - Chico Sapateiro" cmd /k "cd /d "%~dp0backend" && venv\Scripts\activate && pip install -r requirements.txt -q && !PYTHON_CMD! seed.py && uvicorn main:app --reload --host 0.0.0.0 --port 8000"
 
 echo Aguardando backend...
 timeout /t 8 /nobreak > nul
@@ -62,7 +62,8 @@ echo.
 echo =============================================
 echo  Sistema iniciado com sucesso!
 echo.
-echo  Acesse no navegador: http://localhost:5173
+echo  Acesse no PC:      http://localhost:5173
+echo  Acesse na rede:   http://192.168.1.101:5173
 echo  Login:  chico
 echo  Senha:  sapateiro123
 echo =============================================

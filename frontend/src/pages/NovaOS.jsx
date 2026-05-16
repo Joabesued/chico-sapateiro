@@ -13,6 +13,12 @@ const SERVICOS = [
   'Alça', 'Cabeçote', 'Ziper', 'Puxador',
 ]
 
+const CALCADOS = ['Sapato social', 'Tênis', 'Sapatênis', 'Mocassins', 'Sandália']
+const LADOS = ['Par', 'Pé esquerdo', 'Pé direito']
+const SUBCATEGORIAS_SANDALIA = ['Rasteira', 'Com salto']
+
+function ehCalcado(cat) { return CALCADOS.includes(cat) }
+
 // ─── Utilitários ───────────────────────────────────────────────────────────────
 
 function parseMoeda(v) {
@@ -24,7 +30,17 @@ function formatarValor(v) {
 }
 
 function itemVazio() {
-  return { categoria: '', servicos: [], qtd_rodas: 2, cor: '', descricao: '', valor: '' }
+  return {
+    categoria: '',
+    subcategoria: '',
+    lado: '',
+    servicos: [],
+    qtd_rodas: 2,
+    cor: '',
+    descricao: '',
+    observacao_servico: '',
+    valor: '',
+  }
 }
 
 // ─── Sub-componente: editor de um item ─────────────────────────────────────────
@@ -32,10 +48,24 @@ function itemVazio() {
 function ItemEditor({ item, idx, total, categorias, onSet, onRemove, onAddCategoria }) {
   const [novaCategoriaModo, setNovaCategoriaModo] = useState(false)
   const [novaCategoriaNome, setNovaCategoriaNome] = useState('')
+  const [servicoCustomModo, setServicoCustomModo] = useState(false)
+  const [servicoCustomTexto, setServicoCustomTexto] = useState('')
 
   function toggleServico(s) {
     const tem = item.servicos.includes(s)
     onSet('servicos', tem ? item.servicos.filter(x => x !== s) : [...item.servicos, s])
+  }
+
+  function adicionarServicoCustom() {
+    const nome = servicoCustomTexto.trim()
+    if (!nome) return
+    if (item.servicos.includes(nome)) {
+      toast.error('Esse serviço já está na lista.')
+      return
+    }
+    onSet('servicos', [...item.servicos, nome])
+    setServicoCustomTexto('')
+    setServicoCustomModo(false)
   }
 
   async function salvarNovaCategoria() {
@@ -50,6 +80,9 @@ function ItemEditor({ item, idx, total, categorias, onSet, onRemove, onAddCatego
   }
 
   const temTrocarRoda = item.servicos.includes('Trocar roda')
+  const calcado = ehCalcado(item.categoria)
+  const ehSandalia = item.categoria === 'Sandália'
+  const servicosCustom = item.servicos.filter(s => !SERVICOS.includes(s))
 
   return (
     <div className="border-2 border-gray-200 rounded-2xl p-4 space-y-4">
@@ -72,7 +105,11 @@ function ItemEditor({ item, idx, total, categorias, onSet, onRemove, onAddCatego
             <button
               key={cat}
               type="button"
-              onClick={() => onSet('categoria', cat)}
+              onClick={() => {
+                onSet('categoria', cat)
+                if (cat !== 'Sandália') onSet('subcategoria', '')
+                if (!ehCalcado(cat)) onSet('lado', '')
+              }}
               className={`px-3 py-2 rounded-xl font-semibold text-sm border-2 transition-colors ` +
                 (item.categoria === cat
                   ? 'bg-amber-600 text-white border-amber-600'
@@ -114,6 +151,50 @@ function ItemEditor({ item, idx, total, categorias, onSet, onRemove, onAddCatego
         </div>
       </div>
 
+      {/* Sub-opções de Sandália */}
+      {ehSandalia && (
+        <div>
+          <label className="block font-bold text-gray-700 mb-2">Tipo de sandália *</label>
+          <div className="flex flex-wrap gap-2">
+            {SUBCATEGORIAS_SANDALIA.map(sc => (
+              <button
+                key={sc}
+                type="button"
+                onClick={() => onSet('subcategoria', sc)}
+                className={`px-3 py-2 rounded-xl font-semibold text-sm border-2 transition-colors ` +
+                  (item.subcategoria === sc
+                    ? 'bg-amber-600 text-white border-amber-600'
+                    : 'bg-white text-gray-700 border-gray-300 hover:border-amber-400')}
+              >
+                {sc}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Lado do calçado */}
+      {calcado && (
+        <div>
+          <label className="block font-bold text-gray-700 mb-2">Qual peça? *</label>
+          <div className="flex flex-wrap gap-2">
+            {LADOS.map(l => (
+              <button
+                key={l}
+                type="button"
+                onClick={() => onSet('lado', l)}
+                className={`px-3 py-2 rounded-xl font-semibold text-sm border-2 transition-colors ` +
+                  (item.lado === l
+                    ? 'bg-amber-600 text-white border-amber-600'
+                    : 'bg-white text-gray-700 border-gray-300 hover:border-amber-400')}
+              >
+                {l}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Serviços */}
       <div>
         <label className="block font-bold text-gray-700 mb-2">Serviços * <span className="font-normal text-gray-400 text-sm">(selecione um ou mais)</span></label>
@@ -131,6 +212,48 @@ function ItemEditor({ item, idx, total, categorias, onSet, onRemove, onAddCatego
               {s}
             </button>
           ))}
+
+          {/* Serviços personalizados já adicionados */}
+          {servicosCustom.map(s => (
+            <button
+              key={s}
+              type="button"
+              onClick={() => toggleServico(s)}
+              className="px-3 py-2 rounded-xl font-semibold text-sm border-2 transition-colors bg-amber-600 text-white border-amber-600 flex items-center gap-1"
+            >
+              {s} <X size={14} />
+            </button>
+          ))}
+
+          {/* Botão "+ Adicionar serviço" personalizado */}
+          {!servicoCustomModo ? (
+            <button
+              type="button"
+              onClick={() => setServicoCustomModo(true)}
+              className="px-3 py-2 rounded-xl font-semibold text-sm border-2 border-dashed border-amber-400 text-amber-700 hover:bg-amber-50 flex items-center gap-1"
+            >
+              <Plus size={14} /> Adicionar serviço
+            </button>
+          ) : (
+            <div className="flex items-center gap-1 w-full mt-1">
+              <input
+                autoFocus
+                className="input-field flex-1 py-2 text-sm"
+                placeholder="Nome do serviço personalizado"
+                value={servicoCustomTexto}
+                onChange={e => setServicoCustomTexto(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); adicionarServicoCustom() } }}
+              />
+              <button type="button" onClick={adicionarServicoCustom}
+                className="bg-amber-600 text-white p-2 rounded-xl hover:bg-amber-700">
+                <Check size={18} />
+              </button>
+              <button type="button" onClick={() => { setServicoCustomModo(false); setServicoCustomTexto('') }}
+                className="bg-gray-100 text-gray-600 p-2 rounded-xl hover:bg-gray-200">
+                <X size={18} />
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Qtd. rodas */}
@@ -154,6 +277,20 @@ function ItemEditor({ item, idx, total, categorias, onSet, onRemove, onAddCatego
             </div>
           </div>
         )}
+
+        {/* Observação do serviço */}
+        <div className="mt-3">
+          <label className="block font-bold text-gray-700 mb-1 text-sm">
+            Observação do serviço <span className="font-normal text-gray-400">(opcional)</span>
+          </label>
+          <textarea
+            className="input-field text-sm"
+            rows={2}
+            placeholder="Descreva livremente o que deve ser feito..."
+            value={item.observacao_servico}
+            onChange={e => onSet('observacao_servico', e.target.value)}
+          />
+        </div>
       </div>
 
       {/* Cor + Valor */}
@@ -184,7 +321,7 @@ function ItemEditor({ item, idx, total, categorias, onSet, onRemove, onAddCatego
       {/* Descrição livre */}
       <div>
         <label className="block font-bold text-gray-700 mb-1">
-          Observação <span className="font-normal text-gray-400 text-sm">(opcional)</span>
+          Observação geral do item <span className="font-normal text-gray-400 text-sm">(opcional)</span>
         </label>
         <input
           className="input-field"
@@ -282,10 +419,17 @@ export default function NovaOS() {
     e.preventDefault()
 
     if (!clienteNome.trim()) { toast.error('Informe o nome do cliente'); return }
+    if (!prazo) { toast.error('Informe o prazo de entrega antes de continuar.'); return }
 
     for (let i = 0; i < itens.length; i++) {
       const it = itens[i]
       if (!it.categoria) { toast.error(`Item ${i + 1}: selecione a categoria`); return }
+      if (it.categoria === 'Sandália' && !it.subcategoria) {
+        toast.error(`Item ${i + 1}: escolha "Rasteira" ou "Com salto"`); return
+      }
+      if (ehCalcado(it.categoria) && !it.lado) {
+        toast.error(`Item ${i + 1}: selecione Par, Pé esquerdo ou Pé direito`); return
+      }
       if (it.servicos.length === 0) { toast.error(`Item ${i + 1}: selecione pelo menos um serviço`); return }
       if (!it.valor || parseMoeda(it.valor) <= 0) { toast.error(`Item ${i + 1}: informe o valor`); return }
     }
@@ -299,7 +443,11 @@ export default function NovaOS() {
         entrada: entradaNum,
         itens: itens.map(it => ({
           categoria: it.categoria,
+          subcategoria: it.subcategoria || '',
+          lado: it.lado || '',
           servicos: it.servicos,
+          servicos_concluidos: [],
+          observacao_servico: it.observacao_servico.trim(),
           qtd_rodas: it.servicos.includes('Trocar roda') ? it.qtd_rodas : null,
           cor: it.cor.trim(),
           descricao: it.descricao.trim(),
@@ -409,7 +557,7 @@ export default function NovaOS() {
 
         {/* ── Prazo de entrega ── */}
         <div className="card">
-          <h3 className="text-lg font-bold text-gray-700 border-b pb-2 mb-4">Prazo de entrega</h3>
+          <h3 className="text-lg font-bold text-gray-700 border-b pb-2 mb-4">Prazo de entrega *</h3>
           <SeletorPrazo value={prazo} onChange={setPrazo} />
         </div>
 

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
-import { ArrowLeft, MessageCircle, Printer, Trash2, Pencil, Plus, X, Check } from 'lucide-react'
+import { ArrowLeft, MessageCircle, Printer, Trash2, Pencil, Plus, X, Check, FileText, AlertTriangle } from 'lucide-react'
 import api from '../api.js'
 import { StatusBadge, PagamentoBadge } from '../components/StatusBadge.jsx'
 import SeletorPrazo from '../components/SeletorPrazo.jsx'
@@ -15,6 +15,12 @@ const SERVICOS = [
   'Colagem', 'Costura', 'Trocar carrinho (mala)', 'Trocar roda',
   'Alça', 'Cabeçote', 'Ziper', 'Puxador',
 ]
+
+const CALCADOS = ['Sapato social', 'Tênis', 'Sapatênis', 'Mocassins', 'Sandália']
+const LADOS = ['Par', 'Pé esquerdo', 'Pé direito']
+const SUBCATEGORIAS_SANDALIA = ['Rasteira', 'Com salto']
+
+function ehCalcado(cat) { return CALCADOS.includes(cat) }
 
 // ─── Utilitários ───────────────────────────────────────────────────────────────
 
@@ -33,12 +39,35 @@ function parseMoeda(v) {
   return parseFloat(String(v).replace(',', '.')) || 0
 }
 
+function hojeISO() {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+function estaEmAtraso(os) {
+  if (!os?.prazo_entrega) return false
+  if (os.status === 'Pronto para retirada' || os.status === 'Entregue') return false
+  return String(os.prazo_entrega).split('T')[0] < hojeISO()
+}
+
 function itemVazio() {
-  return { categoria: '', servicos: [], qtd_rodas: 2, cor: '', descricao: '', valor: '' }
+  return {
+    categoria: '', subcategoria: '', lado: '',
+    servicos: [], qtd_rodas: 2,
+    cor: '', descricao: '', observacao_servico: '',
+    valor: '',
+  }
+}
+
+function descricaoItem(item) {
+  const partes = [item.categoria]
+  if (item.subcategoria) partes.push(item.subcategoria)
+  if (item.lado) partes.push(item.lado)
+  return partes.filter(Boolean).join(' — ')
 }
 
 function formatarServicosTexto(item) {
-  return item.servicos.map(s => {
+  return (item.servicos || []).map(s => {
     if (s === 'Trocar roda' && item.qtd_rodas) return `Trocar roda (${item.qtd_rodas})`
     return s
   }).join(', ')
@@ -61,6 +90,8 @@ export default function DetalhesOS() {
   const [prazoEdit, setPrazoEdit] = useState('')
   const [novaCategoriaModo, setNovaCategoriaModo] = useState(null) // idx do item
   const [novaCategoriaNome, setNovaCategoriaNome] = useState('')
+  const [servicoCustomModo, setServicoCustomModo] = useState(null) // idx do item
+  const [servicoCustomTexto, setServicoCustomTexto] = useState('')
 
   useEffect(() => { carregarOS() }, [id])
 
@@ -85,10 +116,13 @@ export default function DetalhesOS() {
     carregarCategorias()
     setItensEdit(os.itens.map(i => ({
       categoria: i.categoria,
+      subcategoria: i.subcategoria || '',
+      lado: i.lado || '',
       servicos: [...(i.servicos || [])],
       qtd_rodas: i.qtd_rodas || 2,
       cor: i.cor || '',
       descricao: i.descricao || '',
+      observacao_servico: i.observacao_servico || '',
       valor: String(i.valor),
     })))
     setEntradaEdit(String(os.entrada))
@@ -100,12 +134,27 @@ export default function DetalhesOS() {
     setItensEdit(p => p.map((it, i) => i === idx ? { ...it, [campo]: valor } : it))
   }
 
-  function toggleServico(idx, s) {
+  function toggleServicoEdit(idx, s) {
     setItensEdit(p => p.map((it, i) => {
       if (i !== idx) return it
       const tem = it.servicos.includes(s)
       return { ...it, servicos: tem ? it.servicos.filter(x => x !== s) : [...it.servicos, s] }
     }))
+  }
+
+  function adicionarServicoCustom(idx) {
+    const nome = servicoCustomTexto.trim()
+    if (!nome) return
+    setItensEdit(p => p.map((it, i) => {
+      if (i !== idx) return it
+      if (it.servicos.includes(nome)) {
+        toast.error('Esse serviço já está na lista.')
+        return it
+      }
+      return { ...it, servicos: [...it.servicos, nome] }
+    }))
+    setServicoCustomTexto('')
+    setServicoCustomModo(null)
   }
 
   async function addCategoria(nome) {
@@ -123,22 +172,39 @@ export default function DetalhesOS() {
 
   async function salvarEdicao() {
     for (let i = 0; i < itensEdit.length; i++) {
-      if (!itensEdit[i].categoria) { toast.error(`Item ${i + 1}: selecione a categoria`); return }
-      if (!itensEdit[i].servicos.length) { toast.error(`Item ${i + 1}: selecione pelo menos um serviço`); return }
+      const it = itensEdit[i]
+      if (!it.categoria) { toast.error(`Item ${i + 1}: selecione a categoria`); return }
+      if (it.categoria === 'Sandália' && !it.subcategoria) {
+        toast.error(`Item ${i + 1}: escolha "Rasteira" ou "Com salto"`); return
+      }
+      if (ehCalcado(it.categoria) && !it.lado) {
+        toast.error(`Item ${i + 1}: selecione Par, Pé esquerdo ou Pé direito`); return
+      }
+      if (!it.servicos.length) { toast.error(`Item ${i + 1}: selecione pelo menos um serviço`); return }
     }
     setSalvando(true)
     try {
+      // Preserva checklist existente pelos ids/posição.
+      const concluidosAnt = os.itens.map(i => ({ id: i.id, concluidos: i.servicos_concluidos || [] }))
       const { data } = await api.patch(`/ordens/${id}`, {
         prazo_entrega: prazoEdit || null,
         entrada: parseMoeda(entradaEdit),
-        itens: itensEdit.map(it => ({
-          categoria: it.categoria,
-          servicos: it.servicos,
-          qtd_rodas: it.servicos.includes('Trocar roda') ? it.qtd_rodas : null,
-          cor: it.cor,
-          descricao: it.descricao,
-          valor: parseMoeda(it.valor),
-        })),
+        itens: itensEdit.map((it, idx) => {
+          const ant = concluidosAnt[idx]?.concluidos || []
+          const concluidos = ant.filter(s => it.servicos.includes(s))
+          return {
+            categoria: it.categoria,
+            subcategoria: it.subcategoria || '',
+            lado: it.lado || '',
+            servicos: it.servicos,
+            servicos_concluidos: concluidos,
+            observacao_servico: it.observacao_servico,
+            qtd_rodas: it.servicos.includes('Trocar roda') ? it.qtd_rodas : null,
+            cor: it.cor,
+            descricao: it.descricao,
+            valor: parseMoeda(it.valor),
+          }
+        }),
       })
       setOs(data)
       setEditando(false)
@@ -147,6 +213,29 @@ export default function DetalhesOS() {
       toast.error('Erro ao salvar')
     } finally {
       setSalvando(false)
+    }
+  }
+
+  async function toggleConcluido(itemId, servico) {
+    const item = os.itens.find(i => i.id === itemId)
+    if (!item) return
+    const concluidos = item.servicos_concluidos || []
+    const novos = concluidos.includes(servico)
+      ? concluidos.filter(s => s !== servico)
+      : [...concluidos, servico]
+
+    const statusAntes = os.status
+    try {
+      const { data } = await api.patch(
+        `/ordens/${id}/itens/${itemId}/checklist`,
+        { servicos_concluidos: novos }
+      )
+      setOs(data)
+      if (statusAntes === 'Em andamento' && data.status === 'Pronto para retirada') {
+        toast.success('Todos os serviços concluídos — OS pronta para retirada!', { duration: 4000 })
+      }
+    } catch {
+      toast.error('Erro ao salvar checklist')
     }
   }
 
@@ -180,9 +269,10 @@ export default function DetalhesOS() {
 
     const linhasItens = os.itens.map(item => {
       const servs = formatarServicosTexto(item)
-      const partes = [item.categoria]
+      const partes = [descricaoItem(item)]
       if (servs) partes.push(servs)
       if (item.cor) partes.push(`Cor: ${item.cor}`)
+      if (item.observacao_servico) partes.push(`Obs: ${item.observacao_servico}`)
       if (item.descricao) partes.push(item.descricao)
       partes.push(formatarValor(item.valor))
       return `▪ ${partes.join(' — ')}`
@@ -201,12 +291,101 @@ export default function DetalhesOS() {
     window.open(`https://wa.me/55${tel}?text=${msg}`, '_blank')
   }
 
+  function gerarPDF() {
+    const jsPDFCtor = window.jspdf?.jsPDF
+    if (!jsPDFCtor) { toast.error('Biblioteca de PDF não carregada.'); return }
+    const doc = new jsPDFCtor({ unit: 'mm', format: 'a4' })
+
+    const pageWidth = doc.internal.pageSize.getWidth()
+    const pageHeight = doc.internal.pageSize.getHeight()
+    let y = 15
+
+    function linha(txt, opts = {}) {
+      const { size = 11, bold = false, indent = 0, align = 'left', spaceAfter = 5 } = opts
+      doc.setFontSize(size)
+      doc.setFont('helvetica', bold ? 'bold' : 'normal')
+      const x = align === 'center' ? pageWidth / 2 : 15 + indent
+      const opts2 = align === 'center' ? { align: 'center' } : {}
+      const linhas = doc.splitTextToSize(txt, pageWidth - 30 - indent)
+      linhas.forEach(l => {
+        if (y > pageHeight - 20) { doc.addPage(); y = 15 }
+        doc.text(l, x, y, opts2)
+        y += size * 0.45
+      })
+      y += spaceAfter
+    }
+
+    function separador() {
+      if (y > pageHeight - 20) { doc.addPage(); y = 15 }
+      doc.setDrawColor(180, 130, 50)
+      doc.setLineWidth(0.3)
+      doc.line(15, y, pageWidth - 15, y)
+      y += 4
+    }
+
+    // Cabeçalho
+    linha('CHICO SAPATEIRO', { size: 20, bold: true, align: 'center', spaceAfter: 2 })
+    linha('Ordem de Serviço', { size: 12, align: 'center', spaceAfter: 4 })
+    separador()
+
+    // Dados da OS
+    linha(`Nota Nº: #${String(os.numero).padStart(3, '0')}`, { size: 12, bold: true, spaceAfter: 2 })
+    linha(`Data: ${formatarData(os.criado_em)}`, { size: 11, spaceAfter: 2 })
+    if (os.prazo_entrega) linha(`Prazo de entrega: ${formatarData(os.prazo_entrega)}`, { size: 11, spaceAfter: 2 })
+    linha(`Status: ${os.status}`, { size: 11, spaceAfter: 4 })
+
+    // Cliente
+    linha('CLIENTE', { size: 12, bold: true, spaceAfter: 2 })
+    linha(`Nome: ${os.cliente.nome}`, { size: 11, spaceAfter: 2 })
+    if (os.cliente.telefone) linha(`Telefone: ${os.cliente.telefone}`, { size: 11, spaceAfter: 4 })
+    else y += 2
+
+    separador()
+
+    // Itens
+    linha('ITENS', { size: 12, bold: true, spaceAfter: 3 })
+    os.itens.forEach((item, idx) => {
+      linha(`${idx + 1}. ${descricaoItem(item)}`, { size: 11, bold: true, spaceAfter: 1 })
+      const servs = formatarServicosTexto(item)
+      if (servs) linha(`Serviços: ${servs}`, { size: 10, indent: 4, spaceAfter: 1 })
+      if (item.cor) linha(`Cor: ${item.cor}`, { size: 10, indent: 4, spaceAfter: 1 })
+      if (item.observacao_servico) linha(`Observação do serviço: ${item.observacao_servico}`, { size: 10, indent: 4, spaceAfter: 1 })
+      if (item.descricao) linha(`Observação: ${item.descricao}`, { size: 10, indent: 4, spaceAfter: 1 })
+      linha(`Valor: ${formatarValor(item.valor)}`, { size: 10, indent: 4, bold: true, spaceAfter: 4 })
+    })
+
+    separador()
+
+    // Pagamento
+    linha('PAGAMENTO', { size: 12, bold: true, spaceAfter: 2 })
+    linha(`Total: ${formatarValor(os.total)}`, { size: 11, spaceAfter: 1 })
+    linha(`Entrada: ${formatarValor(os.entrada)}`, { size: 11, spaceAfter: 1 })
+    linha(`Resta: ${formatarValor(os.resta)}`, { size: 11, bold: true, spaceAfter: 1 })
+    linha(`Situação: ${os.status_pagamento}`, { size: 11, spaceAfter: 4 })
+
+    // Rodapé
+    const rodape = 'Chico Sapateiro — Obrigado pela preferência!'
+    doc.setFontSize(11)
+    doc.setFont('helvetica', 'italic')
+    doc.text(rodape, pageWidth / 2, pageHeight - 12, { align: 'center' })
+
+    doc.save(`OS-${String(os.numero).padStart(3, '0')}-${os.cliente.nome.replace(/\s+/g, '_')}.pdf`)
+  }
+
   if (loading) return <p className="text-center py-10 text-lg text-gray-500">Carregando...</p>
   if (!os) return null
 
   const totalEdit = itensEdit.reduce((s, it) => s + parseMoeda(it.valor), 0)
   const entradaEditNum = parseMoeda(entradaEdit)
   const restaEdit = Math.max(0, totalEdit - entradaEditNum)
+  const atraso = estaEmAtraso(os)
+
+  // Progresso de serviços
+  const totalServicos = os.itens.reduce((s, it) => s + (it.servicos?.length || 0), 0)
+  const feitosServicos = os.itens.reduce(
+    (s, it) => s + (it.servicos || []).filter(x => (it.servicos_concluidos || []).includes(x)).length,
+    0,
+  )
 
   return (
     <div className="space-y-4">
@@ -224,6 +403,14 @@ export default function DetalhesOS() {
         </div>
       </div>
 
+      {/* ── Alerta de atraso ── */}
+      {atraso && (
+        <div className="bg-red-50 border-2 border-red-400 rounded-2xl p-3 flex items-center gap-2 text-red-700 font-bold">
+          <AlertTriangle size={22} />
+          <span>OS em atraso — prazo era {formatarData(os.prazo_entrega)}</span>
+        </div>
+      )}
+
       {/* ── Resumo do cliente ── */}
       <div className="card space-y-3">
         <div className="flex items-start justify-between">
@@ -236,8 +423,13 @@ export default function DetalhesOS() {
         <div className="flex items-center gap-2 flex-wrap">
           <PagamentoBadge status={os.status_pagamento} />
           {os.prazo_entrega && (
-            <span className="text-sm text-gray-500 font-semibold">
+            <span className={`text-sm font-semibold ` + (atraso ? 'text-red-600' : 'text-gray-500')}>
               📅 Prazo: {formatarData(os.prazo_entrega)}
+            </span>
+          )}
+          {totalServicos > 0 && (
+            <span className="text-sm font-semibold text-amber-700">
+              ✓ {feitosServicos}/{totalServicos} serviços concluídos
             </span>
           )}
         </div>
@@ -254,21 +446,57 @@ export default function DetalhesOS() {
             </button>
           </div>
 
-          {os.itens.map(item => (
-            <div key={item.id} className="py-2 border-b last:border-0">
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex-1">
-                  <p className="font-bold text-gray-900">{item.categoria}</p>
-                  <p className="text-sm text-amber-700 font-semibold mt-0.5">
-                    {formatarServicosTexto(item)}
-                  </p>
-                  {item.cor && <p className="text-sm text-gray-500">Cor: {item.cor}</p>}
-                  {item.descricao && <p className="text-sm text-gray-400 italic">{item.descricao}</p>}
+          {os.itens.map(item => {
+            const concluidos = item.servicos_concluidos || []
+            return (
+              <div key={item.id} className="py-2 border-b last:border-0">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex-1">
+                    <p className="font-bold text-gray-900">{descricaoItem(item)}</p>
+
+                    {/* Checklist dos serviços */}
+                    {(item.servicos || []).length > 0 && (
+                      <div className="mt-1 space-y-1">
+                        {item.servicos.map(s => {
+                          const feito = concluidos.includes(s)
+                          const rotulo = s === 'Trocar roda' && item.qtd_rodas
+                            ? `Trocar roda (${item.qtd_rodas})`
+                            : s
+                          return (
+                            <label
+                              key={s}
+                              className="flex items-center gap-2 cursor-pointer select-none text-sm group"
+                            >
+                              <input
+                                type="checkbox"
+                                checked={feito}
+                                onChange={() => toggleConcluido(item.id, s)}
+                                className="w-5 h-5 accent-amber-600 cursor-pointer"
+                              />
+                              <span className={feito
+                                ? 'line-through text-gray-400'
+                                : 'text-amber-700 font-semibold group-hover:text-amber-800'}>
+                                {rotulo}
+                              </span>
+                            </label>
+                          )
+                        })}
+                      </div>
+                    )}
+
+                    {item.cor && <p className="text-sm text-gray-500 mt-1">Cor: {item.cor}</p>}
+                    {item.observacao_servico && (
+                      <p className="text-sm text-gray-600 mt-1">
+                        <span className="font-semibold">Obs. serviço:</span> {item.observacao_servico}
+                      </p>
+                    )}
+                    {item.descricao && <p className="text-sm text-gray-400 italic mt-1">{item.descricao}</p>}
+                  </div>
+                  <p className="font-extrabold text-amber-700 shrink-0">{formatarValor(item.valor)}</p>
                 </div>
-                <p className="font-extrabold text-amber-700 shrink-0">{formatarValor(item.valor)}</p>
               </div>
-            </div>
-          ))}
+            )
+          })}
 
           <div className="grid grid-cols-3 gap-2 pt-2 text-center">
             <div className="bg-amber-50 rounded-xl p-3">
@@ -295,103 +523,193 @@ export default function DetalhesOS() {
             </button>
           </div>
 
-          {itensEdit.map((item, idx) => (
-            <div key={idx} className="border-2 border-gray-200 rounded-2xl p-3 space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="font-black text-amber-700 text-sm">Item {idx + 1}</span>
-                {itensEdit.length > 1 && (
-                  <button type="button" onClick={() => setItensEdit(p => p.filter((_, i) => i !== idx))}
-                    className="text-red-400 hover:text-red-600">
-                    <Trash2 size={18} />
-                  </button>
-                )}
-              </div>
-
-              {/* Categoria */}
-              <div>
-                <p className="font-bold text-gray-700 text-sm mb-2">Categoria</p>
-                <div className="flex flex-wrap gap-1.5">
-                  {categorias.map(cat => (
-                    <button key={cat} type="button" onClick={() => setItemEdit(idx, 'categoria', cat)}
-                      className={`px-2.5 py-1.5 rounded-lg font-semibold text-xs border-2 transition-colors ` +
-                        (item.categoria === cat
-                          ? 'bg-amber-600 text-white border-amber-600'
-                          : 'bg-white text-gray-700 border-gray-300 hover:border-amber-400')}>
-                      {cat}
-                    </button>
-                  ))}
-                  {novaCategoriaModo === idx ? (
-                    <div className="flex items-center gap-1 w-full mt-1">
-                      <input autoFocus className="input-field flex-1 py-1.5 text-sm"
-                        placeholder="Nova categoria" value={novaCategoriaNome}
-                        onChange={e => setNovaCategoriaNome(e.target.value)}
-                        onKeyDown={async e => {
-                          if (e.key === 'Enter') {
-                            e.preventDefault()
-                            const ok = await addCategoria(novaCategoriaNome.trim())
-                            if (ok) { setItemEdit(idx, 'categoria', novaCategoriaNome.trim()); setNovaCategoriaModo(null); setNovaCategoriaNome('') }
-                          }
-                        }}
-                      />
-                      <button type="button" className="bg-amber-600 text-white p-1.5 rounded-lg"
-                        onClick={async () => {
-                          const ok = await addCategoria(novaCategoriaNome.trim())
-                          if (ok) { setItemEdit(idx, 'categoria', novaCategoriaNome.trim()); setNovaCategoriaModo(null); setNovaCategoriaNome('') }
-                        }}>
-                        <Check size={16} />
-                      </button>
-                      <button type="button" className="bg-gray-100 text-gray-500 p-1.5 rounded-lg"
-                        onClick={() => { setNovaCategoriaModo(null); setNovaCategoriaNome('') }}>
-                        <X size={16} />
-                      </button>
-                    </div>
-                  ) : (
-                    <button type="button" onClick={() => setNovaCategoriaModo(idx)}
-                      className="px-2.5 py-1.5 rounded-lg font-semibold text-xs border-2 border-dashed border-amber-400 text-amber-700 hover:bg-amber-50 flex items-center gap-1">
-                      <Plus size={12} /> Nova
+          {itensEdit.map((item, idx) => {
+            const calcado = ehCalcado(item.categoria)
+            const sandalia = item.categoria === 'Sandália'
+            const custom = item.servicos.filter(s => !SERVICOS.includes(s))
+            return (
+              <div key={idx} className="border-2 border-gray-200 rounded-2xl p-3 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="font-black text-amber-700 text-sm">Item {idx + 1}</span>
+                  {itensEdit.length > 1 && (
+                    <button type="button" onClick={() => setItensEdit(p => p.filter((_, i) => i !== idx))}
+                      className="text-red-400 hover:text-red-600">
+                      <Trash2 size={18} />
                     </button>
                   )}
                 </div>
-              </div>
 
-              {/* Serviços */}
-              <div>
-                <p className="font-bold text-gray-700 text-sm mb-2">Serviços</p>
-                <div className="flex flex-wrap gap-1.5">
-                  {SERVICOS.map(s => (
-                    <button key={s} type="button" onClick={() => toggleServico(idx, s)}
-                      className={`px-2.5 py-1.5 rounded-lg font-semibold text-xs border-2 transition-colors ` +
-                        (item.servicos.includes(s)
-                          ? 'bg-amber-600 text-white border-amber-600'
-                          : 'bg-white text-gray-700 border-gray-300 hover:border-amber-400')}>
-                      {s}
-                    </button>
-                  ))}
-                </div>
-                {item.servicos.includes('Trocar roda') && (
-                  <div className="flex items-center gap-2 mt-2">
-                    <span className="text-xs font-semibold text-gray-600">Qtd rodas:</span>
-                    {[1, 2, 3, 4].map(n => (
-                      <button key={n} type="button" onClick={() => setItemEdit(idx, 'qtd_rodas', n)}
-                        className={`w-8 h-8 rounded-lg font-bold text-sm border-2 transition-colors ` +
-                          (item.qtd_rodas === n ? 'bg-amber-600 text-white border-amber-600' : 'bg-white text-gray-700 border-gray-300 hover:border-amber-400')}>
-                        {n}
+                {/* Categoria */}
+                <div>
+                  <p className="font-bold text-gray-700 text-sm mb-2">Categoria</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {categorias.map(cat => (
+                      <button key={cat} type="button"
+                        onClick={() => {
+                          setItemEdit(idx, 'categoria', cat)
+                          if (cat !== 'Sandália') setItemEdit(idx, 'subcategoria', '')
+                          if (!ehCalcado(cat)) setItemEdit(idx, 'lado', '')
+                        }}
+                        className={`px-2.5 py-1.5 rounded-lg font-semibold text-xs border-2 transition-colors ` +
+                          (item.categoria === cat
+                            ? 'bg-amber-600 text-white border-amber-600'
+                            : 'bg-white text-gray-700 border-gray-300 hover:border-amber-400')}>
+                        {cat}
                       </button>
                     ))}
+                    {novaCategoriaModo === idx ? (
+                      <div className="flex items-center gap-1 w-full mt-1">
+                        <input autoFocus className="input-field flex-1 py-1.5 text-sm"
+                          placeholder="Nova categoria" value={novaCategoriaNome}
+                          onChange={e => setNovaCategoriaNome(e.target.value)}
+                          onKeyDown={async e => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault()
+                              const ok = await addCategoria(novaCategoriaNome.trim())
+                              if (ok) { setItemEdit(idx, 'categoria', novaCategoriaNome.trim()); setNovaCategoriaModo(null); setNovaCategoriaNome('') }
+                            }
+                          }}
+                        />
+                        <button type="button" className="bg-amber-600 text-white p-1.5 rounded-lg"
+                          onClick={async () => {
+                            const ok = await addCategoria(novaCategoriaNome.trim())
+                            if (ok) { setItemEdit(idx, 'categoria', novaCategoriaNome.trim()); setNovaCategoriaModo(null); setNovaCategoriaNome('') }
+                          }}>
+                          <Check size={16} />
+                        </button>
+                        <button type="button" className="bg-gray-100 text-gray-500 p-1.5 rounded-lg"
+                          onClick={() => { setNovaCategoriaModo(null); setNovaCategoriaNome('') }}>
+                          <X size={16} />
+                        </button>
+                      </div>
+                    ) : (
+                      <button type="button" onClick={() => setNovaCategoriaModo(idx)}
+                        className="px-2.5 py-1.5 rounded-lg font-semibold text-xs border-2 border-dashed border-amber-400 text-amber-700 hover:bg-amber-50 flex items-center gap-1">
+                        <Plus size={12} /> Nova
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Sub-opções Sandália */}
+                {sandalia && (
+                  <div>
+                    <p className="font-bold text-gray-700 text-sm mb-2">Tipo de sandália</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {SUBCATEGORIAS_SANDALIA.map(sc => (
+                        <button key={sc} type="button"
+                          onClick={() => setItemEdit(idx, 'subcategoria', sc)}
+                          className={`px-2.5 py-1.5 rounded-lg font-semibold text-xs border-2 transition-colors ` +
+                            (item.subcategoria === sc
+                              ? 'bg-amber-600 text-white border-amber-600'
+                              : 'bg-white text-gray-700 border-gray-300 hover:border-amber-400')}>
+                          {sc}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 )}
-              </div>
 
-              <div className="grid grid-cols-2 gap-2">
-                <input className="input-field text-sm py-2" placeholder="Cor"
-                  value={item.cor} onChange={e => setItemEdit(idx, 'cor', e.target.value)} />
-                <input className="input-field font-bold text-sm py-2" placeholder="Valor" inputMode="decimal"
-                  value={item.valor} onChange={e => setItemEdit(idx, 'valor', e.target.value)} />
+                {/* Lado do calçado */}
+                {calcado && (
+                  <div>
+                    <p className="font-bold text-gray-700 text-sm mb-2">Qual peça?</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {LADOS.map(l => (
+                        <button key={l} type="button"
+                          onClick={() => setItemEdit(idx, 'lado', l)}
+                          className={`px-2.5 py-1.5 rounded-lg font-semibold text-xs border-2 transition-colors ` +
+                            (item.lado === l
+                              ? 'bg-amber-600 text-white border-amber-600'
+                              : 'bg-white text-gray-700 border-gray-300 hover:border-amber-400')}>
+                          {l}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Serviços */}
+                <div>
+                  <p className="font-bold text-gray-700 text-sm mb-2">Serviços</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {SERVICOS.map(s => (
+                      <button key={s} type="button" onClick={() => toggleServicoEdit(idx, s)}
+                        className={`px-2.5 py-1.5 rounded-lg font-semibold text-xs border-2 transition-colors ` +
+                          (item.servicos.includes(s)
+                            ? 'bg-amber-600 text-white border-amber-600'
+                            : 'bg-white text-gray-700 border-gray-300 hover:border-amber-400')}>
+                        {s}
+                      </button>
+                    ))}
+                    {custom.map(s => (
+                      <button key={s} type="button" onClick={() => toggleServicoEdit(idx, s)}
+                        className="px-2.5 py-1.5 rounded-lg font-semibold text-xs border-2 bg-amber-600 text-white border-amber-600 flex items-center gap-1">
+                        {s} <X size={12} />
+                      </button>
+                    ))}
+                    {servicoCustomModo === idx ? (
+                      <div className="flex items-center gap-1 w-full mt-1">
+                        <input autoFocus className="input-field flex-1 py-1.5 text-sm"
+                          placeholder="Serviço personalizado" value={servicoCustomTexto}
+                          onChange={e => setServicoCustomTexto(e.target.value)}
+                          onKeyDown={e => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault()
+                              adicionarServicoCustom(idx)
+                            }
+                          }}
+                        />
+                        <button type="button" className="bg-amber-600 text-white p-1.5 rounded-lg"
+                          onClick={() => adicionarServicoCustom(idx)}>
+                          <Check size={16} />
+                        </button>
+                        <button type="button" className="bg-gray-100 text-gray-500 p-1.5 rounded-lg"
+                          onClick={() => { setServicoCustomModo(null); setServicoCustomTexto('') }}>
+                          <X size={16} />
+                        </button>
+                      </div>
+                    ) : (
+                      <button type="button" onClick={() => setServicoCustomModo(idx)}
+                        className="px-2.5 py-1.5 rounded-lg font-semibold text-xs border-2 border-dashed border-amber-400 text-amber-700 hover:bg-amber-50 flex items-center gap-1">
+                        <Plus size={12} /> Adicionar serviço
+                      </button>
+                    )}
+                  </div>
+                  {item.servicos.includes('Trocar roda') && (
+                    <div className="flex items-center gap-2 mt-2">
+                      <span className="text-xs font-semibold text-gray-600">Qtd rodas:</span>
+                      {[1, 2, 3, 4].map(n => (
+                        <button key={n} type="button" onClick={() => setItemEdit(idx, 'qtd_rodas', n)}
+                          className={`w-8 h-8 rounded-lg font-bold text-sm border-2 transition-colors ` +
+                            (item.qtd_rodas === n ? 'bg-amber-600 text-white border-amber-600' : 'bg-white text-gray-700 border-gray-300 hover:border-amber-400')}>
+                          {n}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Observação do serviço */}
+                  <div className="mt-2">
+                    <label className="block font-bold text-gray-700 text-xs mb-1">Observação do serviço</label>
+                    <textarea className="input-field text-sm" rows={2}
+                      placeholder="Descreva o que deve ser feito..."
+                      value={item.observacao_servico}
+                      onChange={e => setItemEdit(idx, 'observacao_servico', e.target.value)} />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <input className="input-field text-sm py-2" placeholder="Cor"
+                    value={item.cor} onChange={e => setItemEdit(idx, 'cor', e.target.value)} />
+                  <input className="input-field font-bold text-sm py-2" placeholder="Valor" inputMode="decimal"
+                    value={item.valor} onChange={e => setItemEdit(idx, 'valor', e.target.value)} />
+                </div>
+                <input className="input-field text-sm py-2" placeholder="Observação geral do item (opcional)"
+                  value={item.descricao} onChange={e => setItemEdit(idx, 'descricao', e.target.value)} />
               </div>
-              <input className="input-field text-sm py-2" placeholder="Observação (opcional)"
-                value={item.descricao} onChange={e => setItemEdit(idx, 'descricao', e.target.value)} />
-            </div>
-          ))}
+            )
+          })}
 
           <button type="button"
             onClick={() => setItensEdit(p => [...p, itemVazio()])}
@@ -453,14 +771,18 @@ export default function DetalhesOS() {
       </div>
 
       {/* ── Ações ── */}
-      <div className="grid grid-cols-2 gap-3 no-print">
+      <div className="grid grid-cols-3 gap-3 no-print">
         <button onClick={abrirWhatsApp}
-          className="flex items-center justify-center gap-2 bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-4 rounded-xl">
-          <MessageCircle size={22} /> WhatsApp
+          className="flex items-center justify-center gap-2 bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-3 rounded-xl">
+          <MessageCircle size={20} /> <span className="text-sm">WhatsApp</span>
+        </button>
+        <button onClick={gerarPDF}
+          className="flex items-center justify-center gap-2 bg-red-500 hover:bg-red-600 text-white font-bold py-3 px-3 rounded-xl">
+          <FileText size={20} /> <span className="text-sm">Gerar PDF</span>
         </button>
         <button onClick={() => window.print()}
-          className="flex items-center justify-center gap-2 btn-secondary">
-          <Printer size={22} /> Imprimir
+          className="flex items-center justify-center gap-2 btn-secondary py-3 px-3">
+          <Printer size={20} /> <span className="text-sm">Imprimir</span>
         </button>
       </div>
 

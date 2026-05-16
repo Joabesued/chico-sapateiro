@@ -45,10 +45,17 @@ def _carregar_ordem(db: Session, os_id: int) -> models.OrdemServico:
 
 
 def _item_para_model(item: schemas.ItemOSCreate, ordem_id: int) -> models.ItemOS:
+    concluidos = item.servicos_concluidos or []
+    # Mantém apenas serviços concluídos que ainda existem na lista de serviços do item.
+    concluidos = [s for s in concluidos if s in item.servicos]
     return models.ItemOS(
         ordem_id=ordem_id,
         categoria=item.categoria,
+        subcategoria=item.subcategoria or "",
+        lado=item.lado or "",
         servicos=json.dumps(item.servicos, ensure_ascii=False),
+        servicos_concluidos=json.dumps(concluidos, ensure_ascii=False),
+        observacao_servico=item.observacao_servico or "",
         cor=item.cor or "",
         descricao=item.descricao or "",
         qtd_rodas=item.qtd_rodas,
@@ -146,6 +153,61 @@ def atualizar_ordem(
     itens = db.query(models.ItemOS).filter(models.ItemOS.ordem_id == os_id).all()
     total = sum(i.valor for i in itens)
     ordem.status_pagamento = _calcular_status_pagamento(total, ordem.entrada)
+
+    db.commit()
+    return _carregar_ordem(db, os_id)
+
+
+def _todos_servicos_concluidos(itens: List[models.ItemOS]) -> bool:
+    """True se todos os itens têm pelo menos um serviço e todos estão concluídos."""
+    if not itens:
+        return False
+    total_servicos = 0
+    for it in itens:
+        try:
+            servicos = json.loads(it.servicos or "[]")
+            concluidos = json.loads(it.servicos_concluidos or "[]")
+        except Exception:
+            return False
+        if not servicos:
+            return False
+        total_servicos += len(servicos)
+        if any(s not in concluidos for s in servicos):
+            return False
+    return total_servicos > 0
+
+
+@router.patch("/{os_id}/itens/{item_id}/checklist", response_model=schemas.OSResponse)
+def atualizar_checklist_item(
+    os_id: int,
+    item_id: int,
+    dados: schemas.ChecklistUpdate,
+    db: Session = Depends(get_db),
+    usuario=Depends(auth_utils.get_usuario_atual),
+):
+    item = db.query(models.ItemOS).filter(
+        models.ItemOS.id == item_id,
+        models.ItemOS.ordem_id == os_id,
+    ).first()
+    if not item:
+        raise HTTPException(status_code=404, detail="Item não encontrado")
+
+    try:
+        servicos = json.loads(item.servicos or "[]")
+    except Exception:
+        servicos = []
+    concluidos = [s for s in dados.servicos_concluidos if s in servicos]
+    item.servicos_concluidos = json.dumps(concluidos, ensure_ascii=False)
+    db.flush()
+
+    # Auto-promove status para "Pronto para retirada" quando todos os serviços
+    # de todos os itens estiverem concluídos. Só altera se ainda estiver "Em andamento"
+    # (não rebaixa "Entregue" nem mexe em status manuais).
+    ordem = db.query(models.OrdemServico).filter(models.OrdemServico.id == os_id).first()
+    if ordem and ordem.status == models.StatusOS.em_andamento:
+        itens = db.query(models.ItemOS).filter(models.ItemOS.ordem_id == os_id).all()
+        if _todos_servicos_concluidos(itens):
+            ordem.status = models.StatusOS.pronto
 
     db.commit()
     return _carregar_ordem(db, os_id)

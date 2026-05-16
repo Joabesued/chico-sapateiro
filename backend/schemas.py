@@ -53,7 +53,11 @@ class CategoriaResponse(BaseModel):
 # --- Item de OS ---
 class ItemOSCreate(BaseModel):
     categoria: str
+    subcategoria: Optional[str] = ""
+    lado: Optional[str] = ""
     servicos: List[str]
+    servicos_concluidos: Optional[List[str]] = []
+    observacao_servico: Optional[str] = ""
     cor: Optional[str] = ""
     descricao: Optional[str] = ""
     qtd_rodas: Optional[int] = None
@@ -63,16 +67,19 @@ class ItemOSCreate(BaseModel):
 class ItemOSResponse(BaseModel):
     id: int
     categoria: str
+    subcategoria: Optional[str] = ""
+    lado: Optional[str] = ""
     servicos: List[str]
+    servicos_concluidos: List[str] = []
+    observacao_servico: Optional[str] = ""
     cor: Optional[str] = ""
     descricao: Optional[str] = ""
     qtd_rodas: Optional[int] = None
     valor: float
 
-    # Converte o JSON string do banco para lista Python
-    @field_validator("servicos", mode="before")
+    @field_validator("servicos", "servicos_concluidos", mode="before")
     @classmethod
-    def parse_servicos(cls, v):
+    def parse_lista_json(cls, v):
         if isinstance(v, str):
             try:
                 return json.loads(v)
@@ -97,6 +104,10 @@ class OSUpdate(BaseModel):
     entrada: Optional[float] = None
     status: Optional[str] = None
     itens: Optional[List[ItemOSCreate]] = None
+
+
+class ChecklistUpdate(BaseModel):
+    servicos_concluidos: List[str]
 
 
 class OSResponse(BaseModel):

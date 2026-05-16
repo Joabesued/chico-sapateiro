@@ -9,8 +9,14 @@ import os
 DB_PATH = os.path.join(os.path.dirname(__file__), "chico_sapateiro.db")
 
 CATEGORIAS_PADRAO = [
+    "Sapato social", "Tênis", "Sapatênis", "Mocassins", "Sandália",
+    "Mala", "Cinto", "Bolsa",
+]
+
+# Categorias antigas que devem ser removidas se ninguém estiver usando.
+CATEGORIAS_LEGADAS = [
     "Par", "Pé esquerdo", "Pé direito",
-    "Carteira", "Bolsa", "Mala", "Cinto", "Capa de prancha",
+    "Carteira", "Capa de prancha",
 ]
 
 
@@ -142,6 +148,25 @@ def run_migration():
         if "status_pagamento" not in cols_os:
             c.execute("ALTER TABLE ordens_servico ADD COLUMN status_pagamento TEXT NOT NULL DEFAULT 'Não pago'")
 
+        # ── 2.1 Garantir colunas novas em itens_os ──────────────────────────────
+        cols_it = _colunas(c, "itens_os")
+        if "subcategoria" not in cols_it:
+            c.execute("ALTER TABLE itens_os ADD COLUMN subcategoria TEXT DEFAULT ''")
+        if "lado" not in cols_it:
+            c.execute("ALTER TABLE itens_os ADD COLUMN lado TEXT DEFAULT ''")
+        if "servicos_concluidos" not in cols_it:
+            c.execute("ALTER TABLE itens_os ADD COLUMN servicos_concluidos TEXT NOT NULL DEFAULT '[]'")
+        if "observacao_servico" not in cols_it:
+            c.execute("ALTER TABLE itens_os ADD COLUMN observacao_servico TEXT DEFAULT ''")
+
+        # Migrar itens antigos com categoria "Par"/"Pé esquerdo"/"Pé direito" para
+        # usar o campo "lado" (mantém categoria como vazia para o usuário re-editar).
+        for legado, lado in (("Par", "Par"), ("Pé esquerdo", "Pé esquerdo"), ("Pé direito", "Pé direito")):
+            c.execute(
+                "UPDATE itens_os SET lado = ? WHERE categoria = ? AND (lado IS NULL OR lado = '')",
+                (lado, legado),
+            )
+
         # ── 3. Tabela categorias ─────────────────────────────────────────────────
         c.execute("""
             CREATE TABLE IF NOT EXISTS categorias (
@@ -151,6 +176,14 @@ def run_migration():
         """)
         for nome in CATEGORIAS_PADRAO:
             c.execute("INSERT OR IGNORE INTO categorias (nome) VALUES (?)", (nome,))
+
+        # Remove categorias legadas se ninguém mais as usa em itens.
+        for legada in CATEGORIAS_LEGADAS:
+            em_uso = c.execute(
+                "SELECT 1 FROM itens_os WHERE categoria = ? LIMIT 1", (legada,)
+            ).fetchone()
+            if not em_uso:
+                c.execute("DELETE FROM categorias WHERE nome = ?", (legada,))
 
         # ── 4. Corrigir criado_em NULL (tabelas recriadas perderam server_default) ─
         c.execute("""
@@ -169,6 +202,8 @@ def run_migration():
         # ── 6. Sincronizar categorias personalizadas que existam nos itens ───────
         c.execute("SELECT DISTINCT categoria FROM itens_os WHERE categoria != ''")
         for (cat,) in c.fetchall():
+            if cat in CATEGORIAS_LEGADAS:
+                continue
             c.execute("INSERT OR IGNORE INTO categorias (nome) VALUES (?)", (cat,))
 
         conn.commit()

@@ -6,7 +6,28 @@
       "Bash(cmd.exe:*)",
       "Read(//c/Users/Pichau/AppData/Local/Programs/**)",
       "Bash(ls /c/Python*)",
-      "Bash(npm run:*)"
+      "Bash(npm run:*)",
+      "Bash(netstat -ano)",
+      "Bash(findstr \":5173\\\\|:8000\")",
+      "Bash(findstr /N \"^\")",
+      "Bash(findstr /B \"75[0-9]: 76[0-9]: 77[0-9]: 78[0-9]: 79[0-9]: 80[0-9]:\")",
+      "Bash(git diff *)",
+      "Read(//tmp/**)",
+      "Bash(findstr \":5173 :8000\")",
+      "Bash(./venv/Scripts/python.exe -c \"import sqlite3; conn = sqlite3.connect\\('chico_sapateiro.db'\\); cur = conn.cursor\\(\\); cur.execute\\('PRAGMA table_info\\(itens_os\\)'\\); print\\('Colunas itens_os:'\\); [print\\(' -', r[1], r[2]\\) for r in cur.fetchall\\(\\)]; conn.close\\(\\)\")",
+      "Bash(./venv/Scripts/python.exe seed.py)",
+      "Bash(./venv/Scripts/python.exe -m uvicorn main:app --host 0.0.0.0 --port 8000)",
+      "Bash(PYTHONIOENCODING=utf-8 PYTHONUTF8=1 ./venv/Scripts/python.exe seed.py)",
+      "Bash(PYTHONIOENCODING=utf-8 PYTHONUTF8=1 ./venv/Scripts/python.exe -m uvicorn main:app --host 0.0.0.0 --port 8000)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" http://localhost:8000/docs)",
+      "Bash(curl -s -X POST http://localhost:8000/auth/login -H \"Content-Type: application/json\" -d '{\"usuario\":\"chico\",\"senha\":\"sapateiro123\"}')",
+      "Bash(curl -s http://localhost:8000/openapi.json)",
+      "Bash(python -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\('\\\\n'.join\\(sorted\\(d['paths'].keys\\(\\)\\)\\)\\)\")",
+      "Bash(curl -s -X POST http://localhost:8000/api/auth/login -H \"Content-Type: application/json\" -d '{\"usuario\":\"chico\",\"senha\":\"sapateiro123\"}')",
+      "Bash(python -c ' *)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:8000/)",
+      "Bash(python -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\('checklist endpoint:', '/api/ordens/{os_id}/itens/{item_id}/checklist' in d['paths']\\)\")",
+      "Bash(curl -s -X POST http://localhost:8000/api/auth/login -H \"Content-Type: application/json\" -d '{\"username\":\"chico\",\"password\":\"sapateiro123\"}')"
     ]
   }
 }

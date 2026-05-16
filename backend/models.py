@@ -63,19 +63,27 @@ class OrdemServico(Base):
 
 class ItemOS(Base):
     """
-    categoria  — ex: "Par", "Bolsa", "Mala"
-    servicos   — JSON array, ex: '["Solado", "Costura"]'
-    cor        — ex: "Preto"
-    descricao  — anotação livre opcional
-    qtd_rodas  — apenas quando "Trocar roda" está nos serviços
-    valor      — valor cobrado pelo item
+    categoria           — ex: "Sapato social", "Tênis", "Bolsa", "Mala"
+    subcategoria        — apenas para Sandália: "Rasteira" ou "Com salto"
+    lado                — apenas para calçados: "Par", "Pé esquerdo", "Pé direito"
+    servicos            — JSON array, ex: '["Solado", "Costura"]'
+    servicos_concluidos — JSON array com nomes dos serviços já concluídos
+    observacao_servico  — texto livre sobre o que deve ser feito no item
+    cor                 — ex: "Preto"
+    descricao           — anotação livre opcional
+    qtd_rodas           — apenas quando "Trocar roda" está nos serviços
+    valor               — valor cobrado pelo item
     """
     __tablename__ = "itens_os"
 
     id = Column(Integer, primary_key=True, index=True)
     ordem_id = Column(Integer, ForeignKey("ordens_servico.id"), nullable=False)
     categoria = Column(String, nullable=False, default="Par")
+    subcategoria = Column(String, nullable=True, default="")
+    lado = Column(String, nullable=True, default="")
     servicos = Column(String, nullable=False, default="[]")   # JSON
+    servicos_concluidos = Column(String, nullable=False, default="[]")  # JSON
+    observacao_servico = Column(String, nullable=True, default="")
     cor = Column(String, nullable=True, default="")
     descricao = Column(String, nullable=True, default="")
     qtd_rodas = Column(Integer, nullable=True)

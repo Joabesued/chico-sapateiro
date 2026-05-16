@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Search } from 'lucide-react'
+import { Search, AlertTriangle } from 'lucide-react'
 import api from '../api.js'
 import { StatusBadge, PagamentoBadge } from '../components/StatusBadge.jsx'
 
@@ -13,6 +13,33 @@ function formatarData(dt) {
 
 function formatarValor(v) {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v || 0)
+}
+
+function hojeISO() {
+  const d = new Date()
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const dd = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${dd}`
+}
+
+function estaEmAtraso(os) {
+  if (!os.prazo_entrega) return false
+  if (os.status === 'Pronto para retirada' || os.status === 'Entregue') return false
+  const prazo = String(os.prazo_entrega).split('T')[0]
+  return prazo < hojeISO()
+}
+
+function progressoServicos(os) {
+  let total = 0
+  let feitos = 0
+  for (const item of os.itens) {
+    const servicos = item.servicos || []
+    const concluidos = item.servicos_concluidos || []
+    total += servicos.length
+    feitos += servicos.filter(s => concluidos.includes(s)).length
+  }
+  return { total, feitos }
 }
 
 export default function Painel() {
@@ -84,12 +111,15 @@ export default function Painel() {
             const resumo = os.itens.length === 1
               ? `${os.itens[0].categoria} — ${(os.itens[0].servicos || []).join(', ')}`
               : `${os.itens.length} itens`
+            const atraso = estaEmAtraso(os)
+            const prog = progressoServicos(os)
 
             return (
               <button
                 key={os.id}
                 onClick={() => navigate(`/os/${os.id}`)}
-                className="card w-full text-left hover:shadow-lg active:scale-[0.99] transition-all"
+                className={`card w-full text-left hover:shadow-lg active:scale-[0.99] transition-all ` +
+                  (atraso ? 'border-2 border-red-400 ring-2 ring-red-200' : '')}
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex-1 min-w-0">
@@ -99,11 +129,22 @@ export default function Painel() {
                       </span>
                       <StatusBadge status={os.status} />
                       <PagamentoBadge status={os.status_pagamento} />
+                      {atraso && (
+                        <span className="inline-flex items-center gap-1 bg-red-600 text-white border-2 border-red-700 rounded-lg px-2 py-1 text-xs font-extrabold animate-pulse">
+                          <AlertTriangle size={14} /> EM ATRASO
+                        </span>
+                      )}
                     </div>
                     <p className="text-xl font-bold text-gray-900 truncate">{os.cliente.nome}</p>
                     <p className="text-gray-500 text-sm mt-0.5 truncate">{resumo}</p>
+                    {prog.total > 0 && (
+                      <p className="text-sm font-semibold text-amber-700 mt-0.5">
+                        {prog.feitos}/{prog.total} serviços concluídos
+                      </p>
+                    )}
                     {os.prazo_entrega && (
-                      <p className="text-sm text-gray-500 mt-0.5">
+                      <p className={`text-sm mt-0.5 font-semibold ` +
+                        (atraso ? 'text-red-600' : 'text-gray-500')}>
                         Prazo: {formatarData(os.prazo_entrega)}
                       </p>
                     )}
