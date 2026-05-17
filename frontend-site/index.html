@@ -1,825 +1,1317 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="Chico Sapateiro - Sapataria tradicional na Barra, Salvador. Conserto de sapatos, bolsas, cintos e artigos de couro com mais de 30 anos de experiência." />
-  <title>Chico Sapateiro — Sapataria Tradicional na Barra, Salvador</title>
-
-  <style>
-    :root {
-      --marrom-escuro: #3d2817;
-      --marrom: #6b4423;
-      --marrom-claro: #8b6444;
-      --bege: #d4b896;
-      --bege-claro: #f5ead7;
-      --creme: #faf5ec;
-      --texto: #2a1a0e;
-      --texto-claro: #6b5544;
-      --branco: #ffffff;
-      --verde-wpp: #25d366;
-      --sombra: 0 4px 20px rgba(61, 40, 23, 0.12);
-      --sombra-forte: 0 8px 30px rgba(61, 40, 23, 0.2);
-    }
-
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
-
-    html { scroll-behavior: smooth; }
-
-    body {
-      font-family: 'Georgia', 'Times New Roman', serif;
-      color: var(--texto);
-      background: var(--creme);
-      line-height: 1.6;
-      overflow-x: hidden;
-    }
-
-    h1, h2, h3, h4 {
-      font-family: 'Georgia', serif;
-      color: var(--marrom-escuro);
-      line-height: 1.2;
-    }
-
-    a { text-decoration: none; color: inherit; }
-
-    .container {
-      max-width: 1200px;
-      margin: 0 auto;
-      padding: 0 24px;
-    }
-
-    /* ===== HEADER ===== */
-    header {
-      background: var(--marrom-escuro);
-      color: var(--bege-claro);
-      position: sticky;
-      top: 0;
-      z-index: 100;
-      box-shadow: var(--sombra);
-    }
-
-    .nav-wrapper {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 16px 24px;
-      max-width: 1200px;
-      margin: 0 auto;
-    }
-
-    .logo {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      font-size: 1.4rem;
-      font-weight: bold;
-      color: var(--bege);
-    }
-
-    .logo-icon {
-      width: 40px;
-      height: 40px;
-      background: var(--bege);
-      color: var(--marrom-escuro);
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 1.2rem;
-      font-weight: bold;
-    }
-
-    nav ul {
-      display: flex;
-      list-style: none;
-      gap: 32px;
-    }
-
-    nav a {
-      color: var(--bege-claro);
-      transition: color 0.3s;
-      font-size: 1rem;
-    }
-
-    nav a:hover { color: var(--bege); }
-
-    .menu-toggle {
-      display: none;
-      background: none;
-      border: none;
-      color: var(--bege-claro);
-      font-size: 1.8rem;
-      cursor: pointer;
-    }
-
-    /* ===== HERO ===== */
-    .hero {
-      background:
-        linear-gradient(135deg, rgba(61, 40, 23, 0.85) 0%, rgba(107, 68, 35, 0.75) 100%),
-        url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><rect fill="%236b4423" width="100" height="100"/><path d="M0 0l50 50L0 100M100 0L50 50l50 50" stroke="%238b6444" stroke-width="0.5" fill="none" opacity="0.3"/></svg>');
-      color: var(--bege-claro);
-      padding: 120px 24px 100px;
-      text-align: center;
-      position: relative;
-    }
-
-    .hero h1 {
-      font-size: clamp(2.2rem, 5vw, 3.8rem);
-      color: var(--bege-claro);
-      margin-bottom: 20px;
-      font-weight: bold;
-    }
-
-    .hero .subtitle {
-      font-size: clamp(1.1rem, 2vw, 1.4rem);
-      max-width: 720px;
-      margin: 0 auto 36px;
-      color: var(--bege);
-      font-style: italic;
-    }
-
-    .btn {
-      display: inline-block;
-      padding: 14px 32px;
-      background: var(--bege);
-      color: var(--marrom-escuro);
-      border-radius: 4px;
-      font-weight: bold;
-      transition: all 0.3s;
-      border: 2px solid var(--bege);
-      cursor: pointer;
-      font-family: inherit;
-      font-size: 1rem;
-    }
-
-    .btn:hover {
-      background: var(--bege-claro);
-      border-color: var(--bege-claro);
-      transform: translateY(-2px);
-      box-shadow: var(--sombra-forte);
-    }
-
-    .btn-outline {
-      background: transparent;
-      color: var(--bege-claro);
-      border-color: var(--bege-claro);
-    }
-
-    .btn-outline:hover {
-      background: var(--bege-claro);
-      color: var(--marrom-escuro);
-    }
-
-    .hero-buttons {
-      display: flex;
-      gap: 16px;
-      justify-content: center;
-      flex-wrap: wrap;
-    }
-
-    /* ===== STATS ===== */
-    .stats {
-      background: var(--marrom);
-      color: var(--bege-claro);
-      padding: 60px 24px;
-    }
-
-    .stats-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: 32px;
-      text-align: center;
-    }
-
-    .stat-number {
-      font-size: 3rem;
-      font-weight: bold;
-      color: var(--bege);
-      display: block;
-      margin-bottom: 8px;
-    }
-
-    .stat-label {
-      font-size: 1rem;
-      color: var(--bege-claro);
-      font-style: italic;
-    }
-
-    /* ===== SECTIONS ===== */
-    section { padding: 80px 24px; }
-
-    .section-title {
-      text-align: center;
-      font-size: clamp(1.8rem, 4vw, 2.6rem);
-      margin-bottom: 16px;
-      color: var(--marrom-escuro);
-    }
-
-    .section-subtitle {
-      text-align: center;
-      color: var(--texto-claro);
-      max-width: 700px;
-      margin: 0 auto 48px;
-      font-style: italic;
-      font-size: 1.05rem;
-    }
-
-    .divider {
-      width: 60px;
-      height: 3px;
-      background: var(--marrom);
-      margin: 0 auto 32px;
-      border-radius: 2px;
-    }
-
-    /* ===== SOBRE ===== */
-    .sobre {
-      background: var(--creme);
-    }
-
-    .sobre-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 60px;
-      align-items: center;
-      max-width: 1100px;
-      margin: 0 auto;
-    }
-
-    .sobre-img {
-      background: linear-gradient(135deg, var(--marrom) 0%, var(--marrom-claro) 100%);
-      border-radius: 8px;
-      aspect-ratio: 4/5;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      box-shadow: var(--sombra-forte);
-      position: relative;
-      overflow: hidden;
-    }
-
-    .sobre-img::before {
-      content: "👞";
-      font-size: 8rem;
-      opacity: 0.3;
-    }
-
-    .sobre-text h2 {
-      font-size: 2.2rem;
-      margin-bottom: 20px;
-    }
-
-    .sobre-text p {
-      margin-bottom: 16px;
-      color: var(--texto-claro);
-      font-size: 1.05rem;
-    }
-
-    /* ===== MISSÃO ===== */
-    .missao {
-      background: var(--bege-claro);
-      text-align: center;
-    }
-
-    .missao-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-      gap: 32px;
-      margin-top: 48px;
-      max-width: 1000px;
-      margin-left: auto;
-      margin-right: auto;
-    }
-
-    .missao-card {
-      background: var(--branco);
-      padding: 36px 28px;
-      border-radius: 8px;
-      box-shadow: var(--sombra);
-      transition: transform 0.3s;
-      border-top: 4px solid var(--marrom);
-    }
-
-    .missao-card:hover { transform: translateY(-6px); }
-
-    .missao-icon {
-      font-size: 2.5rem;
-      margin-bottom: 16px;
-      display: block;
-    }
-
-    .missao-card h3 {
-      margin-bottom: 12px;
-      font-size: 1.3rem;
-    }
-
-    .missao-card p {
-      color: var(--texto-claro);
-      font-size: 0.98rem;
-    }
-
-    /* ===== SERVIÇOS ===== */
-    .servicos {
-      background: var(--creme);
-    }
-
-    .servicos-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-      gap: 24px;
-      max-width: 1100px;
-      margin: 0 auto;
-    }
-
-    .servico-card {
-      background: var(--branco);
-      padding: 32px 24px;
-      border-radius: 8px;
-      box-shadow: var(--sombra);
-      text-align: center;
-      transition: all 0.3s;
-      border: 1px solid var(--bege-claro);
-    }
-
-    .servico-card:hover {
-      transform: translateY(-4px);
-      box-shadow: var(--sombra-forte);
-      border-color: var(--marrom-claro);
-    }
-
-    .servico-icon {
-      width: 70px;
-      height: 70px;
-      margin: 0 auto 20px;
-      background: var(--bege-claro);
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 2rem;
-    }
-
-    .servico-card h3 {
-      margin-bottom: 12px;
-      font-size: 1.2rem;
-    }
-
-    .servico-card p {
-      color: var(--texto-claro);
-      font-size: 0.95rem;
-    }
-
-    /* ===== BLOG ===== */
-    .blog {
-      background: var(--bege-claro);
-    }
-
-    .blog-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-      gap: 28px;
-      max-width: 1100px;
-      margin: 0 auto;
-    }
-
-    .blog-card {
-      background: var(--branco);
-      border-radius: 8px;
-      overflow: hidden;
-      box-shadow: var(--sombra);
-      transition: transform 0.3s;
-      display: flex;
-      flex-direction: column;
-    }
-
-    .blog-card:hover { transform: translateY(-4px); }
-
-    .blog-img {
-      height: 180px;
-      background: linear-gradient(135deg, var(--marrom-claro) 0%, var(--bege) 100%);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 3rem;
-    }
-
-    .blog-content {
-      padding: 24px;
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-    }
-
-    .blog-date {
-      font-size: 0.85rem;
-      color: var(--marrom-claro);
-      margin-bottom: 8px;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-    }
-
-    .blog-content h3 {
-      font-size: 1.2rem;
-      margin-bottom: 12px;
-    }
-
-    .blog-content p {
-      color: var(--texto-claro);
-      font-size: 0.95rem;
-      margin-bottom: 16px;
-      flex: 1;
-    }
-
-    .blog-link {
-      color: var(--marrom);
-      font-weight: bold;
-      font-size: 0.95rem;
-      align-self: flex-start;
-    }
-
-    .blog-link:hover { color: var(--marrom-escuro); }
-
-    /* ===== CONTATO ===== */
-    .contato {
-      background: var(--marrom-escuro);
-      color: var(--bege-claro);
-    }
-
-    .contato .section-title { color: var(--bege-claro); }
-    .contato .section-subtitle { color: var(--bege); }
-    .contato .divider { background: var(--bege); }
-
-    .contato-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-      gap: 32px;
-      max-width: 1000px;
-      margin: 0 auto;
-    }
-
-    .contato-card {
-      background: rgba(255, 255, 255, 0.05);
-      padding: 32px 24px;
-      border-radius: 8px;
-      text-align: center;
-      border: 1px solid rgba(212, 184, 150, 0.2);
-      transition: all 0.3s;
-    }
-
-    .contato-card:hover {
-      background: rgba(255, 255, 255, 0.08);
-      border-color: var(--bege);
-    }
-
-    .contato-icon {
-      font-size: 2.5rem;
-      margin-bottom: 16px;
-      display: block;
-    }
-
-    .contato-card h3 {
-      color: var(--bege);
-      margin-bottom: 12px;
-      font-size: 1.2rem;
-    }
-
-    .contato-card p, .contato-card a {
-      color: var(--bege-claro);
-      font-size: 1rem;
-      line-height: 1.6;
-    }
-
-    .contato-card a:hover { color: var(--bege); }
-
-    .horario-list {
-      list-style: none;
-      text-align: left;
-      display: inline-block;
-    }
-
-    .horario-list li {
-      padding: 4px 0;
-      color: var(--bege-claro);
-    }
-
-    /* ===== WHATSAPP FLOAT ===== */
-    .whatsapp-float {
-      position: fixed;
-      bottom: 24px;
-      right: 24px;
-      width: 60px;
-      height: 60px;
-      background: var(--verde-wpp);
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      box-shadow: 0 4px 16px rgba(37, 211, 102, 0.4);
-      z-index: 99;
-      transition: transform 0.3s;
-      color: white;
-      font-size: 2rem;
-    }
-
-    .whatsapp-float:hover {
-      transform: scale(1.1);
-    }
-
-    /* ===== FOOTER ===== */
-    footer {
-      background: #1f1209;
-      color: var(--bege);
-      padding: 32px 24px;
-      text-align: center;
-      font-size: 0.9rem;
-    }
-
-    footer p { margin: 4px 0; }
-
-    /* ===== RESPONSIVO ===== */
-    @media (max-width: 768px) {
-      .menu-toggle { display: block; }
-
-      nav ul {
-        display: none;
-        position: absolute;
-        top: 100%;
-        left: 0;
-        right: 0;
-        background: var(--marrom-escuro);
-        flex-direction: column;
-        padding: 16px 24px;
-        gap: 16px;
-        border-top: 1px solid var(--marrom);
-      }
-
-      nav ul.active { display: flex; }
-
-      .sobre-grid {
-        grid-template-columns: 1fr;
-        gap: 32px;
-      }
-
-      .sobre-img { max-width: 400px; margin: 0 auto; width: 100%; }
-
-      .hero { padding: 80px 24px 60px; }
-
-      section { padding: 60px 24px; }
-
-      .stat-number { font-size: 2.2rem; }
-    }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chico Sapateiro — Feito à mão. Entregue com orgulho.</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400;1,700&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Lato:wght@300;400;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --couro-escuro: #3E1F12;
+  --couro: #6B3A2A;
+  --couro-claro: #A0522D;
+  --terracota: #C4622D;
+  --bege-escuro: #D4B896;
+  --bege: #E8D5B0;
+  --bege-claro: #F5ECD7;
+  --creme: #FDFAF5;
+  --texto: #2C1810;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: 'Lato', sans-serif;
+  background: var(--creme);
+  color: var(--texto);
+  overflow-x: hidden;
+}
+
+/* NAV */
+nav {
+  position: fixed;
+  top: 0;
+  width: 100%;
+  z-index: 100;
+  padding: 20px 60px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: all 0.4s ease;
+}
+
+nav.scrolled {
+  background: rgba(253,250,245,0.96);
+  backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--bege);
+  padding: 14px 60px;
+}
+
+.nav-logo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1;
+}
+
+.nav-logo-desde {
+  font-family: 'Lato', sans-serif;
+  font-size: 0.6rem;
+  letter-spacing: 4px;
+  color: var(--couro-claro);
+  text-transform: uppercase;
+  margin-bottom: 2px;
+}
+
+.nav-logo-nome {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.3rem;
+  font-weight: 900;
+  color: var(--couro-escuro);
+  letter-spacing: 3px;
+  text-transform: uppercase;
+}
+
+nav.scrolled .nav-logo-nome { color: var(--couro-escuro); }
+
+.nav-logo-sub {
+  font-family: 'Lato', sans-serif;
+  font-size: 0.55rem;
+  letter-spacing: 5px;
+  color: var(--couro);
+  text-transform: uppercase;
+  margin-top: 2px;
+}
+
+.nav-links {
+  display: flex;
+  gap: 40px;
+  list-style: none;
+}
+
+.nav-links a {
+  text-decoration: none;
+  color: var(--creme);
+  font-size: 0.75rem;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  font-weight: 700;
+  transition: color 0.3s;
+}
+
+nav.scrolled .nav-links a { color: var(--texto); }
+.nav-links a:hover { color: var(--couro-claro); }
+
+.nav-cta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 24px;
+  background: transparent;
+  border: 1px solid rgba(255,255,255,0.4);
+  color: var(--creme);
+  text-decoration: none;
+  font-size: 0.75rem;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  font-weight: 700;
+  transition: all 0.3s;
+  border-radius: 2px;
+}
+
+nav.scrolled .nav-cta {
+  border-color: var(--couro);
+  color: var(--couro);
+}
+
+.nav-cta:hover {
+  background: var(--couro);
+  border-color: var(--couro);
+  color: var(--creme);
+}
+
+/* HERO */
+.hero {
+  min-height: 100vh;
+  position: relative;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  background: var(--couro-escuro);
+}
+
+.hero-bg {
+  position: absolute;
+  inset: 0;
+  background:
+    repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 80px,
+      rgba(107,58,42,0.08) 80px,
+      rgba(107,58,42,0.08) 81px
+    ),
+    repeating-linear-gradient(
+      90deg,
+      transparent,
+      transparent 80px,
+      rgba(107,58,42,0.08) 80px,
+      rgba(107,58,42,0.08) 81px
+    );
+}
+
+.hero-word {
+  position: absolute;
+  right: -40px;
+  bottom: -60px;
+  font-family: 'Playfair Display', serif;
+  font-size: 28vw;
+  font-weight: 900;
+  color: rgba(255,255,255,0.03);
+  line-height: 1;
+  pointer-events: none;
+  user-select: none;
+  letter-spacing: -10px;
+}
+
+.hero-line {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  width: 40px;
+  height: 2px;
+  background: var(--terracota);
+}
+
+.hero-content {
+  position: relative;
+  z-index: 2;
+  padding: 140px 60px 100px;
+  max-width: 780px;
+}
+
+.hero-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 32px;
+}
+
+.hero-tag-line {
+  width: 40px;
+  height: 1px;
+  background: var(--terracota);
+}
+
+.hero-tag-text {
+  font-size: 0.7rem;
+  letter-spacing: 5px;
+  text-transform: uppercase;
+  color: var(--bege-escuro);
+  font-weight: 700;
+}
+
+.hero h1 {
+  font-family: 'Playfair Display', serif;
+  font-size: clamp(3.5rem, 8vw, 6.5rem);
+  color: var(--creme);
+  line-height: 1.05;
+  font-weight: 900;
+  margin-bottom: 8px;
+}
+
+.hero h1 em {
+  font-style: italic;
+  color: var(--bege-escuro);
+  font-weight: 400;
+}
+
+.hero-slogan {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: clamp(1.2rem, 2.5vw, 1.8rem);
+  color: var(--bege-escuro);
+  font-style: italic;
+  margin-bottom: 40px;
+  font-weight: 300;
+  line-height: 1.5;
+}
+
+.hero-desc {
+  font-size: 1rem;
+  color: rgba(255,255,255,0.55);
+  line-height: 1.9;
+  max-width: 520px;
+  font-weight: 300;
+  margin-bottom: 52px;
+}
+
+.hero-actions {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 40px;
+  background: var(--bege-claro);
+  color: var(--couro-escuro);
+  text-decoration: none;
+  font-weight: 700;
+  font-size: 0.8rem;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  border-radius: 2px;
+  transition: all 0.3s;
+}
+
+.btn-primary:hover {
+  background: white;
+  transform: translateY(-3px);
+}
+
+.btn-outline {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 40px;
+  border: 1px solid rgba(255,255,255,0.25);
+  color: var(--creme);
+  text-decoration: none;
+  font-weight: 700;
+  font-size: 0.8rem;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  border-radius: 2px;
+  transition: all 0.3s;
+}
+
+.btn-outline:hover {
+  background: rgba(255,255,255,0.08);
+  border-color: rgba(255,255,255,0.5);
+  transform: translateY(-3px);
+}
+
+.hero-scroll {
+  position: absolute;
+  bottom: 40px;
+  left: 60px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  z-index: 2;
+}
+
+.hero-scroll-line {
+  width: 40px;
+  height: 1px;
+  background: var(--couro);
+  animation: scrollPulse 2s ease-in-out infinite;
+}
+
+@keyframes scrollPulse {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 1; }
+}
+
+.hero-scroll-text {
+  font-size: 0.65rem;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--couro);
+}
+
+.hero-bottom {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 100px;
+  background: var(--creme);
+  clip-path: ellipse(55% 100% at 50% 100%);
+}
+
+/* STATS */
+.stats {
+  background: var(--creme);
+  padding: 60px;
+  display: flex;
+  justify-content: center;
+  gap: 0;
+  border-bottom: 1px solid var(--bege);
+}
+
+.stat {
+  text-align: center;
+  padding: 0 60px;
+  border-right: 1px solid var(--bege);
+}
+
+.stat:last-child { border-right: none; }
+
+.stat-num {
+  font-family: 'Playfair Display', serif;
+  font-size: 3rem;
+  font-weight: 900;
+  color: var(--couro);
+  line-height: 1;
+  margin-bottom: 8px;
+}
+
+.stat-label {
+  font-size: 0.7rem;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--couro-claro);
+  font-weight: 700;
+}
+
+/* SOBRE */
+.sobre {
+  padding: 140px 60px;
+  max-width: 1200px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 100px;
+  align-items: center;
+}
+
+.sobre-visual {
+  position: relative;
+}
+
+.sobre-moldura {
+  width: 100%;
+  aspect-ratio: 3/4;
+  background: var(--bege);
+  border: 1px solid var(--bege-escuro);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.sobre-moldura::before {
+  content: '';
+  position: absolute;
+  inset: 16px;
+  border: 1px solid var(--bege-escuro);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.sobre-moldura-texto {
+  font-family: 'Playfair Display', serif;
+  font-size: 8rem;
+  color: var(--bege-escuro);
+  font-weight: 900;
+  opacity: 0.4;
+  user-select: none;
+}
+
+.sobre-badge {
+  position: absolute;
+  bottom: -24px;
+  right: -24px;
+  width: 130px;
+  height: 130px;
+  background: var(--couro-escuro);
+  border-radius: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: var(--bege-claro);
+  z-index: 2;
+}
+
+.sobre-badge-num {
+  font-family: 'Playfair Display', serif;
+  font-size: 2.2rem;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.sobre-badge-text {
+  font-size: 0.6rem;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--bege-escuro);
+  text-align: center;
+  margin-top: 4px;
+}
+
+.section-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.section-tag-line {
+  width: 30px;
+  height: 1px;
+  background: var(--couro-claro);
+}
+
+.section-tag-text {
+  font-size: 0.7rem;
+  letter-spacing: 4px;
+  text-transform: uppercase;
+  color: var(--couro-claro);
+  font-weight: 700;
+}
+
+.sobre-texto h2 {
+  font-family: 'Playfair Display', serif;
+  font-size: clamp(2rem, 4vw, 3rem);
+  color: var(--couro-escuro);
+  line-height: 1.15;
+  margin-bottom: 32px;
+  font-weight: 900;
+}
+
+.sobre-texto h2 em {
+  font-style: italic;
+  color: var(--couro-claro);
+}
+
+.sobre-divider {
+  width: 50px;
+  height: 2px;
+  background: var(--couro-claro);
+  margin-bottom: 32px;
+}
+
+.sobre-texto p {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 1.15rem;
+  line-height: 1.9;
+  color: #555;
+  font-weight: 300;
+  margin-bottom: 20px;
+}
+
+.sobre-texto p strong {
+  color: var(--couro);
+  font-weight: 600;
+}
+
+/* MISSÃO */
+.missao {
+  background: var(--couro-escuro);
+  padding: 100px 60px;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.missao::before {
+  content: '"';
+  position: absolute;
+  top: -40px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: 'Playfair Display', serif;
+  font-size: 30rem;
+  color: rgba(255,255,255,0.02);
+  line-height: 1;
+  pointer-events: none;
+  font-weight: 900;
+}
+
+.missao-inner {
+  max-width: 800px;
+  margin: 0 auto;
+  position: relative;
+  z-index: 2;
+}
+
+.missao-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 32px;
+}
+
+.missao-tag-line {
+  width: 30px;
+  height: 1px;
+  background: var(--terracota);
+}
+
+.missao-tag-text {
+  font-size: 0.7rem;
+  letter-spacing: 4px;
+  text-transform: uppercase;
+  color: var(--bege-escuro);
+  font-weight: 700;
+}
+
+.missao blockquote {
+  font-family: 'Playfair Display', serif;
+  font-size: clamp(1.5rem, 3vw, 2.2rem);
+  color: var(--creme);
+  line-height: 1.5;
+  font-style: italic;
+  font-weight: 400;
+  margin-bottom: 32px;
+}
+
+.missao blockquote em {
+  color: var(--bege-escuro);
+}
+
+.missao-autor {
+  font-size: 0.75rem;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--couro-claro);
+  font-weight: 700;
+}
+
+/* SERVIÇOS */
+.servicos {
+  padding: 140px 60px;
+  background: var(--creme);
+}
+
+.servicos-inner {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.servicos-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-bottom: 80px;
+}
+
+.servicos-header h2 {
+  font-family: 'Playfair Display', serif;
+  font-size: clamp(2.5rem, 5vw, 4rem);
+  color: var(--couro-escuro);
+  line-height: 1.1;
+  font-weight: 900;
+  max-width: 500px;
+}
+
+.servicos-header h2 em {
+  font-style: italic;
+  color: var(--couro-claro);
+}
+
+.servicos-header p {
+  max-width: 300px;
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 1.1rem;
+  color: #777;
+  line-height: 1.7;
+  font-weight: 300;
+  text-align: right;
+}
+
+.servicos-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1px;
+  background: var(--bege);
+}
+
+.servico-item {
+  background: var(--creme);
+  padding: 48px 40px;
+  transition: all 0.3s;
+  position: relative;
+  overflow: hidden;
+}
+
+.servico-item::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: var(--couro-claro);
+  transform: scaleY(0);
+  transition: transform 0.3s;
+  transform-origin: bottom;
+}
+
+.servico-item:hover::before {
+  transform: scaleY(1);
+}
+
+.servico-item:hover {
+  background: var(--bege-claro);
+}
+
+.servico-num {
+  font-family: 'Playfair Display', serif;
+  font-size: 3rem;
+  font-weight: 900;
+  color: var(--bege);
+  line-height: 1;
+  margin-bottom: 20px;
+  transition: color 0.3s;
+}
+
+.servico-item:hover .servico-num {
+  color: var(--bege-escuro);
+}
+
+.servico-item h3 {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.2rem;
+  color: var(--couro-escuro);
+  margin-bottom: 12px;
+  font-weight: 700;
+}
+
+.servico-item p {
+  font-size: 0.9rem;
+  color: #777;
+  line-height: 1.7;
+  font-weight: 300;
+}
+
+/* BLOG */
+.blog {
+  padding: 140px 60px;
+  background: var(--couro-escuro);
+}
+
+.blog-inner {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.blog-header {
+  margin-bottom: 60px;
+}
+
+.blog-header h2 {
+  font-family: 'Playfair Display', serif;
+  font-size: clamp(2rem, 4vw, 3rem);
+  color: var(--creme);
+  font-weight: 900;
+  margin-top: 16px;
+}
+
+.blog-header h2 em {
+  font-style: italic;
+  color: var(--bege-escuro);
+}
+
+.blog-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr;
+  gap: 1px;
+  background: rgba(255,255,255,0.08);
+}
+
+.blog-post {
+  background: var(--couro-escuro);
+  padding: 40px;
+  transition: background 0.3s;
+  cursor: pointer;
+}
+
+.blog-post:hover {
+  background: rgba(255,255,255,0.04);
+}
+
+.blog-post-tag {
+  display: inline-block;
+  font-size: 0.65rem;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--terracota);
+  font-weight: 700;
+  margin-bottom: 16px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--couro);
+}
+
+.blog-post h3 {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.3rem;
+  color: var(--creme);
+  line-height: 1.3;
+  margin-bottom: 16px;
+  font-weight: 700;
+}
+
+.blog-post.destaque h3 {
+  font-size: 1.8rem;
+}
+
+.blog-post p {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 1rem;
+  color: rgba(255,255,255,0.4);
+  line-height: 1.7;
+  font-weight: 300;
+}
+
+.blog-post-meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 24px;
+  padding-top: 24px;
+  border-top: 1px solid rgba(255,255,255,0.06);
+}
+
+.blog-post-meta span {
+  font-size: 0.7rem;
+  letter-spacing: 1px;
+  color: rgba(255,255,255,0.25);
+  text-transform: uppercase;
+}
+
+/* CONTATO */
+.contato {
+  padding: 140px 60px;
+  background: var(--bege-claro);
+}
+
+.contato-inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 100px;
+  align-items: center;
+}
+
+.contato-info h2 {
+  font-family: 'Playfair Display', serif;
+  font-size: clamp(2rem, 4vw, 3rem);
+  color: var(--couro-escuro);
+  line-height: 1.15;
+  font-weight: 900;
+  margin: 16px 0 32px;
+}
+
+.contato-info h2 em {
+  font-style: italic;
+  color: var(--couro-claro);
+}
+
+.contato-divider {
+  width: 50px;
+  height: 2px;
+  background: var(--couro-claro);
+  margin-bottom: 40px;
+}
+
+.contato-btns {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-bottom: 48px;
+}
+
+.contato-btn {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 20px 28px;
+  text-decoration: none;
+  border-radius: 4px;
+  transition: all 0.3s;
+}
+
+.contato-btn-wpp {
+  background: #1a8f4e;
+  color: white;
+}
+
+.contato-btn-wpp:hover {
+  background: #157a41;
+  transform: translateY(-3px);
+}
+
+.contato-btn-tel {
+  background: var(--couro-escuro);
+  color: var(--bege-claro);
+}
+
+.contato-btn-tel:hover {
+  background: var(--couro);
+  transform: translateY(-3px);
+}
+
+.contato-btn-icon {
+  font-size: 1.4rem;
+  flex-shrink: 0;
+}
+
+.contato-btn-info small {
+  display: block;
+  font-size: 0.7rem;
+  opacity: 0.7;
+  letter-spacing: 1px;
+  margin-bottom: 4px;
+}
+
+.contato-btn-info strong {
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.contato-endereco {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  padding: 24px;
+  background: var(--bege);
+  border-radius: 4px;
+}
+
+.contato-endereco-icon {
+  font-size: 1.2rem;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.contato-endereco-info strong {
+  display: block;
+  font-size: 0.8rem;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--couro);
+  margin-bottom: 6px;
+  font-weight: 700;
+}
+
+.contato-endereco-info p {
+  font-size: 0.9rem;
+  color: #666;
+  line-height: 1.6;
+}
+
+.contato-mapa {
+  background: var(--bege);
+  border-radius: 8px;
+  aspect-ratio: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--bege-escuro);
+  position: relative;
+  overflow: hidden;
+}
+
+.contato-mapa-placeholder {
+  font-size: 4rem;
+  margin-bottom: 16px;
+  opacity: 0.5;
+}
+
+.contato-mapa-texto {
+  font-family: 'Playfair Display', serif;
+  font-size: 1rem;
+  color: var(--couro);
+  font-style: italic;
+}
+
+.contato-mapa-sub {
+  font-size: 0.75rem;
+  color: #999;
+  margin-top: 4px;
+  letter-spacing: 1px;
+}
+
+/* FOOTER */
+footer {
+  background: #1a0a05;
+  padding: 60px;
+  position: relative;
+  overflow: hidden;
+}
+
+.footer-inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 32px;
+}
+
+.footer-logo {
+  text-align: center;
+}
+
+.footer-logo-desde {
+  font-size: 0.6rem;
+  letter-spacing: 5px;
+  text-transform: uppercase;
+  color: var(--couro-claro);
+  margin-bottom: 4px;
+}
+
+.footer-logo-nome {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.8rem;
+  font-weight: 900;
+  color: var(--creme);
+  letter-spacing: 6px;
+  text-transform: uppercase;
+}
+
+.footer-logo-sub {
+  font-size: 0.6rem;
+  letter-spacing: 6px;
+  text-transform: uppercase;
+  color: var(--couro);
+  margin-top: 4px;
+}
+
+.footer-linha {
+  width: 60px;
+  height: 1px;
+  background: var(--couro);
+}
+
+.footer-nav {
+  display: flex;
+  gap: 40px;
+  list-style: none;
+}
+
+.footer-nav a {
+  font-size: 0.7rem;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.3);
+  text-decoration: none;
+  transition: color 0.3s;
+}
+
+.footer-nav a:hover { color: var(--bege-escuro); }
+
+.footer-copy {
+  font-size: 0.7rem;
+  color: rgba(255,255,255,0.15);
+  letter-spacing: 1px;
+  text-align: center;
+}
+
+/* ANIMAÇÕES */
+.reveal {
+  opacity: 0;
+  transform: translateY(40px);
+  transition: opacity 0.8s ease, transform 0.8s ease;
+}
+
+.reveal.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.reveal-delay-1 { transition-delay: 0.1s; }
+.reveal-delay-2 { transition-delay: 0.2s; }
+.reveal-delay-3 { transition-delay: 0.3s; }
+
+/* RESPONSIVE */
+@media (max-width: 900px) {
+  nav { padding: 16px 24px; }
+  nav.scrolled { padding: 12px 24px; }
+  .nav-links, .nav-cta { display: none; }
+  .hero-content { padding: 120px 24px 80px; }
+  .stats { padding: 40px 24px; gap: 0; flex-wrap: wrap; }
+  .stat { padding: 20px 32px; }
+  .sobre { grid-template-columns: 1fr; padding: 80px 24px; gap: 60px; }
+  .missao { padding: 80px 24px; }
+  .servicos { padding: 80px 24px; }
+  .servicos-header { flex-direction: column; gap: 24px; align-items: flex-start; }
+  .servicos-header p { text-align: left; }
+  .servicos-grid { grid-template-columns: 1fr; }
+  .blog { padding: 80px 24px; }
+  .blog-grid { grid-template-columns: 1fr; }
+  .contato { padding: 80px 24px; }
+  .contato-inner { grid-template-columns: 1fr; gap: 60px; }
+  footer { padding: 48px 24px; }
+  .footer-nav { flex-wrap: wrap; justify-content: center; gap: 24px; }
+}
+</style>
 </head>
 <body>
 
-  <!-- HEADER -->
-  <header>
-    <div class="nav-wrapper">
-      <a href="#hero" class="logo">
-        <span class="logo-icon">CS</span>
-        <span>Chico Sapateiro</span>
-      </a>
-      <button class="menu-toggle" aria-label="Menu" onclick="document.getElementById('menu').classList.toggle('active')">☰</button>
-      <nav>
-        <ul id="menu">
-          <li><a href="#sobre">Sobre</a></li>
-          <li><a href="#missao">Missão</a></li>
-          <li><a href="#servicos">Serviços</a></li>
-          <li><a href="#blog">Blog</a></li>
-          <li><a href="#contato">Contato</a></li>
-        </ul>
-      </nav>
-    </div>
-  </header>
+<!-- NAV -->
+<nav id="nav">
+  <div class="nav-logo">
+    <span class="nav-logo-desde">Desde 2000</span>
+    <span class="nav-logo-nome">Chico</span>
+    <span class="nav-logo-sub">Sapateiro</span>
+  </div>
+  <ul class="nav-links">
+    <li><a href="#sobre">História</a></li>
+    <li><a href="#servicos">Serviços</a></li>
+    <li><a href="#blog">Blog</a></li>
+    <li><a href="#contato">Contato</a></li>
+  </ul>
+  <a href="https://wa.me/5571932645659" class="nav-cta" target="_blank">💬 WhatsApp</a>
+</nav>
 
-  <!-- HERO -->
-  <section class="hero" id="hero">
-    <div class="container">
-      <h1>Tradição em couro, cuidado em cada ponto</h1>
-      <p class="subtitle">Há mais de três décadas restaurando sapatos, bolsas e artigos de couro com a alma do trabalho artesanal no coração da Barra.</p>
-      <div class="hero-buttons">
-        <a href="https://wa.me/557132645659" class="btn" target="_blank" rel="noopener">Fale no WhatsApp</a>
-        <a href="#servicos" class="btn btn-outline">Nossos serviços</a>
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-bg"></div>
+  <div class="hero-word">CS</div>
+  <div class="hero-content">
+    <div class="hero-tag">
+      <div class="hero-tag-line"></div>
+      <span class="hero-tag-text">Salvador · Bahia · Desde 2000</span>
+    </div>
+    <h1>Feito à mão.<br><em>Entregue</em><br>com orgulho.</h1>
+    <p class="hero-slogan">Cada peça que chega nas nossas mãos,<br>sai melhor do que era.</p>
+    <p class="hero-desc">Consertos, restaurações e cuidados para calçados, bolsas e acessórios em couro. Décadas de ofício, atenção de artesão.</p>
+    <div class="hero-actions">
+      <a href="https://wa.me/5571932645659" class="btn-primary" target="_blank">💬 Chamar no WhatsApp</a>
+      <a href="#servicos" class="btn-outline">Ver nossos serviços</a>
+    </div>
+  </div>
+  <div class="hero-scroll">
+    <div class="hero-scroll-line"></div>
+    <span class="hero-scroll-text">Role para conhecer</span>
+  </div>
+  <div class="hero-bottom"></div>
+</section>
+
+<!-- STATS -->
+<section class="stats">
+  <div class="stat reveal">
+    <div class="stat-num">+25</div>
+    <div class="stat-label">Anos de ofício</div>
+  </div>
+  <div class="stat reveal reveal-delay-1">
+    <div class="stat-num">∞</div>
+    <div class="stat-label">Peças restauradas</div>
+  </div>
+  <div class="stat reveal reveal-delay-2">
+    <div class="stat-num">100%</div>
+    <div class="stat-label">Feito à mão</div>
+  </div>
+  <div class="stat reveal reveal-delay-3">
+    <div class="stat-num">1</div>
+    <div class="stat-label">Família dedicada</div>
+  </div>
+</section>
+
+<!-- SOBRE -->
+<section class="sobre" id="sobre">
+  <div class="sobre-visual reveal">
+    <div class="sobre-moldura">
+      <span class="sobre-moldura-texto">CS</span>
+    </div>
+    <div class="sobre-badge">
+      <span class="sobre-badge-num">+25</span>
+      <span class="sobre-badge-text">anos de<br>ofício</span>
+    </div>
+  </div>
+  <div class="sobre-texto reveal reveal-delay-1">
+    <div class="section-tag">
+      <div class="section-tag-line"></div>
+      <span class="section-tag-text">Nossa história</span>
+    </div>
+    <h2>Tradição feita com <em>mãos</em> e coração</h2>
+    <div class="sobre-divider"></div>
+    <p>Francisco tinha 16 anos quando tocou num sapato pela primeira vez. Não sabia que aquilo viraria vida. Décadas dentro de sapatarias alheias, aprendendo tudo que podia — até que os próprios clientes disseram o que ele ainda hesitava em acreditar: <strong>"Abre o seu negócio."</strong></p>
+    <p>Nos anos 2000, ele ouviu. E desde então, o Chico Sapateiro existe por uma razão simples: <strong>fazer certo, ou refazer até ficar.</strong> Autodidata por natureza, perfeccionista por escolha — cada peça que passa por suas mãos recebe o mesmo cuidado de sempre.</p>
+    <p>Hoje a sapataria é de dois. O filho que chegou sem querer, ficou por amor, e encontrou no couro e no conserto um trabalho que faz sentido de acordar todo dia. Nossa Barra, Salvador.</p>
+  </div>
+</section>
+
+<!-- MISSÃO -->
+<section class="missao">
+  <div class="missao-inner reveal">
+    <div class="missao-tag">
+      <div class="missao-tag-line"></div>
+      <span class="missao-tag-text">Nossa missão</span>
+      <div class="missao-tag-line"></div>
+    </div>
+    <blockquote>Devolver às suas peças o que o tempo tentou tirar — forma, firmeza e presença. Porque um sapato bem cuidado não é <em>vaidade.</em> É respeito por si mesmo.</blockquote>
+    <span class="missao-autor">— Chico Sapateiro, Salvador · Bahia</span>
+  </div>
+</section>
+
+<!-- SERVIÇOS -->
+<section class="servicos" id="servicos">
+  <div class="servicos-inner">
+    <div class="servicos-header reveal">
+      <div>
+        <div class="section-tag">
+          <div class="section-tag-line"></div>
+          <span class="section-tag-text">O que fazemos</span>
+        </div>
+        <h2>Serviços feitos com <em>precisão</em></h2>
+      </div>
+      <p>Cada serviço é realizado com o mesmo cuidado que seu Francisco dedica há mais de duas décadas.</p>
+    </div>
+    <div class="servicos-grid">
+      <div class="servico-item reveal">
+        <div class="servico-num">01</div>
+        <h3>Solado & Costura</h3>
+        <p>Troca e reparo de solados, costuras e reforços para todos os tipos de calçados. Do tênis ao sapato social.</p>
+      </div>
+      <div class="servico-item reveal reveal-delay-1">
+        <div class="servico-num">02</div>
+        <h3>Pintura & Tingimento</h3>
+        <p>Renovação de cor, tingimento e retoques profissionais para devolver a vida original às suas peças.</p>
+      </div>
+      <div class="servico-item reveal reveal-delay-2">
+        <div class="servico-num">03</div>
+        <h3>Proteção & Colagem</h3>
+        <p>Aplicação de protetores, capas fixas e colagens de alta durabilidade para conservar por mais tempo.</p>
+      </div>
+      <div class="servico-item reveal">
+        <div class="servico-num">04</div>
+        <h3>Bolsas & Acessórios</h3>
+        <p>Troca de alças, zíperes, puxadores e cabeçotes. Restauração completa de bolsas e cintos em couro.</p>
+      </div>
+      <div class="servico-item reveal reveal-delay-1">
+        <div class="servico-num">05</div>
+        <h3>Malas de Viagem</h3>
+        <p>Troca de rodas, carrinhos e reparos estruturais. Sua mala pronta para a próxima viagem.</p>
+      </div>
+      <div class="servico-item reveal reveal-delay-2">
+        <div class="servico-num">06</div>
+        <h3>Restauração Geral</h3>
+        <p>Recuperação completa de peças danificadas, desbotadas ou envelhecidas. Retocamos até ficar exato.</p>
       </div>
     </div>
-  </section>
+  </div>
+</section>
 
-  <!-- STATS -->
-  <section class="stats">
-    <div class="container">
-      <div class="stats-grid">
-        <div>
-          <span class="stat-number">30+</span>
-          <span class="stat-label">Anos de experiência</span>
+<!-- BLOG -->
+<section class="blog" id="blog">
+  <div class="blog-inner">
+    <div class="blog-header reveal">
+      <div class="section-tag">
+        <div class="section-tag-line" style="background: var(--terracota);"></div>
+        <span class="section-tag-text" style="color: var(--bege-escuro);">Dicas & cuidados</span>
+      </div>
+      <h2>Aprenda a cuidar<br>das suas <em>peças</em></h2>
+    </div>
+    <div class="blog-grid">
+      <div class="blog-post destaque reveal">
+        <span class="blog-post-tag">Couro genuíno</span>
+        <h3>Como limpar e hidratar sapatos de couro sem danificar o material</h3>
+        <p>O couro é um material nobre que exige cuidado especial. Com os produtos certos e a técnica correta, você pode manter seus sapatos novos por muito mais tempo do que imagina.</p>
+        <div class="blog-post-meta">
+          <span>Chico Sapateiro</span>
+          <span>·</span>
+          <span>5 min de leitura</span>
         </div>
-        <div>
-          <span class="stat-number">15k+</span>
-          <span class="stat-label">Peças restauradas</span>
+      </div>
+      <div class="blog-post reveal reveal-delay-1">
+        <span class="blog-post-tag">Malas</span>
+        <h3>Por que as rodas da sua mala travam e como evitar</h3>
+        <p>Pequenos cuidados após cada viagem fazem toda a diferença na durabilidade das rodas.</p>
+        <div class="blog-post-meta">
+          <span>3 min de leitura</span>
         </div>
-        <div>
-          <span class="stat-number">100%</span>
-          <span class="stat-label">Trabalho artesanal</span>
-        </div>
-        <div>
-          <span class="stat-number">5★</span>
-          <span class="stat-label">Avaliação dos clientes</span>
+      </div>
+      <div class="blog-post reveal reveal-delay-2">
+        <span class="blog-post-tag">Dicas gerais</span>
+        <h3>O momento certo de levar seu sapato para o conserto</h3>
+        <p>Esperar demais pode transformar um conserto simples em uma restauração cara.</p>
+        <div class="blog-post-meta">
+          <span>4 min de leitura</span>
         </div>
       </div>
     </div>
-  </section>
+  </div>
+</section>
 
-  <!-- SOBRE -->
-  <section class="sobre" id="sobre">
-    <div class="container">
-      <h2 class="section-title">Sobre nós</h2>
-      <div class="divider"></div>
-      <p class="section-subtitle">Uma sapataria com história, alma e mãos que respeitam o ofício.</p>
-
-      <div class="sobre-grid">
-        <div class="sobre-img"></div>
-        <div class="sobre-text">
-          <h2>A oficina do seu Chico</h2>
-          <p>Fundada há mais de 30 anos no bairro da Barra, em Salvador, a Chico Sapateiro nasceu do amor pelo trabalho em couro e da vontade de preservar uma profissão antiga: a do bom sapateiro de bairro.</p>
-          <p>Aqui, cada peça que chega é tratada com a atenção que merece. Não importa se é um sapato social caro ou uma sandália de uso diário — o cuidado é o mesmo. Costuramos, colamos, reformamos, tingimos e devolvemos vida ao que parecia perdido.</p>
-          <p>Atender bem é parte do ofício. Por isso conhecemos cada cliente pelo nome — e muitos voltam há gerações.</p>
-        </div>
+<!-- CONTATO -->
+<section class="contato" id="contato">
+  <div class="contato-inner">
+    <div class="contato-info reveal">
+      <div class="section-tag">
+        <div class="section-tag-line"></div>
+        <span class="section-tag-text">Fale com a gente</span>
       </div>
-    </div>
-  </section>
-
-  <!-- MISSÃO -->
-  <section class="missao" id="missao">
-    <div class="container">
-      <h2 class="section-title">Nossa missão</h2>
-      <div class="divider"></div>
-      <p class="section-subtitle">Os valores que guiam cada peça que passa pelas nossas mãos.</p>
-
-      <div class="missao-grid">
-        <div class="missao-card">
-          <span class="missao-icon">🛠️</span>
-          <h3>Qualidade artesanal</h3>
-          <p>Cada conserto é feito à mão, com técnicas tradicionais e materiais cuidadosamente escolhidos para durar.</p>
-        </div>
-        <div class="missao-card">
-          <span class="missao-icon">🤝</span>
-          <h3>Confiança</h3>
-          <p>Atendimento honesto e transparente. Se não vale a pena consertar, a gente diz. Se vale, fazemos bem feito.</p>
-        </div>
-        <div class="missao-card">
-          <span class="missao-icon">♻️</span>
-          <h3>Consumo consciente</h3>
-          <p>Antes de descartar, conserte. Reformar um par de sapatos é mais sustentável e econômico do que comprar um novo.</p>
-        </div>
-        <div class="missao-card">
-          <span class="missao-icon">⏱️</span>
-          <h3>Prazo cumprido</h3>
-          <p>Compromisso com o prazo combinado. Cada ordem de serviço é acompanhada do início ao fim.</p>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- SERVIÇOS -->
-  <section class="servicos" id="servicos">
-    <div class="container">
-      <h2 class="section-title">Nossos serviços</h2>
-      <div class="divider"></div>
-      <p class="section-subtitle">Tudo o que envolve couro, costura e cola — a gente faz.</p>
-
-      <div class="servicos-grid">
-        <div class="servico-card">
-          <div class="servico-icon">👞</div>
-          <h3>Conserto de sapatos</h3>
-          <p>Troca de solas, saltos, palmilhas, costuras e tingimento. Devolvemos o conforto e a aparência do seu calçado.</p>
-        </div>
-        <div class="servico-card">
-          <div class="servico-icon">👜</div>
-          <h3>Reforma de bolsas</h3>
-          <p>Reparo de alças, fechos, forros e couro. Bolsas de marca, de viagem ou do dia a dia.</p>
-        </div>
-        <div class="servico-card">
-          <div class="servico-icon">🧷</div>
-          <h3>Cintos e acessórios</h3>
-          <p>Furação, encurtamento, troca de fivelas e ajustes em cintos de couro e sintéticos.</p>
-        </div>
-        <div class="servico-card">
-          <div class="servico-icon">👟</div>
-          <h3>Tênis e esportivos</h3>
-          <p>Limpeza profunda, recolagem de sola, conserto de costuras e restauração de acabamento.</p>
-        </div>
-        <div class="servico-card">
-          <div class="servico-icon">🎒</div>
-          <h3>Mochilas e malas</h3>
-          <p>Troca de zíperes, costura de alças, reforço de fundo e restauração geral.</p>
-        </div>
-        <div class="servico-card">
-          <div class="servico-icon">✨</div>
-          <h3>Limpeza e hidratação</h3>
-          <p>Tratamento para couro, restauração de cor e impermeabilização que prolongam a vida útil das peças.</p>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- BLOG -->
-  <section class="blog" id="blog">
-    <div class="container">
-      <h2 class="section-title">Dicas do Chico</h2>
-      <div class="divider"></div>
-      <p class="section-subtitle">Conselhos para cuidar bem dos seus calçados e artigos de couro.</p>
-
-      <div class="blog-grid">
-        <article class="blog-card">
-          <div class="blog-img">🌧️</div>
-          <div class="blog-content">
-            <span class="blog-date">10 de Maio, 2026</span>
-            <h3>Como cuidar do couro na época de chuva</h3>
-            <p>A umidade é a maior inimiga do couro. Aprenda a proteger e secar corretamente seus sapatos depois de pegar chuva.</p>
-            <a href="#" class="blog-link">Ler mais →</a>
+      <h2>Pronto para cuidar das suas <em>peças</em></h2>
+      <div class="contato-divider"></div>
+      <div class="contato-btns">
+        <a href="https://wa.me/5571932645659" class="contato-btn contato-btn-wpp" target="_blank">
+          <span class="contato-btn-icon">💬</span>
+          <div class="contato-btn-info">
+            <small>Atendimento rápido</small>
+            <strong>Chamar no WhatsApp</strong>
           </div>
-        </article>
-
-        <article class="blog-card">
-          <div class="blog-img">👞</div>
-          <div class="blog-content">
-            <span class="blog-date">25 de Abril, 2026</span>
-            <h3>5 sinais de que seu sapato precisa de reforma</h3>
-            <p>Sola gasta, salto torto, costura solta — saiba a hora certa de levar seu calçado favorito para um conserto.</p>
-            <a href="#" class="blog-link">Ler mais →</a>
+        </a>
+        <a href="tel:+5571932645659" class="contato-btn contato-btn-tel">
+          <span class="contato-btn-icon">📞</span>
+          <div class="contato-btn-info">
+            <small>Ligue para nós</small>
+            <strong>(71) 3264-5659</strong>
           </div>
-        </article>
-
-        <article class="blog-card">
-          <div class="blog-img">🧴</div>
-          <div class="blog-content">
-            <span class="blog-date">12 de Abril, 2026</span>
-            <h3>Hidratação de couro: por que faz diferença</h3>
-            <p>Couro também precisa de hidratação. Veja por que esse cuidado simples pode dobrar a vida útil das suas peças.</p>
-            <a href="#" class="blog-link">Ler mais →</a>
-          </div>
-        </article>
+        </a>
       </div>
-    </div>
-  </section>
-
-  <!-- CONTATO -->
-  <section class="contato" id="contato">
-    <div class="container">
-      <h2 class="section-title">Fale com a gente</h2>
-      <div class="divider"></div>
-      <p class="section-subtitle">Estamos prontos para atender você. Venha tomar um café e trazer seus calçados.</p>
-
-      <div class="contato-grid">
-        <div class="contato-card">
-          <span class="contato-icon">📱</span>
-          <h3>WhatsApp</h3>
-          <p><a href="https://wa.me/557132645659" target="_blank" rel="noopener">(71) 3264-5659</a></p>
-          <p style="font-size: 0.9rem; opacity: 0.8; margin-top: 8px;">Resposta rápida</p>
-        </div>
-
-        <div class="contato-card">
-          <span class="contato-icon">☎️</span>
-          <h3>Telefone</h3>
-          <p><a href="tel:+557132645659">(71) 3264-5659</a></p>
-          <p style="font-size: 0.9rem; opacity: 0.8; margin-top: 8px;">Atendimento em horário comercial</p>
-        </div>
-
-        <div class="contato-card">
-          <span class="contato-icon">📍</span>
-          <h3>Endereço</h3>
-          <p>Rua Afonso Celso, 225<br />Loja 7 — Barra<br />Salvador, Bahia</p>
-        </div>
-
-        <div class="contato-card">
-          <span class="contato-icon">🕐</span>
-          <h3>Horário</h3>
-          <ul class="horario-list">
-            <li>Seg a Sex: 8h às 18h</li>
-            <li>Sábado: 8h às 13h</li>
-            <li>Domingo: Fechado</li>
-          </ul>
+      <div class="contato-endereco">
+        <span class="contato-endereco-icon">📍</span>
+        <div class="contato-endereco-info">
+          <strong>Onde estamos</strong>
+          <p>Rua Afonso Celso, 225 — Loja 7<br>Barra, Salvador · Bahia</p>
         </div>
       </div>
     </div>
-  </section>
+    <div class="contato-mapa reveal reveal-delay-1">
+      <div class="contato-mapa-placeholder">🗺️</div>
+      <p class="contato-mapa-texto">Barra, Salvador</p>
+      <p class="contato-mapa-sub">Rua Afonso Celso, 225 — Loja 7</p>
+    </div>
+  </div>
+</section>
 
-  <!-- WHATSAPP FLOAT -->
-  <a href="https://wa.me/557132645659" class="whatsapp-float" target="_blank" rel="noopener" aria-label="Fale conosco no WhatsApp">
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="32" height="32" fill="currentColor">
-      <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/>
-    </svg>
-  </a>
+<!-- FOOTER -->
+<footer>
+  <div class="footer-inner">
+    <div class="footer-logo">
+      <div class="footer-logo-desde">Desde 2000</div>
+      <div class="footer-logo-nome">Chico</div>
+      <div class="footer-logo-sub">Sapateiro</div>
+    </div>
+    <div class="footer-linha"></div>
+    <ul class="footer-nav">
+      <li><a href="#sobre">Nossa história</a></li>
+      <li><a href="#servicos">Serviços</a></li>
+      <li><a href="#blog">Blog</a></li>
+      <li><a href="#contato">Contato</a></li>
+    </ul>
+    <p class="footer-copy">© 2026 Chico Sapateiro · Salvador, Bahia · Feito à mão. Entregue com orgulho.</p>
+  </div>
+</footer>
 
-  <!-- FOOTER -->
-  <footer>
-    <p><strong>Chico Sapateiro</strong> — Tradição em couro desde os anos 90</p>
-    <p>Rua Afonso Celso, 225 — Loja 7, Barra, Salvador, Bahia</p>
-    <p style="margin-top: 12px; opacity: 0.7;">&copy; 2026 Chico Sapateiro. Todos os direitos reservados.</p>
-  </footer>
+<script>
+const nav = document.getElementById('nav');
+window.addEventListener('scroll', () => {
+  nav.classList.toggle('scrolled', window.scrollY > 60);
+});
 
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      e.target.classList.add('visible');
+      observer.unobserve(e.target);
+    }
+  });
+}, { threshold: 0.12 });
+
+document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+</script>
 </body>
 </html>
