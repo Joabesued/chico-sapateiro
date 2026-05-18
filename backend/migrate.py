@@ -109,6 +109,10 @@ def _recriar_itens_os(c):
 
 
 def run_migration():
+    db_url = os.environ.get("DATABASE_URL", "")
+    if db_url and not db_url.startswith("sqlite"):
+        return  # PostgreSQL: create_all cuida de tudo, sem migrações SQLite
+
     if not os.path.exists(DB_PATH):
         return  # Banco novo — create_all cuida de tudo
 
