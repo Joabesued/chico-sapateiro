@@ -1,3 +1,6 @@
+import os
+print(f"PORT recebida: {os.environ.get('PORT', 'NÃO DEFINIDA')}")
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from database import engine
