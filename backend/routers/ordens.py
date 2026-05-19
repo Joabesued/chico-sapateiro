@@ -60,6 +60,7 @@ def _item_para_model(item: schemas.ItemOSCreate, ordem_id: int) -> models.ItemOS
         descricao=item.descricao or "",
         qtd_rodas=item.qtd_rodas,
         valor=item.valor,
+        foto_url=item.foto_url or "",
     )
 
 

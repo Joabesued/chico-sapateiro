@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func
 from typing import List
@@ -8,6 +8,22 @@ import schemas
 import auth as auth_utils
 
 router = APIRouter(prefix="/api/clientes", tags=["clientes"])
+
+
+@router.post("/", response_model=schemas.ClienteResponse, status_code=201)
+def criar_cliente(
+    dados: schemas.ClienteCreate,
+    db: Session = Depends(get_db),
+    usuario=Depends(auth_utils.get_usuario_atual)
+):
+    nome = dados.nome.strip()
+    if not nome:
+        raise HTTPException(status_code=400, detail="Nome não pode ser vazio.")
+    cliente = models.Cliente(nome=nome, telefone=dados.telefone)
+    db.add(cliente)
+    db.commit()
+    db.refresh(cliente)
+    return cliente
 
 
 @router.get("/", response_model=List[schemas.ClienteComOS])
@@ -52,6 +68,26 @@ def ordens_do_cliente(
     ).filter(
         models.OrdemServico.cliente_id == cliente_id
     ).order_by(models.OrdemServico.id.desc()).all()
+
+
+@router.delete("/{cliente_id}", status_code=status.HTTP_204_NO_CONTENT)
+def remover_cliente(
+    cliente_id: int,
+    db: Session = Depends(get_db),
+    usuario=Depends(auth_utils.get_usuario_atual)
+):
+    cliente = db.query(models.Cliente).filter(
+        models.Cliente.id == cliente_id
+    ).first()
+    if not cliente:
+        raise HTTPException(status_code=404, detail="Cliente não encontrado")
+    tem_os = db.query(models.OrdemServico).filter(
+        models.OrdemServico.cliente_id == cliente_id
+    ).first()
+    if tem_os:
+        raise HTTPException(status_code=409, detail="Não é possível remover cliente com ordens de serviço vinculadas.")
+    db.delete(cliente)
+    db.commit()
 
 
 @router.patch("/{cliente_id}", response_model=schemas.ClienteResponse)

@@ -10,13 +10,12 @@ DB_PATH = os.path.join(os.path.dirname(__file__), "chico_sapateiro.db")
 
 CATEGORIAS_PADRAO = [
     "Sapato social", "Tênis", "Sapatênis", "Mocassins", "Sandália",
-    "Mala", "Cinto", "Bolsa",
+    "Mala", "Cinto", "Bolsa", "Capa de prancha", "Carteira",
 ]
 
 # Categorias antigas que devem ser removidas se ninguém estiver usando.
 CATEGORIAS_LEGADAS = [
     "Par", "Pé esquerdo", "Pé direito",
-    "Carteira", "Capa de prancha",
 ]
 
 
@@ -162,6 +161,8 @@ def run_migration():
             c.execute("ALTER TABLE itens_os ADD COLUMN servicos_concluidos TEXT NOT NULL DEFAULT '[]'")
         if "observacao_servico" not in cols_it:
             c.execute("ALTER TABLE itens_os ADD COLUMN observacao_servico TEXT DEFAULT ''")
+        if "foto_url" not in cols_it:
+            c.execute("ALTER TABLE itens_os ADD COLUMN foto_url TEXT DEFAULT ''")
 
         # Migrar itens antigos com categoria "Par"/"Pé esquerdo"/"Pé direito" para
         # usar o campo "lado" (mantém categoria como vazia para o usuário re-editar).

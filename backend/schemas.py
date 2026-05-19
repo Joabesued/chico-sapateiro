@@ -62,6 +62,7 @@ class ItemOSCreate(BaseModel):
     descricao: Optional[str] = ""
     qtd_rodas: Optional[int] = None
     valor: float = 0.0
+    foto_url: Optional[str] = ""
 
 
 class ItemOSResponse(BaseModel):
@@ -76,6 +77,7 @@ class ItemOSResponse(BaseModel):
     descricao: Optional[str] = ""
     qtd_rodas: Optional[int] = None
     valor: float
+    foto_url: Optional[str] = ""
 
     @field_validator("servicos", "servicos_concluidos", mode="before")
     @classmethod
@@ -134,6 +136,26 @@ class OSResponse(BaseModel):
         return round(max(0.0, self.total - self.entrada), 2)
 
     model_config = {"from_attributes": True}
+
+
+# --- Ranking ---
+class RankingItem(BaseModel):
+    servico: str
+    quantidade: int
+    total: float
+
+
+class RankingResumo(BaseModel):
+    ranking_quantidade: List[RankingItem]
+    ranking_valor: List[RankingItem]
+
+
+class DashboardResumo(BaseModel):
+    os_abertas_hoje: int
+    faturado_mes: float
+    recebido_mes: float
+    pendente_total: float
+    os_em_atraso: int
 
 
 # --- Relatório ---

@@ -88,6 +88,7 @@ class ItemOS(Base):
     descricao = Column(String, nullable=True, default="")
     qtd_rodas = Column(Integer, nullable=True)
     valor = Column(Float, nullable=False, default=0.0)
+    foto_url = Column(String, nullable=True, default="")
 
     ordem = relationship("OrdemServico", back_populates="itens")
 

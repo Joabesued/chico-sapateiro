@@ -1,5 +1,5 @@
 import { Outlet, NavLink, useNavigate } from 'react-router-dom'
-import { ClipboardList, Users, BarChart3, LogOut, PlusCircle } from 'lucide-react'
+import { ClipboardList, Users, ShieldCheck, LogOut, PlusCircle } from 'lucide-react'
 
 export default function Layout() {
   const navigate = useNavigate()
@@ -51,9 +51,9 @@ export default function Layout() {
           <Users size={26} />
           Clientes
         </NavLink>
-        <NavLink to="/relatorio" className={navClass}>
-          <BarChart3 size={26} />
-          Relatório
+        <NavLink to="/admin" className={navClass}>
+          <ShieldCheck size={26} />
+          Admin
         </NavLink>
       </nav>
     </div>
