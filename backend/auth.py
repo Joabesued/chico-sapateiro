@@ -1,8 +1,8 @@
 import os
+import bcrypt
 from datetime import datetime, timedelta
 from typing import Optional
 from jose import JWTError, jwt
-from passlib.context import CryptContext
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
@@ -13,16 +13,15 @@ SECRET_KEY = os.environ.get("SECRET_KEY", "chico-sapateiro-secret-key-2024-mude-
 ALGORITHM = os.environ.get("ALGORITHM", "HS256")
 ACCESS_TOKEN_EXPIRE_HOURS = int(os.environ.get("ACCESS_TOKEN_EXPIRE_MINUTES", "720")) // 60 or 12
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
 
 
 def verificar_senha(senha_plana: str, hash_senha: str) -> bool:
-    return pwd_context.verify(senha_plana, hash_senha)
+    return bcrypt.checkpw(senha_plana.encode(), hash_senha.encode())
 
 
 def gerar_hash_senha(senha: str) -> str:
-    return pwd_context.hash(senha)
+    return bcrypt.hashpw(senha.encode(), bcrypt.gensalt()).decode()
 
 
 def criar_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
