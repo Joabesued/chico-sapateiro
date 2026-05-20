@@ -28,7 +28,13 @@
       "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:8000/)",
       "Bash(python -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\('checklist endpoint:', '/api/ordens/{os_id}/itens/{item_id}/checklist' in d['paths']\\)\")",
       "Bash(curl -s -X POST http://localhost:8000/api/auth/login -H \"Content-Type: application/json\" -d '{\"username\":\"chico\",\"password\":\"sapateiro123\"}')",
-      "Bash(dir C:UsersjoabeDocumentschico-sapateiro *)"
+      "Bash(dir C:UsersjoabeDocumentschico-sapateiro *)",
+      "Bash(Get-ChildItem -Recurse -Force)",
+      "Bash(Select-Object -ExpandProperty FullName)",
+      "Bash(Sort-Object)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)"
     ]
   }
 }
