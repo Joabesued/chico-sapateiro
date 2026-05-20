@@ -3,6 +3,7 @@ print(f"PORT recebida: {os.environ.get('PORT', 'NÃO DEFINIDA')}")
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import inspect, text
 from database import engine, SessionLocal
 import models
 from routers import auth, ordens, clientes, relatorios, categorias
@@ -14,6 +15,42 @@ CATEGORIAS_PADRAO = [
 ]
 
 
+def _migrate_postgres():
+    """Adiciona colunas novas ao PostgreSQL do Railway.
+    migrate.py só trata SQLite — este bloco cobre o PostgreSQL.
+    Usa ADD COLUMN IF NOT EXISTS, portanto é idempotente.
+    """
+    db_url = os.environ.get("DATABASE_URL", "")
+    if not db_url or db_url.startswith("sqlite"):
+        return  # SQLite é coberto pelo migrate.py
+
+    try:
+        insp = inspect(engine)
+        cols_it = {c["name"] for c in insp.get_columns("itens_os")}
+        novos = []
+        if "subcategoria" not in cols_it:
+            novos.append("ALTER TABLE itens_os ADD COLUMN IF NOT EXISTS subcategoria TEXT DEFAULT ''")
+        if "lado" not in cols_it:
+            novos.append("ALTER TABLE itens_os ADD COLUMN IF NOT EXISTS lado TEXT DEFAULT ''")
+        if "servicos_concluidos" not in cols_it:
+            novos.append("ALTER TABLE itens_os ADD COLUMN IF NOT EXISTS servicos_concluidos TEXT NOT NULL DEFAULT '[]'")
+        if "observacao_servico" not in cols_it:
+            novos.append("ALTER TABLE itens_os ADD COLUMN IF NOT EXISTS observacao_servico TEXT DEFAULT ''")
+        if "foto_url" not in cols_it:
+            novos.append("ALTER TABLE itens_os ADD COLUMN IF NOT EXISTS foto_url TEXT DEFAULT ''")
+
+        if novos:
+            with engine.connect() as conn:
+                for sql in novos:
+                    conn.execute(text(sql))
+                conn.commit()
+            print(f"[migrate_postgres] {len(novos)} coluna(s) adicionada(s) em itens_os.")
+        else:
+            print("[migrate_postgres] Nenhuma coluna nova necessária.")
+    except Exception as e:
+        print(f"[migrate_postgres] ERRO: {e}")
+
+
 def _seed_categorias():
     """Garante que as categorias padrão existam no banco — funciona em SQLite e PostgreSQL."""
     db = SessionLocal()
@@ -23,6 +60,7 @@ def _seed_categorias():
             if not existe:
                 db.add(models.Categoria(nome=nome))
         db.commit()
+        print("[seed_categorias] Categorias verificadas.")
     except Exception as e:
         print(f"[seed_categorias] ERRO: {e}")
         db.rollback()
@@ -30,13 +68,18 @@ def _seed_categorias():
         db.close()
 
 
-# Cria tabelas novas automaticamente
+# ── Inicialização ──────────────────────────────────────────────────────────────
+
+# 1. Cria tabelas que ainda não existem (seguro para SQLite e PostgreSQL)
 models.Base.metadata.create_all(bind=engine)
 
-# Migra estrutura antiga se necessário (SQLite only)
+# 2. Migração incremental SQLite (colunas novas, categorias padrão, etc.)
 run_migration()
 
-# Garante categorias padrão para qualquer banco (SQLite e PostgreSQL)
+# 3. Migração incremental PostgreSQL (colunas novas em itens_os)
+_migrate_postgres()
+
+# 4. Seed de categorias padrão para qualquer banco
 _seed_categorias()
 
 app = FastAPI(
