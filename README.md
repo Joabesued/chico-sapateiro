@@ -86,14 +86,6 @@ cd frontend
 npm install
 npm run dev
 ```
-
-**4. Acesse o sistema**
-```
-http://localhost:5173
-Usuário: chico
-Senha: sapateiro123
-```
-
 ---
 
 ## 📱 Acesso pela rede local
