@@ -1,6 +1,6 @@
 import json
 import calendar
-from datetime import datetime, timezone
+from datetime import datetime, date as date_type, timezone
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session, joinedload
 from typing import Optional
@@ -36,14 +36,17 @@ def dashboard_resumo(
         (models.OrdemServico.criado_em.between(inicio_mes, fim_mes))
     ).all()
 
-    faturado_mes = sum(sum(i.valor for i in o.itens) for o in ordens_mes)
+    faturado_mes = sum(
+        max(0.0, sum(i.valor for i in o.itens) - (o.desconto or 0.0))
+        for o in ordens_mes
+    )
     recebido_mes = sum(o.entrada or 0.0 for o in ordens_mes)
 
     todas = db.query(models.OrdemServico).options(
         joinedload(models.OrdemServico.itens)
     ).all()
     pendente_total = sum(
-        max(0.0, sum(i.valor for i in o.itens) - (o.entrada or 0.0))
+        max(0.0, max(0.0, sum(i.valor for i in o.itens) - (o.desconto or 0.0)) - (o.entrada or 0.0))
         for o in todas
     )
 
@@ -163,10 +166,12 @@ def resumo_financeiro(
 
     for o in ordens:
         total_itens = round(sum(i.valor for i in o.itens), 2)
+        desconto = o.desconto or 0.0
+        total_liquido = round(max(0.0, total_itens - desconto), 2)
         entrada = o.entrada or 0.0
-        resta = round(max(0.0, total_itens - entrada), 2)
+        resta = round(max(0.0, total_liquido - entrada), 2)
 
-        total_faturado += total_itens
+        total_faturado += total_liquido
         total_recebido += entrada
         if resta > 0:
             total_pendente += resta
@@ -178,7 +183,7 @@ def resumo_financeiro(
             os_pendentes.append(schemas.OSPendente(
                 numero=o.numero,
                 cliente_nome=o.cliente.nome if o.cliente else "—",
-                total=total_itens,
+                total=total_liquido,
                 entrada=entrada,
                 resta=resta,
             ))
@@ -193,4 +198,68 @@ def resumo_financeiro(
         os_por_status=os_por_status,
         os_por_pagamento=os_por_pagamento,
         os_pendentes=os_pendentes,
+    )
+
+
+@router.get("/diario", response_model=schemas.RelatorioDiario)
+def relatorio_diario(
+    data: Optional[str] = Query(None),
+    db: Session = Depends(get_db),
+    usuario=Depends(auth_utils.get_usuario_atual)
+):
+    if data:
+        try:
+            d = datetime.strptime(data, "%Y-%m-%d").date()
+        except ValueError:
+            d = datetime.now(timezone.utc).date()
+    else:
+        d = datetime.now(timezone.utc).date()
+
+    inicio = datetime(d.year, d.month, d.day, 0, 0, 0, tzinfo=timezone.utc)
+    fim = datetime(d.year, d.month, d.day, 23, 59, 59, 999999, tzinfo=timezone.utc)
+
+    ordens_hoje = db.query(models.OrdemServico).options(
+        joinedload(models.OrdemServico.itens),
+        joinedload(models.OrdemServico.cliente),
+    ).filter(
+        models.OrdemServico.criado_em.between(inicio, fim)
+    ).order_by(models.OrdemServico.numero).all()
+
+    os_finalizadas = db.query(models.OrdemServico).filter(
+        models.OrdemServico.status == models.StatusOS.entregue,
+        models.OrdemServico.atualizado_em.between(inicio, fim)
+    ).count()
+
+    total_faturado = 0.0
+    total_recebido = 0.0
+    resumos = []
+
+    for o in ordens_hoje:
+        total_itens = round(sum(i.valor for i in o.itens), 2)
+        desconto = o.desconto or 0.0
+        total_liquido = round(max(0.0, total_itens - desconto), 2)
+        entrada = o.entrada or 0.0
+        resta = round(max(0.0, total_liquido - entrada), 2)
+
+        total_faturado += total_liquido
+        total_recebido += entrada
+
+        resumos.append(schemas.OSResumoDiario(
+            numero=o.numero,
+            cliente_nome=o.cliente.nome if o.cliente else "—",
+            total=total_liquido,
+            entrada=entrada,
+            resta=resta,
+            status_pagamento=o.status_pagamento,
+            status=o.status,
+            qtd_itens=len(o.itens),
+        ))
+
+    return schemas.RelatorioDiario(
+        data=d.isoformat(),
+        os_abertas=len(ordens_hoje),
+        os_finalizadas=os_finalizadas,
+        total_faturado=round(total_faturado, 2),
+        total_recebido=round(total_recebido, 2),
+        ordens=resumos,
     )

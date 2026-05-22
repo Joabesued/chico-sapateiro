@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List
 from database import get_db
@@ -7,6 +7,11 @@ import schemas
 import auth as auth_utils
 
 router = APIRouter(prefix="/api/categorias", tags=["categorias"])
+
+CATEGORIAS_BASE = {
+    "Sapato social", "Tênis", "Sapatênis", "Mocassins", "Sandália",
+    "Mala", "Cinto", "Bolsa", "Capa de prancha", "Carteira",
+}
 
 
 @router.get("/", response_model=List[schemas.CategoriaResponse])
@@ -36,3 +41,18 @@ def criar_categoria(
     db.commit()
     db.refresh(cat)
     return cat
+
+
+@router.delete("/{categoria_id}", status_code=status.HTTP_204_NO_CONTENT)
+def deletar_categoria(
+    categoria_id: int,
+    db: Session = Depends(get_db),
+    usuario=Depends(auth_utils.get_usuario_atual)
+):
+    cat = db.query(models.Categoria).filter(models.Categoria.id == categoria_id).first()
+    if not cat:
+        raise HTTPException(status_code=404, detail="Categoria não encontrada")
+    if cat.nome in CATEGORIAS_BASE:
+        raise HTTPException(status_code=403, detail="Categorias base não podem ser excluídas.")
+    db.delete(cat)
+    db.commit()

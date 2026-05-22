@@ -150,6 +150,8 @@ def run_migration():
             c.execute("ALTER TABLE ordens_servico ADD COLUMN entrada REAL NOT NULL DEFAULT 0.0")
         if "status_pagamento" not in cols_os:
             c.execute("ALTER TABLE ordens_servico ADD COLUMN status_pagamento TEXT NOT NULL DEFAULT 'Não pago'")
+        if "desconto" not in cols_os:
+            c.execute("ALTER TABLE ordens_servico ADD COLUMN desconto REAL NOT NULL DEFAULT 0.0")
 
         # ── 2.1 Garantir colunas novas em itens_os ──────────────────────────────
         cols_it = _colunas(c, "itens_os")

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
-import { ArrowLeft, MessageCircle, Printer, Trash2, Pencil, Plus, X, Check, FileText, AlertTriangle } from 'lucide-react'
+import { ArrowLeft, MessageCircle, Printer, Trash2, Pencil, Plus, X, Check, FileText, AlertTriangle, Send } from 'lucide-react'
 import api from '../api.js'
 import { StatusBadge, PagamentoBadge } from '../components/StatusBadge.jsx'
 import SeletorPrazo from '../components/SeletorPrazo.jsx'
@@ -19,8 +19,16 @@ const SERVICOS = [
 const CALCADOS = ['Sapato social', 'Tênis', 'Sapatênis', 'Mocassins', 'Sandália']
 const LADOS = ['Par', 'Pé esquerdo', 'Pé direito']
 const SUBCATEGORIAS_SANDALIA = ['Rasteira', 'Com salto']
+const MALA_TAMANHOS = ['Pequena', 'Média', 'Grande']
+const MALA_MATERIAIS = ['Fibra', 'Tecido']
 
 function ehCalcado(cat) { return CALCADOS.includes(cat) }
+function ehMala(cat) { return cat === 'Mala' }
+
+const CATEGORIAS_BASE = new Set([
+  'Sapato social', 'Tênis', 'Sapatênis', 'Mocassins', 'Sandália',
+  'Mala', 'Cinto', 'Bolsa', 'Capa de prancha', 'Carteira',
+])
 
 // ─── Utilitários ───────────────────────────────────────────────────────────────
 
@@ -87,6 +95,7 @@ export default function DetalhesOS() {
   const [categorias, setCategorias] = useState([])
   const [itensEdit, setItensEdit] = useState([])
   const [entradaEdit, setEntradaEdit] = useState('')
+  const [descontoEdit, setDescontoEdit] = useState('')
   const [prazoEdit, setPrazoEdit] = useState('')
   const [novaCategoriaModo, setNovaCategoriaModo] = useState(null) // idx do item
   const [novaCategoriaNome, setNovaCategoriaNome] = useState('')
@@ -109,7 +118,7 @@ export default function DetalhesOS() {
 
   async function carregarCategorias() {
     const r = await api.get('/categorias/')
-    setCategorias(r.data.map(c => c.nome))
+    setCategorias(r.data)
   }
 
   function iniciarEdicao() {
@@ -126,6 +135,7 @@ export default function DetalhesOS() {
       valor: String(i.valor),
     })))
     setEntradaEdit(String(os.entrada))
+    setDescontoEdit(os.desconto > 0 ? String(os.desconto) : '')
     setPrazoEdit(os.prazo_entrega || '')
     setEditando(true)
   }
@@ -170,6 +180,17 @@ export default function DetalhesOS() {
     }
   }
 
+  async function deletarCategoriaEdit(id, nome) {
+    if (!confirm(`Excluir a categoria "${nome}"?`)) return
+    try {
+      await api.delete(`/categorias/${id}`)
+      await carregarCategorias()
+      toast.success(`Categoria "${nome}" excluída.`)
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Erro ao excluir categoria.')
+    }
+  }
+
   async function salvarEdicao() {
     for (let i = 0; i < itensEdit.length; i++) {
       const it = itensEdit[i]
@@ -189,6 +210,7 @@ export default function DetalhesOS() {
       const { data } = await api.patch(`/ordens/${id}`, {
         prazo_entrega: prazoEdit || null,
         entrada: parseMoeda(entradaEdit),
+        desconto: parseMoeda(descontoEdit),
         itens: itensEdit.map((it, idx) => {
           const ant = concluidosAnt[idx]?.concluidos || []
           const concluidos = ant.filter(s => it.servicos.includes(s))
@@ -278,10 +300,15 @@ export default function DetalhesOS() {
       return `▪ ${partes.join(' — ')}`
     }).join('\n')
 
+    const desconto = os.desconto || 0
+    const linhaDesconto = desconto > 0 ? `🏷️ Desconto: - ${formatarValor(desconto)}\n` : ''
+
     const msg = encodeURIComponent(
       `🥿 *CHICO SAPATEIRO*\n` +
       `📋 Nota #${String(os.numero).padStart(3, '0')} — ${os.cliente.nome}\n\n` +
       `${linhasItens}\n\n` +
+      (desconto > 0 ? `💰 Subtotal: ${formatarValor(os.subtotal)}\n` : '') +
+      `${linhaDesconto}` +
       `💰 Total: ${formatarValor(os.total)}\n` +
       `✅ Entrada: ${formatarValor(os.entrada)}\n` +
       `⏳ Resta: ${formatarValor(os.resta)}\n` +
@@ -289,6 +316,42 @@ export default function DetalhesOS() {
       `📌 Status: ${os.status}`
     )
     window.open(`https://wa.me/55${tel}?text=${msg}`, '_blank')
+  }
+
+  function enviarStatusWhatsApp() {
+    if (!os.cliente.telefone) { toast.error('Cliente sem telefone cadastrado'); return }
+    const tel = os.cliente.telefone.replace(/\D/g, '')
+
+    const linhasItens = os.itens.map(item => {
+      const servicos = item.servicos || []
+      const concluidos = item.servicos_concluidos || []
+      const todosFeitos = servicos.length > 0 && servicos.every(s => concluidos.includes(s))
+      const statusItem = todosFeitos ? '✅ Pronto' : '⏳ Em andamento'
+      const desc = descricaoItem(item)
+      const servs = formatarServicosTexto(item)
+      return `▪ ${desc}${servs ? ` — ${servs}` : ''}\n  Status: ${statusItem}`
+    }).join('\n\n')
+
+    const msg = encodeURIComponent(
+      `🥿 *CHICO SAPATEIRO*\n` +
+      `📋 Atualização da sua OS #${String(os.numero).padStart(3, '0')} — ${os.cliente.nome}\n\n` +
+      `${linhasItens}\n\n` +
+      `📌 Status geral: ${os.status}\n\n` +
+      `_Chico Sapateiro · (71) 3264-5659_`
+    )
+    window.open(`https://wa.me/55${tel}?text=${msg}`, '_blank')
+  }
+
+  function enviarPDFWhatsApp() {
+    if (!os.cliente.telefone) { toast.error('Cliente sem telefone cadastrado'); return }
+    gerarPDF()
+    const tel = os.cliente.telefone.replace(/\D/g, '')
+    const msg = encodeURIComponent(
+      `Olá ${os.cliente.nome}! Segue sua nota de serviço do Chico Sapateiro 🥿`
+    )
+    setTimeout(() => {
+      window.open(`https://wa.me/55${tel}?text=${msg}`, '_blank')
+    }, 800)
   }
 
   function gerarPDF() {
@@ -358,6 +421,11 @@ export default function DetalhesOS() {
 
     // Pagamento
     linha('PAGAMENTO', { size: 12, bold: true, spaceAfter: 2 })
+    const desconto = os.desconto || 0
+    if (desconto > 0) {
+      linha(`Subtotal: ${formatarValor(os.subtotal)}`, { size: 11, spaceAfter: 1 })
+      linha(`Desconto: - ${formatarValor(desconto)}`, { size: 11, spaceAfter: 1 })
+    }
     linha(`Total: ${formatarValor(os.total)}`, { size: 11, spaceAfter: 1 })
     linha(`Entrada: ${formatarValor(os.entrada)}`, { size: 11, spaceAfter: 1 })
     linha(`Resta: ${formatarValor(os.resta)}`, { size: 11, bold: true, spaceAfter: 1 })
@@ -377,7 +445,9 @@ export default function DetalhesOS() {
 
   const totalEdit = itensEdit.reduce((s, it) => s + parseMoeda(it.valor), 0)
   const entradaEditNum = parseMoeda(entradaEdit)
-  const restaEdit = Math.max(0, totalEdit - entradaEditNum)
+  const descontoEditNum = parseMoeda(descontoEdit)
+  const totalEditLiquido = Math.max(0, totalEdit - descontoEditNum)
+  const restaEdit = Math.max(0, totalEditLiquido - entradaEditNum)
   const atraso = estaEmAtraso(os)
 
   // Progresso de serviços
@@ -498,6 +568,18 @@ export default function DetalhesOS() {
             )
           })}
 
+          {(os.desconto || 0) > 0 && (
+            <div className="space-y-1 pt-2">
+              <div className="flex items-center justify-between bg-gray-50 rounded-xl px-4 py-2">
+                <p className="text-gray-500 text-xs font-semibold">Subtotal</p>
+                <p className="font-semibold text-gray-700">{formatarValor(os.subtotal)}</p>
+              </div>
+              <div className="flex items-center justify-between bg-red-50 rounded-xl px-4 py-2">
+                <p className="text-red-500 text-xs font-semibold">Desconto</p>
+                <p className="font-semibold text-red-600">- {formatarValor(os.desconto)}</p>
+              </div>
+            </div>
+          )}
           <div className="grid grid-cols-3 gap-2 pt-2 text-center">
             <div className="bg-amber-50 rounded-xl p-3">
               <p className="text-gray-500 text-xs font-semibold">Total</p>
@@ -543,20 +625,41 @@ export default function DetalhesOS() {
                 <div>
                   <p className="font-bold text-gray-700 text-sm mb-2">Categoria</p>
                   <div className="flex flex-wrap gap-1.5">
-                    {categorias.map(cat => (
-                      <button key={cat} type="button"
-                        onClick={() => {
-                          setItemEdit(idx, 'categoria', cat)
-                          if (cat !== 'Sandália') setItemEdit(idx, 'subcategoria', '')
-                          if (!ehCalcado(cat)) setItemEdit(idx, 'lado', '')
-                        }}
-                        className={`px-2.5 py-1.5 rounded-lg font-semibold text-xs border-2 transition-colors ` +
-                          (item.categoria === cat
-                            ? 'bg-amber-600 text-white border-amber-600'
-                            : 'bg-white text-gray-700 border-gray-300 hover:border-amber-400')}>
-                        {cat}
-                      </button>
-                    ))}
+                    {categorias.map(catObj => {
+                      const cat = catObj.nome
+                      const isBase = CATEGORIAS_BASE.has(cat)
+                      const ativa = item.categoria === cat
+                      return (
+                        <div key={catObj.id} className="relative group">
+                          <button type="button"
+                            onClick={() => {
+                              const oldIsMala = ehMala(item.categoria)
+                              const newIsMala = ehMala(cat)
+                              const newIsCalcado = ehCalcado(cat)
+                              setItemEdit(idx, 'categoria', cat)
+                              if (cat !== 'Sandália') setItemEdit(idx, 'subcategoria', '')
+                              if (oldIsMala || newIsMala || (!newIsCalcado && !newIsMala)) setItemEdit(idx, 'lado', '')
+                            }}
+                            className={`px-2.5 py-1.5 rounded-lg font-semibold text-xs border-2 transition-colors ` +
+                              (ativa
+                                ? 'bg-amber-600 text-white border-amber-600'
+                                : 'bg-white text-gray-700 border-gray-300 hover:border-amber-400') +
+                              (!isBase ? ' pr-6' : '')}>
+                            {cat}
+                          </button>
+                          {!isBase && (
+                            <button
+                              type="button"
+                              onClick={e => { e.stopPropagation(); deletarCategoriaEdit(catObj.id, cat) }}
+                              className="absolute right-0.5 top-1/2 -translate-y-1/2 p-0.5 rounded text-red-400 hover:text-red-600 opacity-0 group-hover:opacity-100 transition-opacity"
+                              title="Excluir categoria"
+                            >
+                              <Trash2 size={10} />
+                            </button>
+                          )}
+                        </div>
+                      )
+                    })}
                     {novaCategoriaModo === idx ? (
                       <div className="flex items-center gap-1 w-full mt-1">
                         <input autoFocus className="input-field flex-1 py-1.5 text-sm"
@@ -591,7 +694,26 @@ export default function DetalhesOS() {
                   </div>
                 </div>
 
-                {/* Sub-opções Sandália */}
+                {/* Qual peça — calçados (vem antes das subcategorias) */}
+                {calcado && (
+                  <div>
+                    <p className="font-bold text-gray-700 text-sm mb-2">Qual peça?</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {LADOS.map(l => (
+                        <button key={l} type="button"
+                          onClick={() => setItemEdit(idx, 'lado', l)}
+                          className={`px-2.5 py-1.5 rounded-lg font-semibold text-xs border-2 transition-colors ` +
+                            (item.lado === l
+                              ? 'bg-amber-600 text-white border-amber-600'
+                              : 'bg-white text-gray-700 border-gray-300 hover:border-amber-400')}>
+                          {l}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Tipo de sandália (vem após qual peça) */}
                 {sandalia && (
                   <div>
                     <p className="font-bold text-gray-700 text-sm mb-2">Tipo de sandália</p>
@@ -610,23 +732,40 @@ export default function DetalhesOS() {
                   </div>
                 )}
 
-                {/* Lado do calçado */}
-                {calcado && (
-                  <div>
-                    <p className="font-bold text-gray-700 text-sm mb-2">Qual peça?</p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {LADOS.map(l => (
-                        <button key={l} type="button"
-                          onClick={() => setItemEdit(idx, 'lado', l)}
-                          className={`px-2.5 py-1.5 rounded-lg font-semibold text-xs border-2 transition-colors ` +
-                            (item.lado === l
-                              ? 'bg-amber-600 text-white border-amber-600'
-                              : 'bg-white text-gray-700 border-gray-300 hover:border-amber-400')}>
-                          {l}
-                        </button>
-                      ))}
+                {/* Mala — tamanho e material */}
+                {ehMala(item.categoria) && (
+                  <>
+                    <div>
+                      <p className="font-bold text-gray-700 text-sm mb-2">Tamanho</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {MALA_TAMANHOS.map(t => (
+                          <button key={t} type="button"
+                            onClick={() => setItemEdit(idx, 'subcategoria', t)}
+                            className={`px-2.5 py-1.5 rounded-lg font-semibold text-xs border-2 transition-colors ` +
+                              (item.subcategoria === t
+                                ? 'bg-amber-600 text-white border-amber-600'
+                                : 'bg-white text-gray-700 border-gray-300 hover:border-amber-400')}>
+                            {t}
+                          </button>
+                        ))}
+                      </div>
                     </div>
-                  </div>
+                    <div>
+                      <p className="font-bold text-gray-700 text-sm mb-2">Material</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {MALA_MATERIAIS.map(m => (
+                          <button key={m} type="button"
+                            onClick={() => setItemEdit(idx, 'lado', m)}
+                            className={`px-2.5 py-1.5 rounded-lg font-semibold text-xs border-2 transition-colors ` +
+                              (item.lado === m
+                                ? 'bg-amber-600 text-white border-amber-600'
+                                : 'bg-white text-gray-700 border-gray-300 hover:border-amber-400')}>
+                            {m}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </>
                 )}
 
                 {/* Serviços */}
@@ -724,10 +863,22 @@ export default function DetalhesOS() {
           </div>
 
           {/* Totais */}
+          {descontoEditNum > 0 && (
+            <div className="space-y-1">
+              <div className="flex items-center justify-between bg-gray-50 rounded-xl px-3 py-1.5">
+                <p className="text-gray-500 text-xs font-semibold">Subtotal</p>
+                <p className="font-semibold text-gray-700 text-sm">{formatarValor(totalEdit)}</p>
+              </div>
+              <div className="flex items-center justify-between bg-red-50 rounded-xl px-3 py-1.5">
+                <p className="text-red-500 text-xs font-semibold">Desconto</p>
+                <p className="font-semibold text-red-600 text-sm">- {formatarValor(descontoEditNum)}</p>
+              </div>
+            </div>
+          )}
           <div className="grid grid-cols-3 gap-2 text-center">
             <div className="bg-amber-50 rounded-xl p-2">
               <p className="text-gray-500 text-xs">Total</p>
-              <p className="font-extrabold text-amber-700">{formatarValor(totalEdit)}</p>
+              <p className="font-extrabold text-amber-700">{formatarValor(totalEditLiquido)}</p>
             </div>
             <div className="bg-green-50 rounded-xl p-2">
               <p className="text-gray-500 text-xs">Entrada</p>
@@ -739,6 +890,11 @@ export default function DetalhesOS() {
             </div>
           </div>
 
+          <div>
+            <label className="block font-bold text-gray-700 mb-1 text-sm">Desconto (R$)</label>
+            <input className="input-field" inputMode="decimal" placeholder="0,00"
+              value={descontoEdit} onChange={e => setDescontoEdit(e.target.value)} />
+          </div>
           <div>
             <label className="block font-bold text-gray-700 mb-1 text-sm">Entrada recebida (R$)</label>
             <input className="input-field text-xl font-bold" inputMode="decimal" placeholder="0,00"
@@ -771,20 +927,28 @@ export default function DetalhesOS() {
       </div>
 
       {/* ── Ações ── */}
-      <div className="grid grid-cols-3 gap-3 no-print">
+      <div className="grid grid-cols-2 gap-3 no-print">
         <button onClick={abrirWhatsApp}
           className="flex items-center justify-center gap-2 bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-3 rounded-xl">
-          <MessageCircle size={20} /> <span className="text-sm">WhatsApp</span>
+          <MessageCircle size={18} /> <span className="text-sm">Nota WhatsApp</span>
+        </button>
+        <button onClick={enviarStatusWhatsApp}
+          className="flex items-center justify-center gap-2 bg-teal-500 hover:bg-teal-600 text-white font-bold py-3 px-3 rounded-xl">
+          <Send size={18} /> <span className="text-sm">Status WhatsApp</span>
         </button>
         <button onClick={gerarPDF}
           className="flex items-center justify-center gap-2 bg-red-500 hover:bg-red-600 text-white font-bold py-3 px-3 rounded-xl">
-          <FileText size={20} /> <span className="text-sm">Gerar PDF</span>
+          <FileText size={18} /> <span className="text-sm">Gerar PDF</span>
         </button>
-        <button onClick={() => window.print()}
-          className="flex items-center justify-center gap-2 btn-secondary py-3 px-3">
-          <Printer size={20} /> <span className="text-sm">Imprimir</span>
+        <button onClick={enviarPDFWhatsApp}
+          className="flex items-center justify-center gap-2 bg-amber-600 hover:bg-amber-700 text-white font-bold py-3 px-3 rounded-xl">
+          <FileText size={18} /> <span className="text-sm">Enviar PDF</span>
         </button>
       </div>
+      <button onClick={() => window.print()}
+        className="flex items-center justify-center gap-2 btn-secondary py-3 px-3 w-full no-print">
+        <Printer size={20} /> <span className="text-sm">Imprimir</span>
+      </button>
 
       <button onClick={deletarOS}
         className="flex items-center justify-center gap-2 btn-danger w-full no-print">

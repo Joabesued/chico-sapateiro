@@ -447,6 +447,126 @@ function TabEstatisticas() {
   )
 }
 
+// ─── Tab: Relatório do Dia ───────────────────────────────────────────────────────
+
+function TabRelatorioDia() {
+  const hoje = new Date()
+  const hojeISO = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}-${String(hoje.getDate()).padStart(2, '0')}`
+  const [data, setData] = useState(hojeISO)
+  const [dados, setDados] = useState(null)
+  const [loading, setLoading] = useState(false)
+  const navigate = useNavigate()
+
+  useEffect(() => { buscar() }, [data])
+
+  async function buscar() {
+    setLoading(true)
+    try {
+      const { data: resp } = await api.get('/relatorios/diario', { params: { data } })
+      setDados(resp)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const COR_PAGAMENTO = {
+    'Não pago': 'text-red-600',
+    'Pago parcial': 'text-orange-500',
+    'Pago total': 'text-emerald-600',
+  }
+
+  const dataFormatada = data ? data.split('-').reverse().join('/') : ''
+
+  return (
+    <div className="space-y-4">
+      <div className="card space-y-3">
+        <label className="block font-bold text-gray-700">Data do relatório</label>
+        <input
+          type="date"
+          className="input-field"
+          value={data}
+          onChange={e => setData(e.target.value)}
+        />
+      </div>
+
+      {loading ? (
+        <p className="text-center py-10 text-gray-500">Carregando...</p>
+      ) : dados ? (
+        <>
+          <div className="card space-y-1 no-print-hide" id="relatorio-dia-conteudo">
+            <h3 className="font-extrabold text-gray-800 text-lg text-center border-b pb-2">
+              Relatório do Dia — {dataFormatada}
+            </h3>
+
+            <div className="grid grid-cols-2 gap-3 pt-2">
+              <div className="card text-center border-l-4 border-blue-400 p-3">
+                <p className="text-gray-500 font-semibold text-xs">OS Abertas</p>
+                <p className="text-4xl font-black text-blue-600 mt-1">{dados.os_abertas}</p>
+              </div>
+              <div className="card text-center border-l-4 border-green-400 p-3">
+                <p className="text-gray-500 font-semibold text-xs">OS Finalizadas</p>
+                <p className="text-4xl font-black text-green-600 mt-1">{dados.os_finalizadas}</p>
+              </div>
+              <div className="card text-center border-l-4 border-amber-400 p-3">
+                <p className="text-gray-500 font-semibold text-xs">Total Faturado</p>
+                <p className="text-xl font-extrabold text-amber-700 mt-1">{formatarValor(dados.total_faturado)}</p>
+              </div>
+              <div className="card text-center border-l-4 border-emerald-400 p-3">
+                <p className="text-gray-500 font-semibold text-xs">Total Recebido</p>
+                <p className="text-xl font-extrabold text-emerald-600 mt-1">{formatarValor(dados.total_recebido)}</p>
+              </div>
+            </div>
+
+            {dados.ordens.length > 0 ? (
+              <div className="card mt-2">
+                <h4 className="font-bold text-gray-700 mb-3">OS do dia ({dados.ordens.length})</h4>
+                <div className="space-y-2">
+                  {dados.ordens.map(os => (
+                    <button
+                      key={os.numero}
+                      onClick={() => navigate('/painel')}
+                      className="w-full text-left py-3 px-1 border-b border-gray-100 last:border-0 hover:bg-amber-50 rounded-lg transition-colors"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex-1 min-w-0">
+                          <p className="font-bold text-gray-900">#{String(os.numero).padStart(3, '0')} — {os.cliente_nome}</p>
+                          <div className="flex gap-3 text-xs mt-0.5 flex-wrap">
+                            <span className="text-gray-400">{os.qtd_itens} {os.qtd_itens === 1 ? 'item' : 'itens'}</span>
+                            <span className={`font-semibold ${COR_PAGAMENTO[os.status_pagamento] || 'text-gray-600'}`}>
+                              {os.status_pagamento}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <p className="font-extrabold text-amber-700">{formatarValor(os.total)}</p>
+                          {os.resta > 0 && (
+                            <p className="text-xs text-orange-500 font-semibold">Resta: {formatarValor(os.resta)}</p>
+                          )}
+                        </div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div className="card text-center py-8">
+                <p className="text-gray-400 text-lg">Nenhuma OS aberta neste dia.</p>
+              </div>
+            )}
+          </div>
+
+          <button
+            onClick={() => window.print()}
+            className="w-full flex items-center justify-center gap-2 bg-gray-700 hover:bg-gray-800 text-white font-bold py-3 rounded-xl no-print"
+          >
+            🖨️ Imprimir relatório do dia
+          </button>
+        </>
+      ) : null}
+    </div>
+  )
+}
+
 // ─── Componente principal ────────────────────────────────────────────────────────
 
 export default function Admin() {
@@ -457,6 +577,7 @@ export default function Admin() {
     { id: 'relatorio', label: 'Relatório' },
     { id: 'ranking', label: 'Ranking' },
     { id: 'estatisticas', label: 'Estatísticas' },
+    { id: 'diario', label: 'Dia' },
   ]
 
   return (
@@ -482,6 +603,7 @@ export default function Admin() {
       {aba === 'relatorio' && <TabRelatorio />}
       {aba === 'ranking' && <TabRanking />}
       {aba === 'estatisticas' && <TabEstatisticas />}
+      {aba === 'diario' && <TabRelatorioDia />}
     </div>
   )
 }

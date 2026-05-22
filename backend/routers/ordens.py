@@ -103,13 +103,16 @@ def criar_ordem(
     cliente = _buscar_ou_criar_cliente(db, dados.cliente_nome, dados.cliente_telefone)
 
     total = sum(i.valor for i in dados.itens)
-    status_pag = _calcular_status_pagamento(total, dados.entrada)
+    desconto = dados.desconto or 0.0
+    total_liquido = max(0.0, total - desconto)
+    status_pag = _calcular_status_pagamento(total_liquido, dados.entrada)
 
     ordem = models.OrdemServico(
         numero=_proximo_numero(db),
         cliente_id=cliente.id,
         prazo_entrega=dados.prazo_entrega,
         entrada=dados.entrada,
+        desconto=desconto,
         status_pagamento=status_pag,
         status=models.StatusOS.em_andamento,
     )
@@ -142,6 +145,8 @@ def atualizar_ordem(
         ordem.status = dados.status
     if dados.entrada is not None:
         ordem.entrada = dados.entrada
+    if dados.desconto is not None:
+        ordem.desconto = dados.desconto
 
     if dados.itens is not None:
         if not dados.itens:
@@ -153,7 +158,9 @@ def atualizar_ordem(
 
     itens = db.query(models.ItemOS).filter(models.ItemOS.ordem_id == os_id).all()
     total = sum(i.valor for i in itens)
-    ordem.status_pagamento = _calcular_status_pagamento(total, ordem.entrada)
+    desconto = ordem.desconto or 0.0
+    total_liquido = max(0.0, total - desconto)
+    ordem.status_pagamento = _calcular_status_pagamento(total_liquido, ordem.entrada)
 
     db.commit()
     return _carregar_ordem(db, os_id)

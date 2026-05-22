@@ -27,6 +27,7 @@ def _migrate_postgres():
     try:
         insp = inspect(engine)
         cols_it = {c["name"] for c in insp.get_columns("itens_os")}
+        cols_os = {c["name"] for c in insp.get_columns("ordens_servico")}
         novos = []
         if "subcategoria" not in cols_it:
             novos.append("ALTER TABLE itens_os ADD COLUMN IF NOT EXISTS subcategoria TEXT DEFAULT ''")
@@ -38,6 +39,8 @@ def _migrate_postgres():
             novos.append("ALTER TABLE itens_os ADD COLUMN IF NOT EXISTS observacao_servico TEXT DEFAULT ''")
         if "foto_url" not in cols_it:
             novos.append("ALTER TABLE itens_os ADD COLUMN IF NOT EXISTS foto_url TEXT DEFAULT ''")
+        if "desconto" not in cols_os:
+            novos.append("ALTER TABLE ordens_servico ADD COLUMN IF NOT EXISTS desconto FLOAT DEFAULT 0.0")
 
         if novos:
             with engine.connect() as conn:

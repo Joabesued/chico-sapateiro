@@ -5,6 +5,11 @@ import { Plus, Trash2, Check, X, UserCheck, Mic, MicOff, Camera, Edit2 } from 'l
 import api from '../api.js'
 import SeletorPrazo from '../components/SeletorPrazo.jsx'
 
+const CATEGORIAS_BASE = new Set([
+  'Sapato social', 'Tênis', 'Sapatênis', 'Mocassins', 'Sandália',
+  'Mala', 'Cinto', 'Bolsa', 'Capa de prancha', 'Carteira',
+])
+
 // ─── Constantes ────────────────────────────────────────────────────────────────
 
 const SERVICOS = [
@@ -74,7 +79,7 @@ async function uploadFotoSupabase(file) {
 
 // ─── Sub-componente: editor de um item ─────────────────────────────────────────
 
-function ItemEditor({ item, categorias, onSet, onConfirm, onAddCategoria, modoEdicao }) {
+function ItemEditor({ item, categorias, onSet, onConfirm, onCancel, onAddCategoria, onDeleteCategoria, modoEdicao }) {
   const [novaCategoriaModo, setNovaCategoriaModo] = useState(false)
   const [novaCategoriaNome, setNovaCategoriaNome] = useState('')
   const [servicoCustomModo, setServicoCustomModo] = useState(false)
@@ -166,23 +171,43 @@ function ItemEditor({ item, categorias, onSet, onConfirm, onAddCategoria, modoEd
       <div>
         <label className="block font-bold text-gray-700 mb-2">Categoria *</label>
         <div className="flex flex-wrap gap-2">
-          {categorias.map(cat => (
-            <button
-              key={cat}
-              type="button"
-              onClick={() => {
-                onSet('categoria', cat)
-                if (cat !== 'Sandália') onSet('subcategoria', '')
-                if (!ehCalcado(cat) && !ehMala(cat)) onSet('lado', '')
-              }}
-              className={`px-3 py-2 rounded-xl font-semibold text-sm border-2 transition-colors ` +
-                (item.categoria === cat
-                  ? 'bg-amber-600 text-white border-amber-600'
-                  : 'bg-white text-gray-700 border-gray-300 hover:border-amber-400')}
-            >
-              {cat}
-            </button>
-          ))}
+          {categorias.map(catObj => {
+            const cat = catObj.nome
+            const isBase = CATEGORIAS_BASE.has(cat)
+            const ativa = item.categoria === cat
+            return (
+              <div key={catObj.id} className="relative group">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const oldIsMala = ehMala(item.categoria)
+                    const newIsMala = ehMala(cat)
+                    const newIsCalcado = ehCalcado(cat)
+                    onSet('categoria', cat)
+                    if (cat !== 'Sandália') onSet('subcategoria', '')
+                    if (oldIsMala || newIsMala || (!newIsCalcado && !newIsMala)) onSet('lado', '')
+                  }}
+                  className={`px-3 py-2 rounded-xl font-semibold text-sm border-2 transition-colors ` +
+                    (ativa
+                      ? 'bg-amber-600 text-white border-amber-600'
+                      : 'bg-white text-gray-700 border-gray-300 hover:border-amber-400') +
+                    (!isBase ? ' pr-7' : '')}
+                >
+                  {cat}
+                </button>
+                {!isBase && (
+                  <button
+                    type="button"
+                    onClick={e => { e.stopPropagation(); onDeleteCategoria(catObj.id, cat) }}
+                    className="absolute right-1 top-1/2 -translate-y-1/2 p-0.5 rounded text-red-400 hover:text-red-600 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-opacity"
+                    title="Excluir categoria"
+                  >
+                    <Trash2 size={12} />
+                  </button>
+                )}
+              </div>
+            )
+          })}
           {!novaCategoriaModo ? (
             <button
               type="button"
@@ -210,7 +235,25 @@ function ItemEditor({ item, categorias, onSet, onConfirm, onAddCategoria, modoEd
         </div>
       </div>
 
-      {/* Sandália */}
+      {/* Calçado — qual peça (vem antes das subcategorias) */}
+      {calcado && (
+        <div>
+          <label className="block font-bold text-gray-700 mb-2">Qual peça? *</label>
+          <div className="flex flex-wrap gap-2">
+            {LADOS.map(l => (
+              <button key={l} type="button" onClick={() => onSet('lado', l)}
+                className={`px-3 py-2 rounded-xl font-semibold text-sm border-2 transition-colors ` +
+                  (item.lado === l
+                    ? 'bg-amber-600 text-white border-amber-600'
+                    : 'bg-white text-gray-700 border-gray-300 hover:border-amber-400')}>
+                {l}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Sandália — tipo (vem após qual peça) */}
       {ehSandalia && (
         <div>
           <label className="block font-bold text-gray-700 mb-2">Tipo de sandália *</label>
@@ -260,24 +303,6 @@ function ItemEditor({ item, categorias, onSet, onConfirm, onAddCategoria, modoEd
             </div>
           </div>
         </>
-      )}
-
-      {/* Calçado — qual peça */}
-      {calcado && (
-        <div>
-          <label className="block font-bold text-gray-700 mb-2">Qual peça? *</label>
-          <div className="flex flex-wrap gap-2">
-            {LADOS.map(l => (
-              <button key={l} type="button" onClick={() => onSet('lado', l)}
-                className={`px-3 py-2 rounded-xl font-semibold text-sm border-2 transition-colors ` +
-                  (item.lado === l
-                    ? 'bg-amber-600 text-white border-amber-600'
-                    : 'bg-white text-gray-700 border-gray-300 hover:border-amber-400')}>
-                {l}
-              </button>
-            ))}
-          </div>
-        </div>
       )}
 
       {/* Serviços */}
@@ -439,14 +464,23 @@ function ItemEditor({ item, categorias, onSet, onConfirm, onAddCategoria, modoEd
         )}
       </div>
 
-      {/* Confirmar */}
-      <button
-        type="button"
-        onClick={onConfirm}
-        className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2 text-base"
-      >
-        <Check size={20} /> {modoEdicao ? 'Atualizar item' : 'Confirmar item'}
-      </button>
+      {/* Confirmar + Cancelar */}
+      <div className="flex gap-2">
+        <button
+          type="button"
+          onClick={onConfirm}
+          className="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2 text-base"
+        >
+          <Check size={20} /> {modoEdicao ? 'Atualizar item' : 'Confirmar item'}
+        </button>
+        <button
+          type="button"
+          onClick={onCancel}
+          className="flex-1 border-2 border-gray-300 text-gray-600 font-bold py-3 rounded-xl flex items-center justify-center gap-2 text-base hover:bg-gray-50"
+        >
+          <X size={20} /> Cancelar
+        </button>
+      </div>
     </div>
   )
 }
@@ -514,9 +548,10 @@ export default function NovaOS() {
 
   const [prazo, setPrazo] = useState('')
   const [entrada, setEntrada] = useState('')
+  const [desconto, setDesconto] = useState('')
 
   useEffect(() => {
-    api.get('/categorias/').then(r => setCategorias(r.data.map(c => c.nome))).catch(() => {})
+    api.get('/categorias/').then(r => setCategorias(r.data)).catch(() => {})
     api.get('/clientes/').then(r => setTodosClientes(r.data)).catch(() => {})
   }, [])
 
@@ -544,13 +579,25 @@ export default function NovaOS() {
     try {
       await api.post('/categorias/', { nome })
       const r = await api.get('/categorias/')
-      setCategorias(r.data.map(c => c.nome))
+      setCategorias(r.data)
       toast.success(`Categoria "${nome}" criada!`)
       return true
     } catch (err) {
       if (err.response?.status === 409) toast.error('Essa categoria já existe.')
       else toast.error('Erro ao criar categoria.')
       return false
+    }
+  }
+
+  async function deletarCategoria(id, nome) {
+    if (!confirm(`Excluir a categoria "${nome}"?`)) return
+    try {
+      await api.delete(`/categorias/${id}`)
+      setCategorias(prev => prev.filter(c => c.id !== id))
+      if (itemAtual?.categoria === nome) setItemField('categoria', '')
+      toast.success(`Categoria "${nome}" excluída.`)
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Erro ao excluir categoria.')
     }
   }
 
@@ -586,6 +633,11 @@ export default function NovaOS() {
     setItemAtual(null)
   }
 
+  function cancelarItem() {
+    setItemAtual(null)
+    setEditandoIdx(null)
+  }
+
   function editarItemConfirmado(idx) {
     setItemAtual({ ...itensConfirmados[idx] })
     setEditandoIdx(idx)
@@ -603,7 +655,9 @@ export default function NovaOS() {
 
   const totalConfirmados = itensConfirmados.reduce((s, it) => s + parseMoeda(it.valor), 0)
   const entradaNum = parseMoeda(entrada)
-  const resta = Math.max(0, totalConfirmados - entradaNum)
+  const descontoNum = parseMoeda(desconto)
+  const totalLiquido = Math.max(0, totalConfirmados - descontoNum)
+  const resta = Math.max(0, totalLiquido - entradaNum)
 
   async function handleSubmit(e) {
     e.preventDefault()
@@ -621,6 +675,7 @@ export default function NovaOS() {
         cliente_telefone: clienteTelefone.trim() || null,
         prazo_entrega: prazo || null,
         entrada: entradaNum,
+        desconto: descontoNum,
         itens: itensConfirmados.map(it => ({
           categoria: it.categoria,
           subcategoria: it.subcategoria || '',
@@ -735,7 +790,9 @@ export default function NovaOS() {
               categorias={categorias}
               onSet={setItemField}
               onConfirm={confirmarItem}
+              onCancel={cancelarItem}
               onAddCategoria={addCategoria}
+              onDeleteCategoria={deletarCategoria}
               modoEdicao={editandoIdx !== null}
             />
           )}
@@ -761,10 +818,24 @@ export default function NovaOS() {
         {/* ── Pagamento ── */}
         <div className="card space-y-4">
           <h3 className="text-lg font-bold text-gray-700 border-b pb-2">Pagamento</h3>
+
+          {descontoNum > 0 && (
+            <div className="space-y-1">
+              <div className="flex items-center justify-between bg-gray-50 rounded-xl px-4 py-2">
+                <p className="text-gray-500 text-sm font-semibold">Subtotal</p>
+                <p className="font-semibold text-gray-700">{formatarValor(totalConfirmados)}</p>
+              </div>
+              <div className="flex items-center justify-between bg-red-50 rounded-xl px-4 py-2">
+                <p className="text-red-500 text-sm font-semibold">Desconto</p>
+                <p className="font-semibold text-red-600">- {formatarValor(descontoNum)}</p>
+              </div>
+            </div>
+          )}
+
           <div className="grid grid-cols-3 gap-3 text-center">
             <div className="bg-amber-50 rounded-xl p-3">
               <p className="text-gray-500 text-sm font-semibold">Total</p>
-              <p className="font-extrabold text-amber-700 text-xl">{formatarValor(totalConfirmados)}</p>
+              <p className="font-extrabold text-amber-700 text-xl">{formatarValor(totalLiquido)}</p>
             </div>
             <div className="bg-green-50 rounded-xl p-3">
               <p className="text-gray-500 text-sm font-semibold">Entrada</p>
@@ -774,6 +845,17 @@ export default function NovaOS() {
               <p className="text-gray-500 text-sm font-semibold">Resta</p>
               <p className="font-extrabold text-orange-600 text-xl">{formatarValor(resta)}</p>
             </div>
+          </div>
+          <div>
+            <label className="block font-bold text-gray-700 mb-1">Desconto (R$)</label>
+            <input
+              className="input-field"
+              type="text"
+              inputMode="decimal"
+              placeholder="0,00"
+              value={desconto}
+              onChange={e => setDesconto(e.target.value)}
+            />
           </div>
           <div>
             <label className="block font-bold text-gray-700 mb-1">Entrada recebida (R$)</label>

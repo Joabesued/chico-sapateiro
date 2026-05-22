@@ -98,12 +98,14 @@ class OSCreate(BaseModel):
     cliente_telefone: Optional[str] = None
     prazo_entrega: Optional[str] = None
     entrada: float = 0.0
+    desconto: float = 0.0
     itens: List[ItemOSCreate]
 
 
 class OSUpdate(BaseModel):
     prazo_entrega: Optional[str] = None
     entrada: Optional[float] = None
+    desconto: Optional[float] = None
     status: Optional[str] = None
     itens: Optional[List[ItemOSCreate]] = None
 
@@ -119,6 +121,7 @@ class OSResponse(BaseModel):
     status_pagamento: str
     prazo_entrega: Optional[str] = None
     entrada: float
+    desconto: float = 0.0
     cliente_id: int
     cliente: ClienteResponse
     itens: List[ItemOSResponse]
@@ -127,8 +130,13 @@ class OSResponse(BaseModel):
 
     @computed_field
     @property
-    def total(self) -> float:
+    def subtotal(self) -> float:
         return round(sum(item.valor for item in self.itens), 2)
+
+    @computed_field
+    @property
+    def total(self) -> float:
+        return round(max(0.0, self.subtotal - self.desconto), 2)
 
     @computed_field
     @property
@@ -165,6 +173,26 @@ class OSPendente(BaseModel):
     total: float
     entrada: float
     resta: float
+
+
+class OSResumoDiario(BaseModel):
+    numero: int
+    cliente_nome: str
+    total: float
+    entrada: float
+    resta: float
+    status_pagamento: str
+    status: str
+    qtd_itens: int
+
+
+class RelatorioDiario(BaseModel):
+    data: str
+    os_abertas: int
+    os_finalizadas: int
+    total_faturado: float
+    total_recebido: float
+    ordens: List[OSResumoDiario]
 
 
 class RelatorioResumo(BaseModel):

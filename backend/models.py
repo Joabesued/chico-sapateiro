@@ -52,6 +52,7 @@ class OrdemServico(Base):
     cliente_id = Column(Integer, ForeignKey("clientes.id"), nullable=False)
     prazo_entrega = Column(String, nullable=True)
     entrada = Column(Float, nullable=False, default=0.0)
+    desconto = Column(Float, nullable=False, default=0.0)
     status_pagamento = Column(String, nullable=False, default=StatusPagamento.nao_pago)
     status = Column(String, nullable=False, default=StatusOS.em_andamento)
     criado_em = Column(DateTime(timezone=True), default=_agora, server_default=func.now())
