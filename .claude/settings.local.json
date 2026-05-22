@@ -34,7 +34,13 @@
       "Bash(Sort-Object)",
       "Bash(git add *)",
       "Bash(git commit -m ' *)",
-      "Bash(git push *)"
+      "Bash(git push *)",
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\joabe\\\\Documents\\\\chico-sapateiro\" -Recurse -Directory)",
+      "Bash(Select-Object -First 30 FullName)",
+      "Bash(git commit -m 'fix: reordena exibição do item no WhatsApp — Cor antes dos serviços *)",
+      "Bash(git pull *)",
+      "Bash(git stash *)",
+      "Bash(git commit -m 'fix: reordena campo desconto e valida entrada <= total *)"
     ]
   }
 }
