@@ -292,8 +292,8 @@ export default function DetalhesOS() {
     const linhasItens = os.itens.map(item => {
       const servs = formatarServicosTexto(item)
       const partes = [descricaoItem(item)]
-      if (servs) partes.push(servs)
       if (item.cor) partes.push(`Cor: ${item.cor}`)
+      if (servs) partes.push(servs)
       if (item.observacao_servico) partes.push(`Obs: ${item.observacao_servico}`)
       if (item.descricao) partes.push(item.descricao)
       partes.push(formatarValor(item.valor))
