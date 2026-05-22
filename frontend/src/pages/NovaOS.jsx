@@ -10,8 +10,6 @@ const CATEGORIAS_BASE = new Set([
   'Mala', 'Cinto', 'Bolsa', 'Capa de prancha', 'Carteira',
 ])
 
-// ─── Constantes ────────────────────────────────────────────────────────────────
-
 const SERVICOS = [
   'Retocar', 'Pintar', 'Solado', 'Protetor', 'Capa fixa',
   'Colagem', 'Costura', 'Trocar carrinho (mala)', 'Trocar roda',
@@ -29,8 +27,6 @@ const VOZ_SUPORTADA = typeof window !== 'undefined' &&
 
 function ehCalcado(cat) { return CALCADOS.includes(cat) }
 function ehMala(cat) { return cat === 'Mala' }
-
-// ─── Utilitários ───────────────────────────────────────────────────────────────
 
 function parseMoeda(v) {
   return parseFloat(String(v).replace(',', '.')) || 0
@@ -76,8 +72,6 @@ async function uploadFotoSupabase(file) {
   if (!res.ok) throw new Error(await res.text())
   return `${supabaseUrl}/storage/v1/object/public/os-fotos/${fileName}`
 }
-
-// ─── Sub-componente: editor de um item ─────────────────────────────────────────
 
 function ItemEditor({ item, categorias, onSet, onConfirm, onCancel, onAddCategoria, onDeleteCategoria, modoEdicao }) {
   const [novaCategoriaModo, setNovaCategoriaModo] = useState(false)
@@ -167,7 +161,6 @@ function ItemEditor({ item, categorias, onSet, onConfirm, onCancel, onAddCategor
         {modoEdicao ? 'Editando item' : 'Novo item'}
       </span>
 
-      {/* Categoria */}
       <div>
         <label className="block font-bold text-gray-700 mb-2">Categoria *</label>
         <div className="flex flex-wrap gap-2">
@@ -235,7 +228,6 @@ function ItemEditor({ item, categorias, onSet, onConfirm, onCancel, onAddCategor
         </div>
       </div>
 
-      {/* Calçado — qual peça (vem antes das subcategorias) */}
       {calcado && (
         <div>
           <label className="block font-bold text-gray-700 mb-2">Qual peça? *</label>
@@ -253,7 +245,6 @@ function ItemEditor({ item, categorias, onSet, onConfirm, onCancel, onAddCategor
         </div>
       )}
 
-      {/* Sandália — tipo (vem após qual peça) */}
       {ehSandalia && (
         <div>
           <label className="block font-bold text-gray-700 mb-2">Tipo de sandália *</label>
@@ -271,7 +262,6 @@ function ItemEditor({ item, categorias, onSet, onConfirm, onCancel, onAddCategor
         </div>
       )}
 
-      {/* Mala */}
       {mala && (
         <>
           <div>
@@ -305,7 +295,6 @@ function ItemEditor({ item, categorias, onSet, onConfirm, onCancel, onAddCategor
         </>
       )}
 
-      {/* Serviços */}
       <div>
         <label className="block font-bold text-gray-700 mb-2">
           Serviços * <span className="font-normal text-gray-400 text-sm">(selecione um ou mais)</span>
@@ -349,7 +338,6 @@ function ItemEditor({ item, categorias, onSet, onConfirm, onCancel, onAddCategor
           )}
         </div>
 
-        {/* Qtd. rodas */}
         {temTrocarRoda && (
           <div className="mt-3 flex items-center gap-3">
             <span className="font-semibold text-gray-700 text-sm">Quantidade de rodas:</span>
@@ -367,7 +355,6 @@ function ItemEditor({ item, categorias, onSet, onConfirm, onCancel, onAddCategor
           </div>
         )}
 
-        {/* Observação com voz */}
         <div className="mt-3">
           <label className="block font-bold text-gray-700 mb-1 text-sm">
             Observação do serviço <span className="font-normal text-gray-400">(opcional)</span>
@@ -400,7 +387,6 @@ function ItemEditor({ item, categorias, onSet, onConfirm, onCancel, onAddCategor
         </div>
       </div>
 
-      {/* Cor + Valor */}
       <div className="grid grid-cols-2 gap-3">
         <div>
           <label className="block font-bold text-gray-700 mb-1">Cor do material</label>
@@ -414,7 +400,6 @@ function ItemEditor({ item, categorias, onSet, onConfirm, onCancel, onAddCategor
         </div>
       </div>
 
-      {/* Descrição */}
       <div>
         <label className="block font-bold text-gray-700 mb-1">
           Observação geral <span className="font-normal text-gray-400 text-sm">(opcional)</span>
@@ -423,7 +408,6 @@ function ItemEditor({ item, categorias, onSet, onConfirm, onCancel, onAddCategor
           value={item.descricao} onChange={e => onSet('descricao', e.target.value)} />
       </div>
 
-      {/* Foto */}
       <div>
         <label className="block font-bold text-gray-700 mb-2">
           Foto do item <span className="font-normal text-gray-400 text-sm">(JPG/PNG máx. 5MB)</span>
@@ -464,7 +448,6 @@ function ItemEditor({ item, categorias, onSet, onConfirm, onCancel, onAddCategor
         )}
       </div>
 
-      {/* Confirmar + Cancelar */}
       <div className="flex gap-2">
         <button
           type="button"
@@ -484,8 +467,6 @@ function ItemEditor({ item, categorias, onSet, onConfirm, onCancel, onAddCategor
     </div>
   )
 }
-
-// ─── Card de item confirmado ────────────────────────────────────────────────────
 
 function ItemConfirmadoCard({ item, idx, onEditar, onRemover }) {
   return (
@@ -525,14 +506,11 @@ function ItemConfirmadoCard({ item, idx, onEditar, onRemover }) {
   )
 }
 
-// ─── Componente principal ───────────────────────────────────────────────────────
-
 export default function NovaOS() {
   const navigate = useNavigate()
   const [loading, setLoading] = useState(false)
   const [categorias, setCategorias] = useState([])
 
-  // Cliente
   const [clienteNome, setClienteNome] = useState('')
   const [clienteTelefone, setClienteTelefone] = useState('')
   const [clienteSelecionado, setClienteSelecionado] = useState(false)
@@ -540,7 +518,6 @@ export default function NovaOS() {
   const [mostrarSugestoes, setMostrarSugestoes] = useState(false)
   const blurTimer = useRef(null)
 
-  // Itens
   const [itensConfirmados, setItensConfirmados] = useState([])
   const [itemAtual, setItemAtual] = useState(itemVazio())
   const [editandoIdx, setEditandoIdx] = useState(null)
@@ -555,7 +532,6 @@ export default function NovaOS() {
     api.get('/clientes/').then(r => setTodosClientes(r.data)).catch(() => {})
   }, [])
 
-  // Autocomplete
   const busca = clienteNome.trim().toLowerCase()
   const buscaDig = clienteNome.replace(/\D/g, '')
   const sugestoes = busca.length < 1 ? [] : todosClientes.filter(c => {
@@ -653,6 +629,7 @@ export default function NovaOS() {
     setItensConfirmados(prev => prev.filter((_, i) => i !== idx))
   }
 
+  const qtdItens = itensConfirmados.length
   const totalConfirmados = itensConfirmados.reduce((s, it) => s + parseMoeda(it.valor), 0)
   const entradaNum = parseMoeda(entrada)
   const descontoNum = parseMoeda(desconto)
@@ -701,15 +678,12 @@ export default function NovaOS() {
     }
   }
 
-  const qtdItens = itensConfirmados.length
-
   return (
     <div className="space-y-4">
       <h2 className="text-2xl font-extrabold text-gray-800">Nova Ordem de Serviço</h2>
 
       <form onSubmit={handleSubmit} className="space-y-4">
 
-        {/* ── Cliente ── */}
         <div className="card space-y-4">
           <h3 className="text-lg font-bold text-gray-700 border-b pb-2">Cliente</h3>
           <div className="relative">
@@ -760,13 +734,11 @@ export default function NovaOS() {
           </div>
         </div>
 
-        {/* ── Itens ── */}
         <div className="card space-y-4">
           <h3 className="text-lg font-bold text-gray-700 border-b pb-2">
             Itens {qtdItens > 0 && <span className="text-amber-600">({qtdItens} confirmado{qtdItens > 1 ? 's' : ''})</span>}
           </h3>
 
-          {/* Itens confirmados */}
           {itensConfirmados.map((it, idx) => (
             <ItemConfirmadoCard
               key={idx}
@@ -777,14 +749,12 @@ export default function NovaOS() {
             />
           ))}
 
-          {/* Feedback de sucesso temporário */}
           {feedbackSucesso && (
             <div className="bg-green-100 border-2 border-green-400 rounded-xl p-3 flex items-center gap-2 text-green-700 font-bold">
               <Check size={20} /> Item adicionado ✓
             </div>
           )}
 
-          {/* Editor do item atual */}
           {itemAtual !== null && (
             <ItemEditor
               item={itemAtual}
@@ -798,7 +768,6 @@ export default function NovaOS() {
             />
           )}
 
-          {/* Botão adicionar item — só aparece sem editor aberto */}
           {itemAtual === null && (
             <button
               type="button"
@@ -810,17 +779,14 @@ export default function NovaOS() {
           )}
         </div>
 
-        {/* ── Prazo ── */}
         <div className="card">
           <h3 className="text-lg font-bold text-gray-700 border-b pb-2 mb-4">Prazo de entrega *</h3>
           <SeletorPrazo value={prazo} onChange={setPrazo} />
         </div>
 
-        {/* ── Pagamento ── */}
         <div className="card space-y-3">
           <h3 className="text-lg font-bold text-gray-700 border-b pb-2">Pagamento</h3>
 
-          {/* Total */}
           <div className="flex items-center justify-between bg-amber-50 rounded-xl px-4 py-3">
             <div>
               <p className="text-gray-500 text-sm font-semibold">Total</p>
@@ -831,7 +797,6 @@ export default function NovaOS() {
             <p className="font-extrabold text-amber-700 text-xl">{formatarValor(totalLiquido)}</p>
           </div>
 
-          {/* Entrada */}
           <div>
             <label className="block font-bold text-gray-700 mb-1">Entrada recebida (R$)</label>
             <input
@@ -844,7 +809,6 @@ export default function NovaOS() {
             />
           </div>
 
-          {/* Desconto */}
           <div>
             <label className="block font-bold text-gray-700 mb-1">Desconto (R$)</label>
             <input
@@ -857,14 +821,12 @@ export default function NovaOS() {
             />
           </div>
 
-          {/* Aviso de entrada inválida */}
           {entradaInvalida && (
             <p className="text-red-600 text-sm font-semibold flex items-center gap-1">
               ⚠ A entrada não pode ser maior que o valor total
             </p>
           )}
 
-          {/* Resta */}
           <div className="flex items-center justify-between bg-orange-50 rounded-xl px-4 py-3">
             <p className="text-gray-500 text-sm font-semibold">Resta</p>
             <p className="font-extrabold text-orange-600 text-xl">{formatarValor(resta)}</p>
