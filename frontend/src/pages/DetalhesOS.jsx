@@ -448,6 +448,7 @@ export default function DetalhesOS() {
   const descontoEditNum = parseMoeda(descontoEdit)
   const totalEditLiquido = Math.max(0, totalEdit - descontoEditNum)
   const restaEdit = Math.max(0, totalEditLiquido - entradaEditNum)
+  const entradaEditInvalida = entradaEditNum > totalEditLiquido
   const atraso = estaEmAtraso(os)
 
   // Progresso de serviços
@@ -862,49 +863,52 @@ export default function DetalhesOS() {
             <SeletorPrazo value={prazoEdit} onChange={setPrazoEdit} />
           </div>
 
-          {/* Totais */}
-          {descontoEditNum > 0 && (
-            <div className="space-y-1">
-              <div className="flex items-center justify-between bg-gray-50 rounded-xl px-3 py-1.5">
-                <p className="text-gray-500 text-xs font-semibold">Subtotal</p>
-                <p className="font-semibold text-gray-700 text-sm">{formatarValor(totalEdit)}</p>
-              </div>
-              <div className="flex items-center justify-between bg-red-50 rounded-xl px-3 py-1.5">
-                <p className="text-red-500 text-xs font-semibold">Desconto</p>
-                <p className="font-semibold text-red-600 text-sm">- {formatarValor(descontoEditNum)}</p>
-              </div>
+          {/* Total */}
+          <div className="flex items-center justify-between bg-amber-50 rounded-xl px-3 py-2.5">
+            <div>
+              <p className="text-gray-500 text-xs font-semibold">Total</p>
+              {descontoEditNum > 0 && (
+                <p className="text-gray-400 text-xs">Subtotal {formatarValor(totalEdit)} − desc. {formatarValor(descontoEditNum)}</p>
+              )}
             </div>
-          )}
-          <div className="grid grid-cols-3 gap-2 text-center">
-            <div className="bg-amber-50 rounded-xl p-2">
-              <p className="text-gray-500 text-xs">Total</p>
-              <p className="font-extrabold text-amber-700">{formatarValor(totalEditLiquido)}</p>
-            </div>
-            <div className="bg-green-50 rounded-xl p-2">
-              <p className="text-gray-500 text-xs">Entrada</p>
-              <p className="font-extrabold text-green-700">{formatarValor(entradaEditNum)}</p>
-            </div>
-            <div className="bg-orange-50 rounded-xl p-2">
-              <p className="text-gray-500 text-xs">Resta</p>
-              <p className="font-extrabold text-orange-600">{formatarValor(restaEdit)}</p>
-            </div>
+            <p className="font-extrabold text-amber-700">{formatarValor(totalEditLiquido)}</p>
           </div>
 
+          {/* Entrada */}
+          <div>
+            <label className="block font-bold text-gray-700 mb-1 text-sm">Entrada recebida (R$)</label>
+            <input className={`input-field text-xl font-bold ` + (entradaEditInvalida ? 'border-red-400' : '')}
+              inputMode="decimal" placeholder="0,00"
+              value={entradaEdit} onChange={e => setEntradaEdit(e.target.value)} />
+          </div>
+
+          {/* Desconto */}
           <div>
             <label className="block font-bold text-gray-700 mb-1 text-sm">Desconto (R$)</label>
             <input className="input-field" inputMode="decimal" placeholder="0,00"
               value={descontoEdit} onChange={e => setDescontoEdit(e.target.value)} />
           </div>
-          <div>
-            <label className="block font-bold text-gray-700 mb-1 text-sm">Entrada recebida (R$)</label>
-            <input className="input-field text-xl font-bold" inputMode="decimal" placeholder="0,00"
-              value={entradaEdit} onChange={e => setEntradaEdit(e.target.value)} />
+
+          {/* Aviso de entrada inválida */}
+          {entradaEditInvalida && (
+            <p className="text-red-600 text-sm font-semibold flex items-center gap-1">
+              ⚠ A entrada não pode ser maior que o valor total
+            </p>
+          )}
+
+          {/* Resta */}
+          <div className="flex items-center justify-between bg-orange-50 rounded-xl px-3 py-2.5">
+            <p className="text-gray-500 text-xs font-semibold">Resta</p>
+            <p className="font-extrabold text-orange-600">{formatarValor(restaEdit)}</p>
           </div>
 
-          <button onClick={salvarEdicao} disabled={salvando}
-            className="btn-primary w-full flex items-center justify-center gap-2">
+          <button onClick={salvarEdicao} disabled={salvando || entradaEditInvalida}
+            className={`w-full flex items-center justify-center gap-2 font-bold py-3 rounded-xl transition-colors ` +
+              (entradaEditInvalida
+                ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                : 'btn-primary')}>
             <Check size={20} />
-            {salvando ? 'Salvando...' : 'Salvar alterações'}
+            {salvando ? 'Salvando...' : entradaEditInvalida ? 'Entrada maior que o total' : 'Salvar alterações'}
           </button>
         </div>
       )}
