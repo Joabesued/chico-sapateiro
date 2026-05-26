@@ -774,6 +774,7 @@ export default function NovaOS() {
     setItensConfirmados(prev => prev.filter((_, i) => i !== idx))
   }
 
+  const qtdItens = itensConfirmados.length
   const totalConfirmados = itensConfirmados.reduce(
     (s, it) => s + parseMoeda(it.valor) * (it.quantidade || 1), 0
   )
@@ -825,8 +826,6 @@ export default function NovaOS() {
       setLoading(false)
     }
   }
-
-  const qtdItens = itensConfirmados.length
 
   return (
     <div className="space-y-4">
