@@ -63,6 +63,8 @@ class ItemOSCreate(BaseModel):
     qtd_rodas: Optional[int] = None
     valor: float = 0.0
     foto_url: Optional[str] = ""
+    quantidade: int = 1
+    revisao: bool = False
 
 
 class ItemOSResponse(BaseModel):
@@ -78,6 +80,8 @@ class ItemOSResponse(BaseModel):
     qtd_rodas: Optional[int] = None
     valor: float
     foto_url: Optional[str] = ""
+    quantidade: int = 1
+    revisao: bool = False
 
     @field_validator("servicos", "servicos_concluidos", mode="before")
     @classmethod
@@ -131,7 +135,7 @@ class OSResponse(BaseModel):
     @computed_field
     @property
     def subtotal(self) -> float:
-        return round(sum(item.valor for item in self.itens), 2)
+        return round(sum(item.valor * (item.quantidade or 1) for item in self.itens), 2)
 
     @computed_field
     @property
@@ -203,3 +207,25 @@ class RelatorioResumo(BaseModel):
     os_por_status: dict
     os_por_pagamento: dict
     os_pendentes: List[OSPendente]
+
+
+# --- ServicoCustom ---
+class ServicoCustomCreate(BaseModel):
+    nome: str
+
+
+class ServicoCustomResponse(BaseModel):
+    id: int
+    nome: str
+
+    model_config = {"from_attributes": True}
+
+
+# --- Ranking de Categorias ---
+class RankingCategoria(BaseModel):
+    categoria: str
+    quantidade: int
+
+
+class RankingCategorias(BaseModel):
+    ranking: List[RankingCategoria]

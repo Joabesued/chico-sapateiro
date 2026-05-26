@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey
+from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, Boolean
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from database import Base
@@ -90,12 +90,21 @@ class ItemOS(Base):
     qtd_rodas = Column(Integer, nullable=True)
     valor = Column(Float, nullable=False, default=0.0)
     foto_url = Column(String, nullable=True, default="")
+    quantidade = Column(Integer, nullable=False, default=1)
+    revisao = Column(Boolean, nullable=False, default=False)
 
     ordem = relationship("OrdemServico", back_populates="itens")
 
 
 class Categoria(Base):
     __tablename__ = "categorias"
+
+    id = Column(Integer, primary_key=True, index=True)
+    nome = Column(String, nullable=False, unique=True, index=True)
+
+
+class ServicoCustom(Base):
+    __tablename__ = "servicos_custom"
 
     id = Column(Integer, primary_key=True, index=True)
     nome = Column(String, nullable=False, unique=True, index=True)

@@ -16,10 +16,17 @@ function formatarValor(v) {
 
 function TabDashboard() {
   const [dados, setDados] = useState(null)
+  const [dicas, setDicas] = useState([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    api.get('/relatorios/dashboard').then(r => setDados(r.data)).finally(() => setLoading(false))
+    Promise.all([
+      api.get('/relatorios/dashboard').then(r => r.data).catch(() => null),
+      api.get('/relatorios/dicas').then(r => r.data).catch(() => []),
+    ]).then(([dash, d]) => {
+      if (dash) setDados(dash)
+      setDicas(d || [])
+    }).finally(() => setLoading(false))
   }, [])
 
   if (loading) return <p className="text-center py-10 text-gray-500">Carregando...</p>
@@ -51,6 +58,18 @@ function TabDashboard() {
         <p className="text-gray-500 font-semibold text-sm">Total pendente a receber</p>
         <p className="text-2xl font-extrabold text-orange-500 mt-1">{formatarValor(dados.pendente_total)}</p>
       </div>
+
+      {dicas.length > 0 && (
+        <div className="card space-y-2">
+          <h3 className="font-bold text-gray-700 text-base border-b pb-2">Dicas de gestão</h3>
+          {dicas.map((dica, i) => (
+            <div key={i} className="flex items-start gap-2 bg-blue-50 border border-blue-200 rounded-xl p-3">
+              <span className="text-blue-500 text-base shrink-0">💡</span>
+              <p className="text-sm text-gray-700">{dica}</p>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
@@ -227,6 +246,8 @@ function TabRelatorio() {
   )
 }
 
+const medalha = (i) => i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i + 1}.`
+
 // ─── Tab: Ranking de Serviços ────────────────────────────────────────────────────
 
 function TabRanking() {
@@ -251,8 +272,6 @@ function TabRanking() {
 
   const maxQtd = dados?.ranking_quantidade[0]?.quantidade || 1
   const maxVal = dados?.ranking_valor[0]?.total || 1
-
-  const medalha = (i) => i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i + 1}.`
 
   return (
     <div className="space-y-4">
@@ -567,6 +586,78 @@ function TabRelatorioDia() {
   )
 }
 
+// ─── Tab: Ranking de Categorias ─────────────────────────────────────────────────
+
+function TabRankingCategorias() {
+  const hoje = new Date()
+  const [mes, setMes] = useState(hoje.getMonth() + 1)
+  const [ano, setAno] = useState(hoje.getFullYear())
+  const [dados, setDados] = useState(null)
+  const [loading, setLoading] = useState(false)
+  const anos = Array.from({ length: 5 }, (_, i) => hoje.getFullYear() - i)
+
+  useEffect(() => { buscar() }, [mes, ano])
+
+  async function buscar() {
+    setLoading(true)
+    try {
+      const { data } = await api.get('/relatorios/categorias', { params: { mes, ano } })
+      setDados(data)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const maxQtd = dados?.ranking[0]?.quantidade || 1
+
+  return (
+    <div className="space-y-4">
+      <div className="card space-y-3">
+        <div className="flex gap-3">
+          <select className="input-field flex-1" value={mes} onChange={e => setMes(Number(e.target.value))}>
+            {MESES_COMPLETOS.map((m, i) => <option key={i + 1} value={i + 1}>{m}</option>)}
+          </select>
+          <select className="input-field w-28" value={ano} onChange={e => setAno(Number(e.target.value))}>
+            {anos.map(a => <option key={a} value={a}>{a}</option>)}
+          </select>
+        </div>
+      </div>
+
+      {loading ? (
+        <p className="text-center py-10 text-gray-500">Carregando...</p>
+      ) : dados ? (
+        <div className="card">
+          <h3 className="font-bold text-gray-700 text-lg mb-4">Categorias mais frequentes</h3>
+          {dados.ranking.length === 0 ? (
+            <p className="text-gray-400 text-center py-4">Sem dados para este período.</p>
+          ) : (
+            <div className="space-y-3">
+              {dados.ranking.map((item, i) => (
+                <div key={item.categoria}>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="font-semibold text-gray-800 text-sm">
+                      {medalha(i)} {item.categoria}
+                    </span>
+                    <span className="font-black text-amber-700">
+                      {item.quantidade} item{item.quantidade !== 1 ? 's' : ''}
+                    </span>
+                  </div>
+                  <div className="w-full bg-gray-100 rounded-full h-2">
+                    <div
+                      className="bg-amber-500 h-2 rounded-full"
+                      style={{ width: `${(item.quantidade / maxQtd) * 100}%` }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
 // ─── Componente principal ────────────────────────────────────────────────────────
 
 export default function Admin() {
@@ -575,7 +666,8 @@ export default function Admin() {
   const abas = [
     { id: 'dashboard', label: 'Resumo' },
     { id: 'relatorio', label: 'Relatório' },
-    { id: 'ranking', label: 'Ranking' },
+    { id: 'ranking', label: 'Serviços' },
+    { id: 'categorias', label: 'Categorias' },
     { id: 'estatisticas', label: 'Estatísticas' },
     { id: 'diario', label: 'Dia' },
   ]
@@ -602,6 +694,7 @@ export default function Admin() {
       {aba === 'dashboard' && <TabDashboard />}
       {aba === 'relatorio' && <TabRelatorio />}
       {aba === 'ranking' && <TabRanking />}
+      {aba === 'categorias' && <TabRankingCategorias />}
       {aba === 'estatisticas' && <TabEstatisticas />}
       {aba === 'diario' && <TabRelatorioDia />}
     </div>

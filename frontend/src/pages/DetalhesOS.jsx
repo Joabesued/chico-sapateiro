@@ -64,6 +64,8 @@ function itemVazio() {
     servicos: [], qtd_rodas: 2,
     cor: '', descricao: '', observacao_servico: '',
     valor: '',
+    quantidade: 1,
+    revisao: false,
   }
 }
 
@@ -93,6 +95,7 @@ export default function DetalhesOS() {
 
   // Estado de edição
   const [categorias, setCategorias] = useState([])
+  const [servicosCustomDB, setServicosCustomDB] = useState([])
   const [itensEdit, setItensEdit] = useState([])
   const [entradaEdit, setEntradaEdit] = useState('')
   const [descontoEdit, setDescontoEdit] = useState('')
@@ -117,8 +120,12 @@ export default function DetalhesOS() {
   }
 
   async function carregarCategorias() {
-    const r = await api.get('/categorias/')
-    setCategorias(r.data)
+    const [catR, svcR] = await Promise.all([
+      api.get('/categorias/'),
+      api.get('/servicos/').catch(() => ({ data: [] })),
+    ])
+    setCategorias(catR.data)
+    setServicosCustomDB(svcR.data)
   }
 
   function iniciarEdicao() {
@@ -133,6 +140,8 @@ export default function DetalhesOS() {
       descricao: i.descricao || '',
       observacao_servico: i.observacao_servico || '',
       valor: String(i.valor),
+      quantidade: i.quantidade || 1,
+      revisao: i.revisao || false,
     })))
     setEntradaEdit(String(os.entrada))
     setDescontoEdit(os.desconto > 0 ? String(os.desconto) : '')
@@ -163,8 +172,26 @@ export default function DetalhesOS() {
       }
       return { ...it, servicos: [...it.servicos, nome] }
     }))
+    // Persistir no banco
+    api.post('/servicos/', { nome }).then(r => {
+      setServicosCustomDB(prev => {
+        if (prev.some(s => s.nome === nome)) return prev
+        return [...prev, r.data]
+      })
+    }).catch(() => {})
     setServicoCustomTexto('')
     setServicoCustomModo(null)
+  }
+
+  async function deletarServicoCustom(id, nome) {
+    if (!confirm(`Excluir o serviço "${nome}"?`)) return
+    try {
+      await api.delete(`/servicos/${id}`)
+      setServicosCustomDB(prev => prev.filter(s => s.id !== id))
+      toast.success(`Serviço "${nome}" excluído.`)
+    } catch {
+      toast.error('Erro ao excluir serviço.')
+    }
   }
 
   async function addCategoria(nome) {
@@ -214,6 +241,7 @@ export default function DetalhesOS() {
         itens: itensEdit.map((it, idx) => {
           const ant = concluidosAnt[idx]?.concluidos || []
           const concluidos = ant.filter(s => it.servicos.includes(s))
+          const revisao = it.revisao || false
           return {
             categoria: it.categoria,
             subcategoria: it.subcategoria || '',
@@ -224,7 +252,9 @@ export default function DetalhesOS() {
             qtd_rodas: it.servicos.includes('Trocar roda') ? it.qtd_rodas : null,
             cor: it.cor,
             descricao: it.descricao,
-            valor: parseMoeda(it.valor),
+            valor: revisao ? 0 : parseMoeda(it.valor),
+            quantidade: it.quantidade || 1,
+            revisao,
           }
         }),
       })
@@ -291,12 +321,19 @@ export default function DetalhesOS() {
 
     const linhasItens = os.itens.map(item => {
       const servs = formatarServicosTexto(item)
-      const partes = [descricaoItem(item)]
+      const qtd = item.quantidade || 1
+      const partes = [qtd > 1 ? `${qtd}× ${descricaoItem(item)}` : descricaoItem(item)]
       if (item.cor) partes.push(`Cor: ${item.cor}`)
       if (servs) partes.push(servs)
       if (item.observacao_servico) partes.push(`Obs: ${item.observacao_servico}`)
       if (item.descricao) partes.push(item.descricao)
-      partes.push(formatarValor(item.valor))
+      if (item.revisao) {
+        partes.push('Revisão (sem cobrança)')
+      } else if (qtd > 1) {
+        partes.push(`${formatarValor(item.valor)} cada — Total: ${formatarValor(item.valor * qtd)}`)
+      } else {
+        partes.push(formatarValor(item.valor))
+      }
       return `▪ ${partes.join(' — ')}`
     }).join('\n')
 
@@ -310,7 +347,7 @@ export default function DetalhesOS() {
       (desconto > 0 ? `💰 Subtotal: ${formatarValor(os.subtotal)}\n` : '') +
       `${linhaDesconto}` +
       `💰 Total: ${formatarValor(os.total)}\n` +
-      `✅ Entrada: ${formatarValor(os.entrada)}\n` +
+      `✅ Valor pago: ${formatarValor(os.entrada)}\n` +
       `⏳ Resta: ${formatarValor(os.resta)}\n` +
       (os.prazo_entrega ? `📅 Prazo: ${formatarData(os.prazo_entrega)}\n` : '') +
       `📌 Status: ${os.status}`
@@ -408,13 +445,23 @@ export default function DetalhesOS() {
     // Itens
     linha('ITENS', { size: 12, bold: true, spaceAfter: 3 })
     os.itens.forEach((item, idx) => {
-      linha(`${idx + 1}. ${descricaoItem(item)}`, { size: 11, bold: true, spaceAfter: 1 })
+      const qtd = item.quantidade || 1
+      const tituloItem = qtd > 1
+        ? `${idx + 1}. ${qtd}× ${descricaoItem(item)}`
+        : `${idx + 1}. ${descricaoItem(item)}`
+      linha(tituloItem, { size: 11, bold: true, spaceAfter: 1 })
       const servs = formatarServicosTexto(item)
       if (servs) linha(`Serviços: ${servs}`, { size: 10, indent: 4, spaceAfter: 1 })
       if (item.cor) linha(`Cor: ${item.cor}`, { size: 10, indent: 4, spaceAfter: 1 })
       if (item.observacao_servico) linha(`Observação do serviço: ${item.observacao_servico}`, { size: 10, indent: 4, spaceAfter: 1 })
       if (item.descricao) linha(`Observação: ${item.descricao}`, { size: 10, indent: 4, spaceAfter: 1 })
-      linha(`Valor: ${formatarValor(item.valor)}`, { size: 10, indent: 4, bold: true, spaceAfter: 4 })
+      if (item.revisao) {
+        linha('Revisão (sem cobrança)', { size: 10, indent: 4, bold: true, spaceAfter: 4 })
+      } else if (qtd > 1) {
+        linha(`Valor unit.: ${formatarValor(item.valor)}  ×  ${qtd}  =  ${formatarValor(item.valor * qtd)}`, { size: 10, indent: 4, bold: true, spaceAfter: 4 })
+      } else {
+        linha(`Valor: ${formatarValor(item.valor)}`, { size: 10, indent: 4, bold: true, spaceAfter: 4 })
+      }
     })
 
     separador()
@@ -427,7 +474,7 @@ export default function DetalhesOS() {
       linha(`Desconto: - ${formatarValor(desconto)}`, { size: 11, spaceAfter: 1 })
     }
     linha(`Total: ${formatarValor(os.total)}`, { size: 11, spaceAfter: 1 })
-    linha(`Entrada: ${formatarValor(os.entrada)}`, { size: 11, spaceAfter: 1 })
+    linha(`Valor pago: ${formatarValor(os.entrada)}`, { size: 11, spaceAfter: 1 })
     linha(`Resta: ${formatarValor(os.resta)}`, { size: 11, bold: true, spaceAfter: 1 })
     linha(`Situação: ${os.status_pagamento}`, { size: 11, spaceAfter: 4 })
 
@@ -443,7 +490,9 @@ export default function DetalhesOS() {
   if (loading) return <p className="text-center py-10 text-lg text-gray-500">Carregando...</p>
   if (!os) return null
 
-  const totalEdit = itensEdit.reduce((s, it) => s + parseMoeda(it.valor), 0)
+  const totalEdit = itensEdit.reduce(
+    (s, it) => s + (it.revisao ? 0 : parseMoeda(it.valor) * (it.quantidade || 1)), 0
+  )
   const entradaEditNum = parseMoeda(entradaEdit)
   const descontoEditNum = parseMoeda(descontoEdit)
   const totalEditLiquido = Math.max(0, totalEdit - descontoEditNum)
@@ -519,11 +568,20 @@ export default function DetalhesOS() {
 
           {os.itens.map(item => {
             const concluidos = item.servicos_concluidos || []
+            const qtd = item.quantidade || 1
             return (
               <div key={item.id} className="py-2 border-b last:border-0">
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex-1">
-                    <p className="font-bold text-gray-900">{descricaoItem(item)}</p>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {qtd > 1 && <span className="font-bold text-blue-700 text-sm">{qtd}×</span>}
+                      <p className="font-bold text-gray-900">{descricaoItem(item)}</p>
+                      {item.revisao && (
+                        <span className="bg-blue-100 text-blue-700 border border-blue-300 rounded-lg px-2 py-0.5 text-xs font-bold">
+                          Revisão
+                        </span>
+                      )}
+                    </div>
 
                     {/* Checklist dos serviços */}
                     {(item.servicos || []).length > 0 && (
@@ -563,7 +621,18 @@ export default function DetalhesOS() {
                     )}
                     {item.descricao && <p className="text-sm text-gray-400 italic mt-1">{item.descricao}</p>}
                   </div>
-                  <p className="font-extrabold text-amber-700 shrink-0">{formatarValor(item.valor)}</p>
+                  <div className="text-right shrink-0">
+                    {item.revisao ? (
+                      <p className="font-bold text-blue-600 text-sm">Sem cobrança</p>
+                    ) : qtd > 1 ? (
+                      <>
+                        <p className="text-xs text-gray-500">{formatarValor(item.valor)} cada</p>
+                        <p className="font-extrabold text-amber-700">{formatarValor(item.valor * qtd)}</p>
+                      </>
+                    ) : (
+                      <p className="font-extrabold text-amber-700">{formatarValor(item.valor)}</p>
+                    )}
+                  </div>
                 </div>
               </div>
             )
@@ -587,7 +656,7 @@ export default function DetalhesOS() {
               <p className="font-extrabold text-amber-700 text-lg">{formatarValor(os.total)}</p>
             </div>
             <div className="bg-green-50 rounded-xl p-3">
-              <p className="text-gray-500 text-xs font-semibold">Entrada</p>
+              <p className="text-gray-500 text-xs font-semibold">Valor pago</p>
               <p className="font-extrabold text-green-700 text-lg">{formatarValor(os.entrada)}</p>
             </div>
             <div className="bg-orange-50 rounded-xl p-3">
@@ -782,7 +851,26 @@ export default function DetalhesOS() {
                         {s}
                       </button>
                     ))}
-                    {custom.map(s => (
+                    {/* Serviços customizados do banco */}
+                    {servicosCustomDB.map(sc => (
+                      <div key={sc.id} className="relative group">
+                        <button type="button" onClick={() => toggleServicoEdit(idx, sc.nome)}
+                          className={`px-2.5 py-1.5 rounded-lg font-semibold text-xs border-2 transition-colors pr-6 ` +
+                            (item.servicos.includes(sc.nome)
+                              ? 'bg-amber-600 text-white border-amber-600'
+                              : 'bg-white text-gray-700 border-gray-300 hover:border-amber-400')}>
+                          {sc.nome}
+                        </button>
+                        <button type="button"
+                          onClick={e => { e.stopPropagation(); deletarServicoCustom(sc.id, sc.nome) }}
+                          className="absolute right-0.5 top-1/2 -translate-y-1/2 p-0.5 rounded text-red-400 hover:text-red-600 opacity-0 group-hover:opacity-100 transition-opacity"
+                          title="Excluir">
+                          <Trash2 size={10} />
+                        </button>
+                      </div>
+                    ))}
+                    {/* Serviços orfãos */}
+                    {custom.filter(s => !servicosCustomDB.some(sc => sc.nome === s)).map(s => (
                       <button key={s} type="button" onClick={() => toggleServicoEdit(idx, s)}
                         className="px-2.5 py-1.5 rounded-lg font-semibold text-xs border-2 bg-amber-600 text-white border-amber-600 flex items-center gap-1">
                         {s} <X size={12} />
@@ -839,10 +927,34 @@ export default function DetalhesOS() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-2">
+                {/* Revisão */}
+                <div>
+                  <label className="flex items-center gap-2 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={item.revisao || false}
+                      onChange={e => {
+                        setItemEdit(idx, 'revisao', e.target.checked)
+                        if (e.target.checked) setItemEdit(idx, 'valor', '0')
+                      }}
+                      className="w-4 h-4 accent-blue-600 cursor-pointer"
+                    />
+                    <span className="font-bold text-gray-700 text-xs">Revisão / Garantia (sem cobrança)</span>
+                  </label>
+                </div>
+
+                <div className="grid grid-cols-3 gap-2">
+                  <div>
+                    <label className="block text-xs font-bold text-gray-600 mb-1">Qtd.</label>
+                    <input className="input-field text-sm py-2 text-center font-bold" type="number"
+                      inputMode="numeric" min="1" placeholder="1"
+                      value={item.quantidade || 1}
+                      onChange={e => setItemEdit(idx, 'quantidade', Math.max(1, parseInt(e.target.value) || 1))} />
+                  </div>
                   <input className="input-field text-sm py-2" placeholder="Cor"
                     value={item.cor} onChange={e => setItemEdit(idx, 'cor', e.target.value)} />
-                  <input className="input-field font-bold text-sm py-2" placeholder="Valor" inputMode="decimal"
+                  <input className="input-field font-bold text-sm py-2" placeholder="Valor unit." inputMode="decimal"
+                    disabled={item.revisao}
                     value={item.valor} onChange={e => setItemEdit(idx, 'valor', e.target.value)} />
                 </div>
                 <input className="input-field text-sm py-2" placeholder="Observação geral do item (opcional)"
@@ -874,9 +986,9 @@ export default function DetalhesOS() {
             <p className="font-extrabold text-amber-700">{formatarValor(totalEditLiquido)}</p>
           </div>
 
-          {/* Entrada */}
+          {/* Valor pago */}
           <div>
-            <label className="block font-bold text-gray-700 mb-1 text-sm">Entrada recebida (R$)</label>
+            <label className="block font-bold text-gray-700 mb-1 text-sm">Valor pago (R$)</label>
             <input className={`input-field text-xl font-bold ` + (entradaEditInvalida ? 'border-red-400' : '')}
               inputMode="decimal" placeholder="0,00"
               value={entradaEdit} onChange={e => setEntradaEdit(e.target.value)} />
@@ -892,7 +1004,7 @@ export default function DetalhesOS() {
           {/* Aviso de entrada inválida */}
           {entradaEditInvalida && (
             <p className="text-red-600 text-sm font-semibold flex items-center gap-1">
-              ⚠ A entrada não pode ser maior que o valor total
+              ⚠ O valor pago não pode ser maior que o valor total
             </p>
           )}
 

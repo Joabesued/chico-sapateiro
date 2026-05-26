@@ -165,6 +165,10 @@ def run_migration():
             c.execute("ALTER TABLE itens_os ADD COLUMN observacao_servico TEXT DEFAULT ''")
         if "foto_url" not in cols_it:
             c.execute("ALTER TABLE itens_os ADD COLUMN foto_url TEXT DEFAULT ''")
+        if "quantidade" not in cols_it:
+            c.execute("ALTER TABLE itens_os ADD COLUMN quantidade INTEGER NOT NULL DEFAULT 1")
+        if "revisao" not in cols_it:
+            c.execute("ALTER TABLE itens_os ADD COLUMN revisao INTEGER NOT NULL DEFAULT 0")
 
         # Migrar itens antigos com categoria "Par"/"Pé esquerdo"/"Pé direito" para
         # usar o campo "lado" (mantém categoria como vazia para o usuário re-editar).
@@ -177,6 +181,14 @@ def run_migration():
         # ── 3. Tabela categorias ─────────────────────────────────────────────────
         c.execute("""
             CREATE TABLE IF NOT EXISTS categorias (
+                id   INTEGER PRIMARY KEY AUTOINCREMENT,
+                nome TEXT    NOT NULL UNIQUE
+            )
+        """)
+
+        # ── 3.1 Tabela servicos_custom ───────────────────────────────────────────
+        c.execute("""
+            CREATE TABLE IF NOT EXISTS servicos_custom (
                 id   INTEGER PRIMARY KEY AUTOINCREMENT,
                 nome TEXT    NOT NULL UNIQUE
             )

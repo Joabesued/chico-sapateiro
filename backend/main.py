@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import inspect, text
 from database import engine, SessionLocal
 import models
-from routers import auth, ordens, clientes, relatorios, categorias
+from routers import auth, ordens, clientes, relatorios, categorias, servicos
 from migrate import run_migration
 
 CATEGORIAS_PADRAO = [
@@ -39,6 +39,10 @@ def _migrate_postgres():
             novos.append("ALTER TABLE itens_os ADD COLUMN IF NOT EXISTS observacao_servico TEXT DEFAULT ''")
         if "foto_url" not in cols_it:
             novos.append("ALTER TABLE itens_os ADD COLUMN IF NOT EXISTS foto_url TEXT DEFAULT ''")
+        if "quantidade" not in cols_it:
+            novos.append("ALTER TABLE itens_os ADD COLUMN IF NOT EXISTS quantidade INTEGER NOT NULL DEFAULT 1")
+        if "revisao" not in cols_it:
+            novos.append("ALTER TABLE itens_os ADD COLUMN IF NOT EXISTS revisao BOOLEAN NOT NULL DEFAULT false")
         if "desconto" not in cols_os:
             novos.append("ALTER TABLE ordens_servico ADD COLUMN IF NOT EXISTS desconto FLOAT DEFAULT 0.0")
 
@@ -104,6 +108,7 @@ app.include_router(ordens.router)
 app.include_router(clientes.router)
 app.include_router(relatorios.router)
 app.include_router(categorias.router)
+app.include_router(servicos.router)
 
 
 @app.get("/")

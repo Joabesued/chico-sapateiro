@@ -52,6 +52,8 @@ function itemVazio() {
     observacao_servico: '',
     valor: '',
     foto_url: '',
+    quantidade: 1,
+    revisao: false,
   }
 }
 
@@ -79,7 +81,11 @@ async function uploadFotoSupabase(file) {
 
 // ─── Sub-componente: editor de um item ─────────────────────────────────────────
 
-function ItemEditor({ item, categorias, onSet, onConfirm, onCancel, onAddCategoria, onDeleteCategoria, modoEdicao }) {
+function ItemEditor({
+  item, categorias, onSet, onConfirm, onCancel,
+  onAddCategoria, onDeleteCategoria, modoEdicao,
+  servicosCustomDB, onAddServicoCustom, onDeleteServicoCustom,
+}) {
   const [novaCategoriaModo, setNovaCategoriaModo] = useState(false)
   const [novaCategoriaNome, setNovaCategoriaNome] = useState('')
   const [servicoCustomModo, setServicoCustomModo] = useState(false)
@@ -94,11 +100,12 @@ function ItemEditor({ item, categorias, onSet, onConfirm, onCancel, onAddCategor
     onSet('servicos', tem ? item.servicos.filter(x => x !== s) : [...item.servicos, s])
   }
 
-  function adicionarServicoCustom() {
+  async function adicionarServicoCustom() {
     const nome = servicoCustomTexto.trim()
     if (!nome) return
     if (item.servicos.includes(nome)) { toast.error('Esse serviço já está na lista.'); return }
     onSet('servicos', [...item.servicos, nome])
+    await onAddServicoCustom(nome)
     setServicoCustomTexto('')
     setServicoCustomModo(false)
   }
@@ -159,7 +166,11 @@ function ItemEditor({ item, categorias, onSet, onConfirm, onCancel, onAddCategor
   const calcado = ehCalcado(item.categoria)
   const ehSandalia = item.categoria === 'Sandália'
   const mala = ehMala(item.categoria)
-  const servicosCustom = item.servicos.filter(s => !SERVICOS.includes(s))
+
+  // Serviços no item que não estão nos padrão nem no DB (orfãos de sessões antigas)
+  const servicosOrfaos = item.servicos.filter(
+    s => !SERVICOS.includes(s) && !(servicosCustomDB || []).some(sc => sc.nome === s)
+  )
 
   return (
     <div className="border-2 border-amber-400 rounded-2xl p-4 space-y-4 bg-amber-50">
@@ -235,7 +246,7 @@ function ItemEditor({ item, categorias, onSet, onConfirm, onCancel, onAddCategor
         </div>
       </div>
 
-      {/* Calçado — qual peça (vem antes das subcategorias) */}
+      {/* Calçado — qual peça */}
       {calcado && (
         <div>
           <label className="block font-bold text-gray-700 mb-2">Qual peça? *</label>
@@ -253,7 +264,7 @@ function ItemEditor({ item, categorias, onSet, onConfirm, onCancel, onAddCategor
         </div>
       )}
 
-      {/* Sandália — tipo (vem após qual peça) */}
+      {/* Sandália — tipo */}
       {ehSandalia && (
         <div>
           <label className="block font-bold text-gray-700 mb-2">Tipo de sandália *</label>
@@ -311,6 +322,7 @@ function ItemEditor({ item, categorias, onSet, onConfirm, onCancel, onAddCategor
           Serviços * <span className="font-normal text-gray-400 text-sm">(selecione um ou mais)</span>
         </label>
         <div className="flex flex-wrap gap-2">
+          {/* Serviços padrão */}
           {SERVICOS.map(s => (
             <button key={s} type="button" onClick={() => toggleServico(s)}
               className={`px-3 py-2 rounded-xl font-semibold text-sm border-2 transition-colors ` +
@@ -320,12 +332,36 @@ function ItemEditor({ item, categorias, onSet, onConfirm, onCancel, onAddCategor
               {s}
             </button>
           ))}
-          {servicosCustom.map(s => (
+
+          {/* Serviços customizados do banco */}
+          {(servicosCustomDB || []).map(sc => (
+            <div key={sc.id} className="relative group">
+              <button type="button" onClick={() => toggleServico(sc.nome)}
+                className={`px-3 py-2 rounded-xl font-semibold text-sm border-2 transition-colors pr-7 ` +
+                  (item.servicos.includes(sc.nome)
+                    ? 'bg-amber-600 text-white border-amber-600'
+                    : 'bg-white text-gray-700 border-gray-300 hover:border-amber-400')}>
+                {sc.nome}
+              </button>
+              <button
+                type="button"
+                onClick={e => { e.stopPropagation(); onDeleteServicoCustom(sc.id, sc.nome) }}
+                className="absolute right-1 top-1/2 -translate-y-1/2 p-0.5 rounded text-red-400 hover:text-red-600 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-opacity"
+                title="Excluir serviço personalizado"
+              >
+                <Trash2 size={12} />
+              </button>
+            </div>
+          ))}
+
+          {/* Serviços orfãos (selecionados mas não no padrão/DB) */}
+          {servicosOrfaos.map(s => (
             <button key={s} type="button" onClick={() => toggleServico(s)}
               className="px-3 py-2 rounded-xl font-semibold text-sm border-2 bg-amber-600 text-white border-amber-600 flex items-center gap-1">
               {s} <X size={14} />
             </button>
           ))}
+
           {!servicoCustomModo ? (
             <button type="button" onClick={() => setServicoCustomModo(true)}
               className="px-3 py-2 rounded-xl font-semibold text-sm border-2 border-dashed border-amber-400 text-amber-700 hover:bg-white flex items-center gap-1">
@@ -400,17 +436,57 @@ function ItemEditor({ item, categorias, onSet, onConfirm, onCancel, onAddCategor
         </div>
       </div>
 
-      {/* Cor + Valor */}
-      <div className="grid grid-cols-2 gap-3">
+      {/* Revisão */}
+      <div>
+        <label className="flex items-center gap-3 cursor-pointer select-none">
+          <input
+            type="checkbox"
+            checked={item.revisao}
+            onChange={e => {
+              onSet('revisao', e.target.checked)
+              if (e.target.checked) onSet('valor', '0')
+            }}
+            className="w-5 h-5 accent-blue-600 cursor-pointer"
+          />
+          <span className="font-bold text-gray-700">Marcar como revisão / garantia</span>
+        </label>
+        {item.revisao && (
+          <p className="text-xs text-blue-600 font-semibold mt-1">
+            Item sem cobrança — valor zerado automaticamente
+          </p>
+        )}
+      </div>
+
+      {/* Quantidade + Cor + Valor */}
+      <div className="grid grid-cols-3 gap-3">
+        <div>
+          <label className="block font-bold text-gray-700 mb-1">Qtd.</label>
+          <input
+            className="input-field font-bold text-center"
+            type="number"
+            inputMode="numeric"
+            min="1"
+            placeholder="1"
+            value={item.quantidade}
+            onChange={e => onSet('quantidade', Math.max(1, parseInt(e.target.value) || 1))}
+          />
+        </div>
         <div>
           <label className="block font-bold text-gray-700 mb-1">Cor do material</label>
-          <input className="input-field" type="text" placeholder="Ex: Preto, Marrom..."
+          <input className="input-field" type="text" placeholder="Ex: Preto..."
             value={item.cor} onChange={e => onSet('cor', e.target.value)} />
         </div>
         <div>
-          <label className="block font-bold text-gray-700 mb-1">Valor (R$) *</label>
-          <input className="input-field font-bold" type="text" inputMode="decimal" placeholder="0,00"
-            value={item.valor} onChange={e => onSet('valor', e.target.value)} />
+          <label className="block font-bold text-gray-700 mb-1">Valor unit. (R$) *</label>
+          <input
+            className="input-field font-bold"
+            type="text"
+            inputMode="decimal"
+            placeholder="0,00"
+            value={item.valor}
+            onChange={e => onSet('valor', e.target.value)}
+            disabled={item.revisao}
+          />
         </div>
       </div>
 
@@ -488,6 +564,10 @@ function ItemEditor({ item, categorias, onSet, onConfirm, onCancel, onAddCategor
 // ─── Card de item confirmado ────────────────────────────────────────────────────
 
 function ItemConfirmadoCard({ item, idx, onEditar, onRemover }) {
+  const valorUnit = parseMoeda(item.valor)
+  const qtd = item.quantidade || 1
+  const totalItem = valorUnit * qtd
+
   return (
     <div className="bg-green-50 border-2 border-green-300 rounded-2xl p-3">
       <div className="flex items-start justify-between gap-2">
@@ -495,9 +575,15 @@ function ItemConfirmadoCard({ item, idx, onEditar, onRemover }) {
           <div className="flex items-center gap-2 flex-wrap">
             <Check size={16} className="text-green-600 shrink-0" />
             <span className="font-black text-green-700 text-sm">Item {idx + 1}</span>
+            {qtd > 1 && <span className="font-bold text-blue-700 text-sm">{qtd}×</span>}
             <span className="font-bold text-gray-800 text-sm">{item.categoria}</span>
             {item.subcategoria && <span className="text-gray-500 text-xs">· {item.subcategoria}</span>}
             {item.lado && <span className="text-gray-500 text-xs">· {item.lado}</span>}
+            {item.revisao && (
+              <span className="bg-blue-100 text-blue-700 border border-blue-300 rounded-lg px-2 py-0.5 text-xs font-bold">
+                Revisão
+              </span>
+            )}
           </div>
           <p className="text-xs text-gray-600 mt-1 truncate">{item.servicos.join(', ')}</p>
           {item.cor && <p className="text-xs text-gray-400 mt-0.5">Cor: {item.cor}</p>}
@@ -506,9 +592,16 @@ function ItemConfirmadoCard({ item, idx, onEditar, onRemover }) {
           )}
         </div>
         <div className="text-right shrink-0">
-          <p className="font-extrabold text-amber-700 text-lg">
-            {formatarValor(parseMoeda(item.valor))}
-          </p>
+          {item.revisao ? (
+            <p className="font-bold text-blue-600 text-sm">Sem cobrança</p>
+          ) : qtd > 1 ? (
+            <>
+              <p className="text-xs text-gray-500">{formatarValor(valorUnit)} cada</p>
+              <p className="font-extrabold text-amber-700 text-lg">{formatarValor(totalItem)}</p>
+            </>
+          ) : (
+            <p className="font-extrabold text-amber-700 text-lg">{formatarValor(valorUnit)}</p>
+          )}
           <div className="flex gap-1 mt-1 justify-end">
             <button type="button" onClick={() => onEditar(idx)}
               className="p-1.5 rounded-lg bg-amber-100 text-amber-700 hover:bg-amber-200">
@@ -531,6 +624,7 @@ export default function NovaOS() {
   const navigate = useNavigate()
   const [loading, setLoading] = useState(false)
   const [categorias, setCategorias] = useState([])
+  const [servicosCustomDB, setServicosCustomDB] = useState([])
 
   // Cliente
   const [clienteNome, setClienteNome] = useState('')
@@ -553,6 +647,7 @@ export default function NovaOS() {
   useEffect(() => {
     api.get('/categorias/').then(r => setCategorias(r.data)).catch(() => {})
     api.get('/clientes/').then(r => setTodosClientes(r.data)).catch(() => {})
+    api.get('/servicos/').then(r => setServicosCustomDB(r.data)).catch(() => {})
   }, [])
 
   // Autocomplete
@@ -601,6 +696,30 @@ export default function NovaOS() {
     }
   }
 
+  async function addServicoCustom(nome) {
+    try {
+      const r = await api.post('/servicos/', { nome })
+      setServicosCustomDB(prev => {
+        if (prev.some(s => s.nome === nome)) return prev
+        return [...prev, r.data]
+      })
+    } catch {}
+  }
+
+  async function deletarServicoCustom(id, nome) {
+    if (!confirm(`Excluir o serviço "${nome}"?`)) return
+    try {
+      await api.delete(`/servicos/${id}`)
+      setServicosCustomDB(prev => prev.filter(s => s.id !== id))
+      if (itemAtual?.servicos.includes(nome)) {
+        setItemField('servicos', itemAtual.servicos.filter(s => s !== nome))
+      }
+      toast.success(`Serviço "${nome}" excluído.`)
+    } catch {
+      toast.error('Erro ao excluir serviço.')
+    }
+  }
+
   function validarItemAtual() {
     const it = itemAtual
     if (!it.categoria) { toast.error('Selecione a categoria do item'); return false }
@@ -615,7 +734,9 @@ export default function NovaOS() {
       toast.error('Selecione Par, Pé esquerdo ou Pé direito'); return false
     }
     if (it.servicos.length === 0) { toast.error('Selecione pelo menos um serviço'); return false }
-    if (!it.valor || parseMoeda(it.valor) <= 0) { toast.error('Informe o valor do item'); return false }
+    if (!it.revisao && (!it.valor || parseMoeda(it.valor) <= 0)) {
+      toast.error('Informe o valor do item'); return false
+    }
     return true
   }
 
@@ -653,7 +774,9 @@ export default function NovaOS() {
     setItensConfirmados(prev => prev.filter((_, i) => i !== idx))
   }
 
-  const totalConfirmados = itensConfirmados.reduce((s, it) => s + parseMoeda(it.valor), 0)
+  const totalConfirmados = itensConfirmados.reduce(
+    (s, it) => s + parseMoeda(it.valor) * (it.quantidade || 1), 0
+  )
   const entradaNum = parseMoeda(entrada)
   const descontoNum = parseMoeda(desconto)
   const totalLiquido = Math.max(0, totalConfirmados - descontoNum)
@@ -687,8 +810,10 @@ export default function NovaOS() {
           qtd_rodas: it.servicos.includes('Trocar roda') ? it.qtd_rodas : null,
           cor: (it.cor || '').trim(),
           descricao: (it.descricao || '').trim(),
-          valor: parseMoeda(it.valor),
+          valor: it.revisao ? 0 : parseMoeda(it.valor),
           foto_url: it.foto_url || '',
+          quantidade: it.quantidade || 1,
+          revisao: it.revisao || false,
         })),
       }
       const { data } = await api.post('/ordens/', payload)
@@ -795,6 +920,9 @@ export default function NovaOS() {
               onAddCategoria={addCategoria}
               onDeleteCategoria={deletarCategoria}
               modoEdicao={editandoIdx !== null}
+              servicosCustomDB={servicosCustomDB}
+              onAddServicoCustom={addServicoCustom}
+              onDeleteServicoCustom={deletarServicoCustom}
             />
           )}
 
@@ -831,9 +959,9 @@ export default function NovaOS() {
             <p className="font-extrabold text-amber-700 text-xl">{formatarValor(totalLiquido)}</p>
           </div>
 
-          {/* Entrada */}
+          {/* Valor pago */}
           <div>
-            <label className="block font-bold text-gray-700 mb-1">Entrada recebida (R$)</label>
+            <label className="block font-bold text-gray-700 mb-1">Valor pago (R$)</label>
             <input
               className={`input-field text-xl font-bold ` + (entradaInvalida ? 'border-red-400 focus:border-red-500' : '')}
               type="text"
@@ -857,10 +985,9 @@ export default function NovaOS() {
             />
           </div>
 
-          {/* Aviso de entrada inválida */}
           {entradaInvalida && (
             <p className="text-red-600 text-sm font-semibold flex items-center gap-1">
-              ⚠ A entrada não pode ser maior que o valor total
+              ⚠ O valor pago não pode ser maior que o total
             </p>
           )}
 
@@ -882,7 +1009,7 @@ export default function NovaOS() {
           {loading
             ? 'Salvando...'
             : entradaInvalida
-              ? 'Entrada maior que o total'
+              ? 'Valor pago maior que o total'
               : qtdItens === 0
               ? 'Confirme ao menos um item'
               : `Criar OS (${qtdItens} item${qtdItens > 1 ? 's' : ''})`}

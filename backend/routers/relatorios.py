@@ -1,9 +1,9 @@
 import json
 import calendar
-from datetime import datetime, date as date_type, timezone
+from datetime import datetime, date as date_type, timezone, timedelta
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session, joinedload
-from typing import Optional
+from typing import Optional, List
 from database import get_db
 import models
 import schemas
@@ -37,7 +37,7 @@ def dashboard_resumo(
     ).all()
 
     faturado_mes = sum(
-        max(0.0, sum(i.valor for i in o.itens) - (o.desconto or 0.0))
+        max(0.0, sum(i.valor * (i.quantidade or 1) for i in o.itens) - (o.desconto or 0.0))
         for o in ordens_mes
     )
     recebido_mes = sum(o.entrada or 0.0 for o in ordens_mes)
@@ -46,7 +46,7 @@ def dashboard_resumo(
         joinedload(models.OrdemServico.itens)
     ).all()
     pendente_total = sum(
-        max(0.0, max(0.0, sum(i.valor for i in o.itens) - (o.desconto or 0.0)) - (o.entrada or 0.0))
+        max(0.0, max(0.0, sum(i.valor * (i.quantidade or 1) for i in o.itens) - (o.desconto or 0.0)) - (o.entrada or 0.0))
         for o in todas
     )
 
@@ -101,9 +101,10 @@ def ranking_servicos(
                 servicos = json.loads(item.servicos) if isinstance(item.servicos, str) else (item.servicos or [])
             except Exception:
                 servicos = []
+            qtd = item.quantidade or 1
             for s in servicos:
-                servico_qtd[s] = servico_qtd.get(s, 0) + 1
-                servico_val[s] = servico_val.get(s, 0.0) + item.valor
+                servico_qtd[s] = servico_qtd.get(s, 0) + qtd
+                servico_val[s] = servico_val.get(s, 0.0) + item.valor * qtd
 
     ranking_quantidade = sorted(
         [schemas.RankingItem(servico=k, quantidade=v, total=round(servico_val.get(k, 0), 2))
@@ -165,7 +166,7 @@ def resumo_financeiro(
     os_pendentes: list = []
 
     for o in ordens:
-        total_itens = round(sum(i.valor for i in o.itens), 2)
+        total_itens = round(sum(i.valor * (i.quantidade or 1) for i in o.itens), 2)
         desconto = o.desconto or 0.0
         total_liquido = round(max(0.0, total_itens - desconto), 2)
         entrada = o.entrada or 0.0
@@ -235,7 +236,7 @@ def relatorio_diario(
     resumos = []
 
     for o in ordens_hoje:
-        total_itens = round(sum(i.valor for i in o.itens), 2)
+        total_itens = round(sum(i.valor * (i.quantidade or 1) for i in o.itens), 2)
         desconto = o.desconto or 0.0
         total_liquido = round(max(0.0, total_itens - desconto), 2)
         entrada = o.entrada or 0.0
@@ -263,3 +264,120 @@ def relatorio_diario(
         total_recebido=round(total_recebido, 2),
         ordens=resumos,
     )
+
+
+@router.get("/categorias", response_model=schemas.RankingCategorias)
+def ranking_categorias(
+    mes: Optional[int] = Query(None, ge=1, le=12),
+    ano: Optional[int] = Query(None),
+    db: Session = Depends(get_db),
+    usuario=Depends(auth_utils.get_usuario_atual)
+):
+    query = db.query(models.OrdemServico).options(
+        joinedload(models.OrdemServico.itens),
+    )
+    if ano and mes:
+        _, ultimo_dia = calendar.monthrange(ano, mes)
+        inicio = datetime(ano, mes, 1, 0, 0, 0, tzinfo=timezone.utc)
+        fim = datetime(ano, mes, ultimo_dia, 23, 59, 59, 999999, tzinfo=timezone.utc)
+        query = query.filter(
+            (models.OrdemServico.criado_em == None) |  # noqa: E711
+            (models.OrdemServico.criado_em.between(inicio, fim))
+        )
+    elif ano:
+        inicio = datetime(ano, 1, 1, 0, 0, 0, tzinfo=timezone.utc)
+        fim = datetime(ano, 12, 31, 23, 59, 59, 999999, tzinfo=timezone.utc)
+        query = query.filter(
+            (models.OrdemServico.criado_em == None) |  # noqa: E711
+            (models.OrdemServico.criado_em.between(inicio, fim))
+        )
+
+    ordens = query.all()
+    cat_count: dict = {}
+
+    for ordem in ordens:
+        for item in ordem.itens:
+            if item.categoria:
+                cat_count[item.categoria] = cat_count.get(item.categoria, 0) + (item.quantidade or 1)
+
+    ranking = sorted(
+        [schemas.RankingCategoria(categoria=k, quantidade=v) for k, v in cat_count.items()],
+        key=lambda x: x.quantidade, reverse=True
+    )
+
+    return schemas.RankingCategorias(ranking=ranking)
+
+
+@router.get("/dicas", response_model=List[str])
+def dicas_gestao(
+    db: Session = Depends(get_db),
+    usuario=Depends(auth_utils.get_usuario_atual)
+):
+    dicas = []
+    hoje = datetime.now(timezone.utc)
+    amanha_str = (hoje.date() + timedelta(days=1)).isoformat()
+
+    # OS sem entrega há mais de 7 dias
+    limite_7d = hoje - timedelta(days=7)
+    os_paradas = db.query(models.OrdemServico).filter(
+        models.OrdemServico.status != models.StatusOS.entregue,
+        models.OrdemServico.criado_em < limite_7d,
+    ).count()
+    if os_paradas > 0:
+        s = 's' if os_paradas != 1 else ''
+        dicas.append(f"Você tem {os_paradas} nota{s} com mais de 7 dias sem entrega.")
+
+    # Serviço mais realizado no mês
+    inicio_mes = datetime(hoje.year, hoje.month, 1, tzinfo=timezone.utc)
+    ordens_mes = db.query(models.OrdemServico).options(
+        joinedload(models.OrdemServico.itens)
+    ).filter(
+        (models.OrdemServico.criado_em == None) |  # noqa: E711
+        (models.OrdemServico.criado_em >= inicio_mes)
+    ).all()
+
+    servico_qtd: dict = {}
+    for o in ordens_mes:
+        for item in o.itens:
+            try:
+                servicos = json.loads(item.servicos or "[]")
+            except Exception:
+                servicos = []
+            for sv in servicos:
+                servico_qtd[sv] = servico_qtd.get(sv, 0) + (item.quantidade or 1)
+
+    if servico_qtd:
+        top = max(servico_qtd, key=servico_qtd.get)
+        dicas.append(f"O serviço mais realizado este mês foi '{top}' ({servico_qtd[top]}x).")
+
+    # Clientes com pagamento pendente há mais de 5 dias
+    limite_5d = hoje - timedelta(days=5)
+    os_pendentes = db.query(models.OrdemServico).options(
+        joinedload(models.OrdemServico.itens)
+    ).filter(
+        models.OrdemServico.status_pagamento != models.StatusPagamento.pago_total,
+        models.OrdemServico.criado_em < limite_5d,
+    ).all()
+
+    clientes_pendentes: set = set()
+    for o in os_pendentes:
+        total_liq = max(0.0, sum(i.valor * (i.quantidade or 1) for i in o.itens) - (o.desconto or 0))
+        resta = max(0.0, total_liq - (o.entrada or 0))
+        if resta > 0.01:
+            clientes_pendentes.add(o.cliente_id)
+
+    if clientes_pendentes:
+        n = len(clientes_pendentes)
+        s = 's têm' if n != 1 else ' tem'
+        dicas.append(f"{n} cliente{s} pagamento pendente há mais de 5 dias.")
+
+    # Clientes com prazo vencendo amanhã
+    vencendo = db.query(models.OrdemServico).filter(
+        models.OrdemServico.prazo_entrega.like(f"{amanha_str}%"),
+        models.OrdemServico.status != models.StatusOS.entregue,
+    ).count()
+    if vencendo > 0:
+        s = 's' if vencendo != 1 else ''
+        dicas.append(f"Considere contatar {vencendo} cliente{s} com prazo vencendo amanhã.")
+
+    return dicas

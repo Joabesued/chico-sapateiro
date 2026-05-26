@@ -68,6 +68,13 @@ export default function Clientes() {
 
   return (
     <div className="space-y-4">
+      {!loading && clientes.length > 0 && (
+        <div className="flex items-center gap-2 bg-blue-50 border border-blue-200 rounded-xl px-4 py-2 text-blue-700 font-semibold text-sm">
+          <span>👥</span>
+          <span>{clientes.length} cliente{clientes.length !== 1 ? 's' : ''} cadastrado{clientes.length !== 1 ? 's' : ''}</span>
+        </div>
+      )}
+
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-extrabold text-gray-800">Clientes</h2>
         <button

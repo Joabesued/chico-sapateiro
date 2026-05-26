@@ -48,6 +48,7 @@ def _item_para_model(item: schemas.ItemOSCreate, ordem_id: int) -> models.ItemOS
     concluidos = item.servicos_concluidos or []
     # Mantém apenas serviços concluídos que ainda existem na lista de serviços do item.
     concluidos = [s for s in concluidos if s in item.servicos]
+    revisao = item.revisao or False
     return models.ItemOS(
         ordem_id=ordem_id,
         categoria=item.categoria,
@@ -59,8 +60,10 @@ def _item_para_model(item: schemas.ItemOSCreate, ordem_id: int) -> models.ItemOS
         cor=item.cor or "",
         descricao=item.descricao or "",
         qtd_rodas=item.qtd_rodas,
-        valor=item.valor,
+        valor=0.0 if revisao else item.valor,
         foto_url=item.foto_url or "",
+        quantidade=max(1, item.quantidade or 1),
+        revisao=revisao,
     )
 
 
