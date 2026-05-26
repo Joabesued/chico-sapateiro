@@ -43,6 +43,8 @@ def _migrate_postgres():
             novos.append("ALTER TABLE itens_os ADD COLUMN IF NOT EXISTS quantidade INTEGER NOT NULL DEFAULT 1")
         if "revisao" not in cols_it:
             novos.append("ALTER TABLE itens_os ADD COLUMN IF NOT EXISTS revisao BOOLEAN NOT NULL DEFAULT false")
+        if "entregue" not in cols_it:
+            novos.append("ALTER TABLE itens_os ADD COLUMN IF NOT EXISTS entregue BOOLEAN NOT NULL DEFAULT false")
         if "desconto" not in cols_os:
             novos.append("ALTER TABLE ordens_servico ADD COLUMN IF NOT EXISTS desconto FLOAT DEFAULT 0.0")
 
