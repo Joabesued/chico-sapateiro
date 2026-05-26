@@ -65,6 +65,7 @@ class ItemOSCreate(BaseModel):
     foto_url: Optional[str] = ""
     quantidade: int = 1
     revisao: bool = False
+    entregue: bool = False
 
 
 class ItemOSResponse(BaseModel):
@@ -82,6 +83,7 @@ class ItemOSResponse(BaseModel):
     foto_url: Optional[str] = ""
     quantidade: int = 1
     revisao: bool = False
+    entregue: bool = False
 
     @field_validator("servicos", "servicos_concluidos", mode="before")
     @classmethod
@@ -116,6 +118,10 @@ class OSUpdate(BaseModel):
 
 class ChecklistUpdate(BaseModel):
     servicos_concluidos: List[str]
+
+
+class EntregarItemUpdate(BaseModel):
+    entregue: bool
 
 
 class OSResponse(BaseModel):

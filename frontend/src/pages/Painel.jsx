@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Search, AlertTriangle, Clock, List } from 'lucide-react'
+import { Search, AlertTriangle, Calendar, List } from 'lucide-react'
 import api from '../api.js'
 import { StatusBadge, PagamentoBadge } from '../components/StatusBadge.jsx'
 
@@ -30,10 +30,17 @@ function estaEmAtraso(os) {
   return prazo < hojeISO()
 }
 
-function ehDeHoje(os) {
-  if (!os.criado_em) return false
-  const criado = String(os.criado_em).split('T')[0]
-  return criado === hojeISO()
+function ehAgendaHoje(os) {
+  if (!os.prazo_entrega) return false
+  if (os.status === 'Entregue') return false
+  return String(os.prazo_entrega).split('T')[0] === hojeISO()
+}
+
+function descricaoItem(item) {
+  const partes = [item.categoria]
+  if (item.subcategoria) partes.push(item.subcategoria)
+  if (item.lado) partes.push(item.lado)
+  return partes.filter(Boolean).join(' — ')
 }
 
 function diasAtraso(os) {
@@ -44,16 +51,65 @@ function diasAtraso(os) {
   return Math.floor(diff / (1000 * 60 * 60 * 24))
 }
 
-function progressoServicos(os) {
-  let total = 0
-  let feitos = 0
-  for (const item of os.itens) {
+function progressoItens(os) {
+  const total = os.itens.length
+  const feitos = os.itens.filter(item => {
     const servicos = item.servicos || []
-    const concluidos = item.servicos_concluidos || []
-    total += servicos.length
-    feitos += servicos.filter(s => concluidos.includes(s)).length
-  }
+    if (servicos.length === 0) return false
+    return servicos.every(s => (item.servicos_concluidos || []).includes(s))
+  }).length
   return { total, feitos }
+}
+
+function CardAgenda({ os }) {
+  const navigate = useNavigate()
+  const atraso = estaEmAtraso(os)
+  return (
+    <button
+      onClick={() => navigate(`/os/${os.id}`)}
+      className={`card w-full text-left hover:shadow-lg active:scale-[0.99] transition-all border-2 ${atraso ? 'border-red-400' : 'border-amber-300'}`}
+    >
+      <div className="flex items-center justify-between gap-2 mb-2 flex-wrap">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-amber-700 font-black text-sm">#{String(os.numero).padStart(3, '0')}</span>
+          {atraso && (
+            <span className="inline-flex items-center gap-1 bg-red-600 text-white rounded-lg px-2 py-0.5 text-xs font-extrabold">
+              <AlertTriangle size={12} /> EM ATRASO
+            </span>
+          )}
+        </div>
+        <p className="text-base font-bold text-gray-900">{os.cliente.nome}</p>
+      </div>
+      <div className="space-y-1">
+        {os.itens.map(item => {
+          const servicos = item.servicos || []
+          const concluidos = item.servicos_concluidos || []
+          const concluido = servicos.length > 0 && servicos.every(s => concluidos.includes(s))
+          const entregue = item.entregue
+          return (
+            <div key={item.id}
+              className={`flex items-start justify-between gap-2 py-1 px-2 rounded-lg text-sm ${entregue ? 'bg-gray-50 opacity-60' : !concluido ? 'bg-amber-50' : 'bg-green-50'}`}>
+              <div className="flex-1 min-w-0">
+                <p className={`font-semibold truncate ${entregue ? 'line-through text-gray-400' : 'text-gray-800'}`}>
+                  {descricaoItem(item)}
+                </p>
+                {servicos.length > 0 && (
+                  <p className="text-xs text-gray-500 truncate">{servicos.join(', ')}</p>
+                )}
+              </div>
+              <span className={`text-xs font-bold shrink-0 px-2 py-0.5 rounded-lg ${
+                entregue ? 'bg-green-100 text-green-700' :
+                concluido ? 'bg-blue-100 text-blue-700' :
+                'bg-orange-100 text-orange-700'
+              }`}>
+                {entregue ? 'Entregue' : concluido ? 'Pronto' : 'Pendente'}
+              </span>
+            </div>
+          )
+        })}
+      </div>
+    </button>
+  )
 }
 
 function CardOS({ os, atraso }) {
@@ -61,7 +117,7 @@ function CardOS({ os, atraso }) {
   const resumo = os.itens.length === 1
     ? `${os.itens[0].categoria} — ${(os.itens[0].servicos || []).join(', ')}`
     : `${os.itens.length} itens`
-  const prog = progressoServicos(os)
+  const prog = progressoItens(os)
 
   return (
     <button
@@ -87,7 +143,7 @@ function CardOS({ os, atraso }) {
           <p className="text-gray-500 text-sm mt-0.5 truncate">{resumo}</p>
           {prog.total > 0 && (
             <p className="text-sm font-semibold text-amber-700 mt-0.5">
-              {prog.feitos}/{prog.total} serviços concluídos
+              {prog.feitos}/{prog.total} itens concluídos
             </p>
           )}
           {os.prazo_entrega && (
@@ -137,7 +193,7 @@ export default function Painel() {
   )
 
   const ordensEmAtraso = ordensBusca.filter(o => estaEmAtraso(o))
-  const ordensHoje = ordensBusca.filter(o => ehDeHoje(o))
+  const agendaHoje = ordensBusca.filter(o => ehAgendaHoje(o))
   const ordensFiltradas = ordensBusca.filter(o =>
     filtroStatus === 'Todos' || o.status === filtroStatus
   )
@@ -179,18 +235,18 @@ export default function Painel() {
             </div>
           )}
 
-          {/* ── Notas de hoje ── */}
-          {ordensHoje.length > 0 && (
+          {/* ── Agenda de hoje ── */}
+          {agendaHoje.length > 0 && (
             <div className="space-y-2">
               <div className="flex items-center gap-2">
-                <Clock size={18} className="text-blue-600" />
-                <h3 className="font-extrabold text-blue-700 text-base">
-                  Notas de hoje ({ordensHoje.length})
+                <Calendar size={18} className="text-amber-600" />
+                <h3 className="font-extrabold text-amber-700 text-base">
+                  Agenda de hoje ({agendaHoje.length})
                 </h3>
               </div>
-              <div className="space-y-2 pl-1 border-l-4 border-blue-200">
-                {ordensHoje.map(os => (
-                  <CardOS key={os.id} os={os} atraso={estaEmAtraso(os)} />
+              <div className="space-y-2 pl-1 border-l-4 border-amber-300">
+                {agendaHoje.map(os => (
+                  <CardAgenda key={os.id} os={os} />
                 ))}
               </div>
             </div>

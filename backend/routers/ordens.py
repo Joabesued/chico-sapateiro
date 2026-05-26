@@ -64,6 +64,7 @@ def _item_para_model(item: schemas.ItemOSCreate, ordem_id: int) -> models.ItemOS
         foto_url=item.foto_url or "",
         quantidade=max(1, item.quantidade or 1),
         revisao=revisao,
+        entregue=item.entregue or False,
     )
 
 
@@ -219,6 +220,35 @@ def atualizar_checklist_item(
         itens = db.query(models.ItemOS).filter(models.ItemOS.ordem_id == os_id).all()
         if _todos_servicos_concluidos(itens):
             ordem.status = models.StatusOS.pronto
+
+    db.commit()
+    return _carregar_ordem(db, os_id)
+
+
+@router.patch("/{os_id}/itens/{item_id}/entregar", response_model=schemas.OSResponse)
+def marcar_item_entregue(
+    os_id: int,
+    item_id: int,
+    dados: schemas.EntregarItemUpdate,
+    db: Session = Depends(get_db),
+    usuario=Depends(auth_utils.get_usuario_atual),
+):
+    item = db.query(models.ItemOS).filter(
+        models.ItemOS.id == item_id,
+        models.ItemOS.ordem_id == os_id,
+    ).first()
+    if not item:
+        raise HTTPException(status_code=404, detail="Item não encontrado")
+
+    item.entregue = dados.entregue
+    db.flush()
+
+    # Auto-promove status da OS para "Entregue" quando todos os itens forem entregues.
+    ordem = db.query(models.OrdemServico).filter(models.OrdemServico.id == os_id).first()
+    if ordem and dados.entregue:
+        itens = db.query(models.ItemOS).filter(models.ItemOS.ordem_id == os_id).all()
+        if itens and all(it.entregue for it in itens):
+            ordem.status = models.StatusOS.entregue
 
     db.commit()
     return _carregar_ordem(db, os_id)

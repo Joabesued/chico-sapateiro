@@ -232,15 +232,19 @@ export default function DetalhesOS() {
     }
     setSalvando(true)
     try {
-      // Preserva checklist existente pelos ids/posição.
-      const concluidosAnt = os.itens.map(i => ({ id: i.id, concluidos: i.servicos_concluidos || [] }))
+      // Preserva checklist e estado de entrega pelos ids/posição.
+      const estadoAnt = os.itens.map(i => ({
+        id: i.id,
+        concluidos: i.servicos_concluidos || [],
+        entregue: i.entregue || false,
+      }))
       const { data } = await api.patch(`/ordens/${id}`, {
         prazo_entrega: prazoEdit || null,
         entrada: parseMoeda(entradaEdit),
         desconto: parseMoeda(descontoEdit),
         itens: itensEdit.map((it, idx) => {
-          const ant = concluidosAnt[idx]?.concluidos || []
-          const concluidos = ant.filter(s => it.servicos.includes(s))
+          const ant = estadoAnt[idx]
+          const concluidos = (ant?.concluidos || []).filter(s => it.servicos.includes(s))
           const revisao = it.revisao || false
           return {
             categoria: it.categoria,
@@ -255,6 +259,7 @@ export default function DetalhesOS() {
             valor: revisao ? 0 : parseMoeda(it.valor),
             quantidade: it.quantidade || 1,
             revisao,
+            entregue: ant?.entregue || false,
           }
         }),
       })
@@ -268,13 +273,14 @@ export default function DetalhesOS() {
     }
   }
 
-  async function toggleConcluido(itemId, servico) {
+  async function toggleItemConcluido(itemId) {
     const item = os.itens.find(i => i.id === itemId)
     if (!item) return
+    const servicos = item.servicos || []
+    if (servicos.length === 0) return
     const concluidos = item.servicos_concluidos || []
-    const novos = concluidos.includes(servico)
-      ? concluidos.filter(s => s !== servico)
-      : [...concluidos, servico]
+    const todosFeitos = servicos.every(s => concluidos.includes(s))
+    const novos = todosFeitos ? [] : servicos
 
     const statusAntes = os.status
     try {
@@ -284,10 +290,28 @@ export default function DetalhesOS() {
       )
       setOs(data)
       if (statusAntes === 'Em andamento' && data.status === 'Pronto para retirada') {
-        toast.success('Todos os serviços concluídos — OS pronta para retirada!', { duration: 4000 })
+        toast.success('Todos os itens concluídos — OS pronta para retirada!', { duration: 4000 })
       }
     } catch {
       toast.error('Erro ao salvar checklist')
+    }
+  }
+
+  async function toggleEntregue(itemId) {
+    const item = os.itens.find(i => i.id === itemId)
+    if (!item) return
+    const statusAntes = os.status
+    try {
+      const { data } = await api.patch(
+        `/ordens/${id}/itens/${itemId}/entregar`,
+        { entregue: !item.entregue }
+      )
+      setOs(data)
+      if (statusAntes !== 'Entregue' && data.status === 'Entregue') {
+        toast.success('Todos os itens entregues — OS finalizada!', { duration: 4000 })
+      }
+    } catch {
+      toast.error('Erro ao salvar entrega')
     }
   }
 
@@ -500,12 +524,14 @@ export default function DetalhesOS() {
   const entradaEditInvalida = entradaEditNum > totalEditLiquido
   const atraso = estaEmAtraso(os)
 
-  // Progresso de serviços
-  const totalServicos = os.itens.reduce((s, it) => s + (it.servicos?.length || 0), 0)
-  const feitosServicos = os.itens.reduce(
-    (s, it) => s + (it.servicos || []).filter(x => (it.servicos_concluidos || []).includes(x)).length,
-    0,
-  )
+  // Progresso de itens
+  const totalItens = os.itens.length
+  const itensConcluidos = os.itens.filter(it => {
+    const s = it.servicos || []
+    if (s.length === 0) return false
+    return s.every(x => (it.servicos_concluidos || []).includes(x))
+  }).length
+  const itensEntregues = os.itens.filter(it => it.entregue).length
 
   return (
     <div className="space-y-4">
@@ -547,9 +573,14 @@ export default function DetalhesOS() {
               📅 Prazo: {formatarData(os.prazo_entrega)}
             </span>
           )}
-          {totalServicos > 0 && (
+          {totalItens > 0 && (
             <span className="text-sm font-semibold text-amber-700">
-              ✓ {feitosServicos}/{totalServicos} serviços concluídos
+              ✓ {itensConcluidos}/{totalItens} itens concluídos
+            </span>
+          )}
+          {itensEntregues > 0 && (
+            <span className="text-sm font-semibold text-green-700">
+              📦 {itensEntregues} de {totalItens} {itensEntregues === 1 ? 'item entregue' : 'itens entregues'}
             </span>
           )}
         </div>
@@ -568,49 +599,33 @@ export default function DetalhesOS() {
 
           {os.itens.map(item => {
             const concluidos = item.servicos_concluidos || []
+            const servicos = item.servicos || []
+            const itemConcluido = servicos.length > 0 && servicos.every(s => concluidos.includes(s))
             const qtd = item.quantidade || 1
             return (
-              <div key={item.id} className="py-2 border-b last:border-0">
+              <div key={item.id} className={`py-2 border-b last:border-0 transition-opacity ${item.entregue ? 'opacity-60' : ''}`}>
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex-1">
                     <div className="flex items-center gap-2 flex-wrap">
                       {qtd > 1 && <span className="font-bold text-blue-700 text-sm">{qtd}×</span>}
-                      <p className="font-bold text-gray-900">{descricaoItem(item)}</p>
+                      <p className={`font-bold ${item.entregue ? 'line-through text-gray-400' : 'text-gray-900'}`}>
+                        {descricaoItem(item)}
+                      </p>
                       {item.revisao && (
                         <span className="bg-blue-100 text-blue-700 border border-blue-300 rounded-lg px-2 py-0.5 text-xs font-bold">
                           Revisão
                         </span>
                       )}
+                      {item.entregue && (
+                        <span className="bg-green-100 text-green-700 border border-green-300 rounded-lg px-2 py-0.5 text-xs font-bold">
+                          Entregue
+                        </span>
+                      )}
                     </div>
 
-                    {/* Checklist dos serviços */}
-                    {(item.servicos || []).length > 0 && (
-                      <div className="mt-1 space-y-1">
-                        {item.servicos.map(s => {
-                          const feito = concluidos.includes(s)
-                          const rotulo = s === 'Trocar roda' && item.qtd_rodas
-                            ? `Trocar roda (${item.qtd_rodas})`
-                            : s
-                          return (
-                            <label
-                              key={s}
-                              className="flex items-center gap-2 cursor-pointer select-none text-sm group"
-                            >
-                              <input
-                                type="checkbox"
-                                checked={feito}
-                                onChange={() => toggleConcluido(item.id, s)}
-                                className="w-5 h-5 accent-amber-600 cursor-pointer"
-                              />
-                              <span className={feito
-                                ? 'line-through text-gray-400'
-                                : 'text-amber-700 font-semibold group-hover:text-amber-800'}>
-                                {rotulo}
-                              </span>
-                            </label>
-                          )
-                        })}
-                      </div>
+                    {/* Serviços como texto */}
+                    {servicos.length > 0 && (
+                      <p className="text-sm text-gray-500 mt-1">{formatarServicosTexto(item)}</p>
                     )}
 
                     {item.cor && <p className="text-sm text-gray-500 mt-1">Cor: {item.cor}</p>}
@@ -620,6 +635,38 @@ export default function DetalhesOS() {
                       </p>
                     )}
                     {item.descricao && <p className="text-sm text-gray-400 italic mt-1">{item.descricao}</p>}
+
+                    {/* Checklist simplificado + botão de entrega */}
+                    <div className="flex items-center gap-3 mt-2 flex-wrap">
+                      {servicos.length > 0 && !item.entregue && (
+                        <label className="flex items-center gap-2 cursor-pointer select-none text-sm">
+                          <input
+                            type="checkbox"
+                            checked={itemConcluido}
+                            onChange={() => toggleItemConcluido(item.id)}
+                            className="w-5 h-5 accent-amber-600 cursor-pointer"
+                          />
+                          <span className={itemConcluido ? 'line-through text-gray-400' : 'text-amber-700 font-semibold'}>
+                            Item concluído
+                          </span>
+                        </label>
+                      )}
+                      {!item.entregue ? (
+                        <button
+                          onClick={() => toggleEntregue(item.id)}
+                          className="text-xs font-bold text-green-700 border border-green-400 bg-green-50 rounded-lg px-2.5 py-1 hover:bg-green-100 transition-colors"
+                        >
+                          Marcar como entregue
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => toggleEntregue(item.id)}
+                          className="text-xs font-bold text-gray-500 border border-gray-300 bg-gray-50 rounded-lg px-2.5 py-1 hover:bg-gray-100 transition-colors"
+                        >
+                          Desfazer entrega
+                        </button>
+                      )}
+                    </div>
                   </div>
                   <div className="text-right shrink-0">
                     {item.revisao ? (

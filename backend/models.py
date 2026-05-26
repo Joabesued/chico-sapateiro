@@ -92,6 +92,7 @@ class ItemOS(Base):
     foto_url = Column(String, nullable=True, default="")
     quantidade = Column(Integer, nullable=False, default=1)
     revisao = Column(Boolean, nullable=False, default=False)
+    entregue = Column(Boolean, nullable=False, default=False)
 
     ordem = relationship("OrdemServico", back_populates="itens")
 

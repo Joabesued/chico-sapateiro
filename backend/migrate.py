@@ -169,6 +169,8 @@ def run_migration():
             c.execute("ALTER TABLE itens_os ADD COLUMN quantidade INTEGER NOT NULL DEFAULT 1")
         if "revisao" not in cols_it:
             c.execute("ALTER TABLE itens_os ADD COLUMN revisao INTEGER NOT NULL DEFAULT 0")
+        if "entregue" not in cols_it:
+            c.execute("ALTER TABLE itens_os ADD COLUMN entregue INTEGER NOT NULL DEFAULT 0")
 
         # Migrar itens antigos com categoria "Par"/"Pé esquerdo"/"Pé direito" para
         # usar o campo "lado" (mantém categoria como vazia para o usuário re-editar).
