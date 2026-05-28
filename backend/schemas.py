@@ -174,6 +174,9 @@ class DashboardResumo(BaseModel):
     recebido_mes: float
     pendente_total: float
     os_em_atraso: int
+    os_prazo_hoje: int = 0
+    os_prazo_amanha: int = 0
+    os_prazo_semana: int = 0
 
 
 # --- Relatório ---
@@ -235,3 +238,46 @@ class RankingCategoria(BaseModel):
 
 class RankingCategorias(BaseModel):
     ranking: List[RankingCategoria]
+
+
+# --- Produtividade ---
+class HistoricoDia(BaseModel):
+    data: str
+    qtd: int
+
+
+class ProdutividadeResumo(BaseModel):
+    media_notas_dia: float
+    dias_em_operacao: int
+    dia_mais_produtivo: Optional[str] = None
+    dia_mais_produtivo_qtd: int = 0
+    tendencia_semana: float
+    os_semana_atual: int
+    os_semana_passada: int
+    historico_14dias: List[HistoricoDia]
+
+
+# --- Previsão de Serviços ---
+class OSPrevisaoDia(BaseModel):
+    id: int
+    numero: int
+    cliente_nome: str
+    status: str
+
+
+class PrevisaoDia(BaseModel):
+    data: str
+    dia_semana: str
+    qtd_os: int
+    ordens: List[OSPrevisaoDia]
+    destaque: bool = False
+
+
+class ServicoPrevisao(BaseModel):
+    servico: str
+    quantidade: int
+
+
+class PrevisaoResumo(BaseModel):
+    dias: List[PrevisaoDia]
+    ranking_servicos: List[ServicoPrevisao]

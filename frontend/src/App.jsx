@@ -2,6 +2,7 @@ import { Routes, Route, Navigate } from 'react-router-dom'
 import Login from './pages/Login.jsx'
 import Layout from './components/Layout.jsx'
 import Painel from './pages/Painel.jsx'
+import Arquivo from './pages/Arquivo.jsx'
 import NovaOS from './pages/NovaOS.jsx'
 import DetalhesOS from './pages/DetalhesOS.jsx'
 import Clientes from './pages/Clientes.jsx'
@@ -26,6 +27,7 @@ export default function App() {
       }>
         <Route index element={<Navigate to="/painel" replace />} />
         <Route path="painel" element={<Painel />} />
+        <Route path="arquivo" element={<Arquivo />} />
         <Route path="nova-os" element={<NovaOS />} />
         <Route path="os/:id" element={<DetalhesOS />} />
         <Route path="clientes" element={<Clientes />} />

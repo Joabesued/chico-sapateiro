@@ -51,8 +51,27 @@ def dashboard_resumo(
     )
 
     hoje_str = hoje.date().isoformat()
+    amanha_str = (hoje.date() + timedelta(days=1)).isoformat()
+    semana_str = (hoje.date() + timedelta(days=7)).isoformat()
+
     em_atraso = db.query(models.OrdemServico).filter(
         models.OrdemServico.prazo_entrega < hoje_str,
+        models.OrdemServico.status != models.StatusOS.entregue,
+    ).count()
+
+    os_prazo_hoje = db.query(models.OrdemServico).filter(
+        models.OrdemServico.prazo_entrega.like(f"{hoje_str}%"),
+        models.OrdemServico.status != models.StatusOS.entregue,
+    ).count()
+
+    os_prazo_amanha = db.query(models.OrdemServico).filter(
+        models.OrdemServico.prazo_entrega.like(f"{amanha_str}%"),
+        models.OrdemServico.status != models.StatusOS.entregue,
+    ).count()
+
+    os_prazo_semana = db.query(models.OrdemServico).filter(
+        models.OrdemServico.prazo_entrega > hoje_str,
+        models.OrdemServico.prazo_entrega <= semana_str,
         models.OrdemServico.status != models.StatusOS.entregue,
     ).count()
 
@@ -62,6 +81,9 @@ def dashboard_resumo(
         recebido_mes=round(recebido_mes, 2),
         pendente_total=round(pendente_total, 2),
         os_em_atraso=em_atraso,
+        os_prazo_hoje=os_prazo_hoje,
+        os_prazo_amanha=os_prazo_amanha,
+        os_prazo_semana=os_prazo_semana,
     )
 
 
@@ -381,3 +403,135 @@ def dicas_gestao(
         dicas.append(f"Considere contatar {vencendo} cliente{s} com prazo vencendo amanhã.")
 
     return dicas
+
+
+@router.get("/produtividade", response_model=schemas.ProdutividadeResumo)
+def produtividade(
+    db: Session = Depends(get_db),
+    usuario=Depends(auth_utils.get_usuario_atual)
+):
+    hoje = datetime.now(timezone.utc).date()
+
+    todas = db.query(models.OrdemServico).all()
+
+    historico_vazio = [
+        schemas.HistoricoDia(data=(hoje - timedelta(days=i)).isoformat(), qtd=0)
+        for i in range(13, -1, -1)
+    ]
+
+    if not todas:
+        return schemas.ProdutividadeResumo(
+            media_notas_dia=0.0,
+            dias_em_operacao=0,
+            dia_mais_produtivo=None,
+            dia_mais_produtivo_qtd=0,
+            tendencia_semana=0.0,
+            os_semana_atual=0,
+            os_semana_passada=0,
+            historico_14dias=historico_vazio,
+        )
+
+    datas_criacao = [o.criado_em for o in todas if o.criado_em]
+    contagem_por_dia: dict = {}
+    for criado in datas_criacao:
+        dia = criado.date().isoformat()
+        contagem_por_dia[dia] = contagem_por_dia.get(dia, 0) + 1
+
+    primeira_data = min(c.date() for c in datas_criacao) if datas_criacao else hoje
+    dias_em_operacao = (hoje - primeira_data).days + 1
+
+    dias_com_os = len(contagem_por_dia)
+    media = len(todas) / dias_com_os if dias_com_os > 0 else 0.0
+
+    dia_top = max(contagem_por_dia, key=contagem_por_dia.get) if contagem_por_dia else None
+    dia_top_qtd = contagem_por_dia.get(dia_top, 0) if dia_top else 0
+
+    os_semana_atual = sum(
+        contagem_por_dia.get((hoje - timedelta(days=i)).isoformat(), 0)
+        for i in range(7)
+    )
+    os_semana_passada = sum(
+        contagem_por_dia.get((hoje - timedelta(days=i)).isoformat(), 0)
+        for i in range(7, 14)
+    )
+
+    if os_semana_passada > 0:
+        tendencia = ((os_semana_atual - os_semana_passada) / os_semana_passada) * 100
+    elif os_semana_atual > 0:
+        tendencia = 100.0
+    else:
+        tendencia = 0.0
+
+    historico = [
+        schemas.HistoricoDia(
+            data=(hoje - timedelta(days=i)).isoformat(),
+            qtd=contagem_por_dia.get((hoje - timedelta(days=i)).isoformat(), 0),
+        )
+        for i in range(13, -1, -1)
+    ]
+
+    return schemas.ProdutividadeResumo(
+        media_notas_dia=round(media, 1),
+        dias_em_operacao=dias_em_operacao,
+        dia_mais_produtivo=dia_top,
+        dia_mais_produtivo_qtd=dia_top_qtd,
+        tendencia_semana=round(tendencia, 1),
+        os_semana_atual=os_semana_atual,
+        os_semana_passada=os_semana_passada,
+        historico_14dias=historico,
+    )
+
+
+@router.get("/previsao", response_model=schemas.PrevisaoResumo)
+def previsao_servicos(
+    dias: int = Query(7, ge=1, le=30),
+    db: Session = Depends(get_db),
+    usuario=Depends(auth_utils.get_usuario_atual)
+):
+    hoje = datetime.now(timezone.utc).date()
+    DIAS_SEMANA = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo']
+
+    resultado = []
+    servicos_totais: dict = {}
+
+    for i in range(dias):
+        dia = hoje + timedelta(days=i)
+        dia_str = dia.isoformat()
+
+        ordens = db.query(models.OrdemServico).options(
+            joinedload(models.OrdemServico.cliente),
+            joinedload(models.OrdemServico.itens),
+        ).filter(
+            models.OrdemServico.prazo_entrega.like(f"{dia_str}%"),
+            models.OrdemServico.status != models.StatusOS.entregue,
+        ).all()
+
+        for o in ordens:
+            for item in o.itens:
+                try:
+                    servicos = json.loads(item.servicos or "[]")
+                except Exception:
+                    servicos = []
+                qtd = item.quantidade or 1
+                for s in servicos:
+                    servicos_totais[s] = servicos_totais.get(s, 0) + qtd
+
+        resultado.append(schemas.PrevisaoDia(
+            data=dia_str,
+            dia_semana=DIAS_SEMANA[dia.weekday()],
+            qtd_os=len(ordens),
+            ordens=[schemas.OSPrevisaoDia(
+                id=o.id,
+                numero=o.numero,
+                cliente_nome=o.cliente.nome if o.cliente else "—",
+                status=o.status,
+            ) for o in ordens],
+            destaque=len(ordens) >= 5,
+        ))
+
+    ranking = sorted(
+        [schemas.ServicoPrevisao(servico=k, quantidade=v) for k, v in servicos_totais.items()],
+        key=lambda x: x.quantidade, reverse=True,
+    )
+
+    return schemas.PrevisaoResumo(dias=resultado, ranking_servicos=ranking)

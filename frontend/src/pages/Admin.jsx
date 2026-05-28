@@ -59,6 +59,22 @@ function TabDashboard() {
         <p className="text-2xl font-extrabold text-orange-500 mt-1">{formatarValor(dados.pendente_total)}</p>
       </div>
 
+      {/* Previsão de prazos */}
+      <div className="grid grid-cols-3 gap-2">
+        <div className="card text-center p-3 border-l-4 border-amber-400">
+          <p className="text-gray-500 font-semibold text-xs">Prazo hoje</p>
+          <p className="text-3xl font-black text-amber-700 mt-1">{dados.os_prazo_hoje}</p>
+        </div>
+        <div className="card text-center p-3 border-l-4 border-yellow-400">
+          <p className="text-gray-500 font-semibold text-xs">Prazo amanhã</p>
+          <p className="text-3xl font-black text-yellow-600 mt-1">{dados.os_prazo_amanha}</p>
+        </div>
+        <div className="card text-center p-3 border-l-4 border-purple-400">
+          <p className="text-gray-500 font-semibold text-xs">Prazo semana</p>
+          <p className="text-3xl font-black text-purple-600 mt-1">{dados.os_prazo_semana}</p>
+        </div>
+      </div>
+
       {dicas.length > 0 && (
         <div className="card space-y-2">
           <h3 className="font-bold text-gray-700 text-base border-b pb-2">Dicas de gestão</h3>
@@ -658,6 +674,200 @@ function TabRankingCategorias() {
   )
 }
 
+// ─── Tab: Produtividade ──────────────────────────────────────────────────────────
+
+function TabProdutividade() {
+  const [dados, setDados] = useState(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    api.get('/relatorios/produtividade')
+      .then(r => setDados(r.data))
+      .catch(() => {})
+      .finally(() => setLoading(false))
+  }, [])
+
+  if (loading) return <p className="text-center py-10 text-gray-500">Carregando...</p>
+  if (!dados) return null
+
+  const maxQtd = Math.max(...dados.historico_14dias.map(d => d.qtd), 1)
+  const tendencia = dados.tendencia_semana
+
+  function formatarDataDia(isoDate) {
+    if (!isoDate) return '—'
+    const [ano, mes, dia] = isoDate.split('-')
+    return `${dia}/${mes}/${ano}`
+  }
+
+  function diaSemanaAbrev(isoDate) {
+    if (!isoDate) return ''
+    const d = new Date(isoDate + 'T12:00:00')
+    return ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'][d.getDay()]
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 gap-3">
+        <div className="card text-center border-l-4 border-amber-400">
+          <p className="text-gray-500 font-semibold text-sm">Média notas/dia</p>
+          <p className="text-4xl font-black text-amber-700 mt-1">{dados.media_notas_dia}</p>
+          <p className="text-xs text-gray-400 mt-0.5">notas por dia</p>
+        </div>
+        <div className="card text-center border-l-4 border-blue-400">
+          <p className="text-gray-500 font-semibold text-sm">Dias em operação</p>
+          <p className="text-4xl font-black text-blue-600 mt-1">{dados.dias_em_operacao}</p>
+          <p className="text-xs text-gray-400 mt-0.5">desde a 1ª nota</p>
+        </div>
+        <div className="card text-center border-l-4 border-green-400">
+          <p className="text-gray-500 font-semibold text-sm">Dia mais produtivo</p>
+          {dados.dia_mais_produtivo ? (
+            <>
+              <p className="text-lg font-black text-green-700 mt-1">{formatarDataDia(dados.dia_mais_produtivo)}</p>
+              <p className="text-xs text-gray-400 mt-0.5">{dados.dia_mais_produtivo_qtd} notas</p>
+            </>
+          ) : (
+            <p className="text-gray-400 text-sm mt-2">Sem dados</p>
+          )}
+        </div>
+        <div className={`card text-center border-l-4 ${tendencia >= 0 ? 'border-green-400' : 'border-red-400'}`}>
+          <p className="text-gray-500 font-semibold text-sm">Tendência da semana</p>
+          <p className={`text-2xl font-black mt-1 ${tendencia >= 0 ? 'text-green-600' : 'text-red-500'}`}>
+            {tendencia >= 0 ? '↑' : '↓'} {Math.abs(tendencia).toFixed(1)}%
+          </p>
+          <p className="text-xs text-gray-400 mt-0.5">
+            {dados.os_semana_atual} esta · {dados.os_semana_passada} anterior
+          </p>
+        </div>
+      </div>
+
+      {/* Gráfico 14 dias */}
+      <div className="card">
+        <h3 className="font-bold text-gray-700 text-lg mb-4">Notas — últimos 14 dias</h3>
+        <div className="space-y-1.5">
+          {dados.historico_14dias.map(d => (
+            <div key={d.data} className="flex items-center gap-2">
+              <span className="text-xs text-gray-400 w-8 shrink-0 font-semibold">{diaSemanaAbrev(d.data)}</span>
+              <span className="text-xs text-gray-300 w-10 shrink-0">{d.data.slice(5).replace('-', '/')}</span>
+              <div className="flex-1 bg-gray-100 rounded-full h-5 overflow-hidden">
+                <div
+                  className="bg-amber-500 h-5 rounded-full flex items-center justify-end pr-1.5 transition-all"
+                  style={{ width: d.qtd > 0 ? `${Math.max((d.qtd / maxQtd) * 100, 10)}%` : '0%' }}
+                >
+                  {d.qtd > 0 && <span className="text-white text-xs font-black">{d.qtd}</span>}
+                </div>
+              </div>
+              {d.qtd === 0 && <span className="text-xs text-gray-300 w-4">0</span>}
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── Tab: Previsão de Serviços ───────────────────────────────────────────────────
+
+function TabPrevisao() {
+  const navigate = useNavigate()
+  const [dados, setDados] = useState(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    api.get('/relatorios/previsao', { params: { dias: 7 } })
+      .then(r => setDados(r.data))
+      .catch(() => {})
+      .finally(() => setLoading(false))
+  }, [])
+
+  if (loading) return <p className="text-center py-10 text-gray-500">Carregando...</p>
+  if (!dados) return null
+
+  function formatarDiaMes(isoDate) {
+    if (!isoDate) return '—'
+    const [, mes, dia] = isoDate.split('-')
+    return `${dia}/${mes}`
+  }
+
+  const STATUS_LABEL = {
+    'Em andamento': { label: 'Andamento', cls: 'bg-blue-100 text-blue-700' },
+    'Pronto para retirada': { label: 'Pronto', cls: 'bg-green-100 text-green-700' },
+    'Entregue': { label: 'Entregue', cls: 'bg-gray-100 text-gray-500' },
+  }
+
+  return (
+    <div className="space-y-4">
+      <h3 className="font-bold text-gray-700">Próximos 7 dias</h3>
+      <div className="space-y-3">
+        {dados.dias.map(dia => (
+          <div
+            key={dia.data}
+            className={`card border-l-4 ${dia.destaque ? 'border-red-500' : 'border-amber-300'} ${dia.destaque ? 'bg-red-50' : ''}`}
+          >
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="font-extrabold text-gray-800">
+                  {dia.dia_semana}, {formatarDiaMes(dia.data)}
+                </span>
+                {dia.destaque && (
+                  <span className="text-xs font-bold text-red-600 bg-red-100 rounded-lg px-2 py-0.5">
+                    Alta demanda
+                  </span>
+                )}
+              </div>
+              <span className={`text-2xl font-black ${dia.destaque ? 'text-red-600' : 'text-amber-700'}`}>
+                {dia.qtd_os}
+              </span>
+            </div>
+            {dia.ordens.length === 0 ? (
+              <p className="text-sm text-gray-400">Nenhuma OS com prazo neste dia</p>
+            ) : (
+              <div className="space-y-1">
+                {dia.ordens.map(os => {
+                  const st = STATUS_LABEL[os.status] || { label: os.status, cls: 'bg-gray-100 text-gray-600' }
+                  return (
+                    <button
+                      key={os.id}
+                      onClick={() => navigate(`/os/${os.id}`)}
+                      className="w-full flex items-center justify-between text-left bg-white rounded-lg px-2 py-1.5 hover:bg-amber-50 transition-colors"
+                    >
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="text-amber-700 font-bold text-xs shrink-0">
+                          #{String(os.numero).padStart(3, '0')}
+                        </span>
+                        <span className="text-sm font-semibold text-gray-800 truncate">
+                          {os.cliente_nome}
+                        </span>
+                      </div>
+                      <span className={`text-xs font-bold rounded-lg px-2 py-0.5 shrink-0 ml-2 ${st.cls}`}>
+                        {st.label}
+                      </span>
+                    </button>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+
+      {/* Ranking de serviços previstos */}
+      {dados.ranking_servicos.length > 0 && (
+        <div className="card">
+          <h3 className="font-bold text-gray-700 text-lg mb-3">Serviços previstos para a semana</h3>
+          <div className="space-y-2">
+            {dados.ranking_servicos.map((item, i) => (
+              <div key={item.servico} className="flex items-center justify-between py-1.5 border-b border-gray-100 last:border-0">
+                <span className="font-semibold text-gray-700 text-sm">{i + 1}. {item.servico}</span>
+                <span className="font-black text-amber-700">{item.quantidade}×</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ─── Componente principal ────────────────────────────────────────────────────────
 
 export default function Admin() {
@@ -668,6 +878,8 @@ export default function Admin() {
     { id: 'relatorio', label: 'Relatório' },
     { id: 'ranking', label: 'Serviços' },
     { id: 'categorias', label: 'Categorias' },
+    { id: 'produtividade', label: 'Produtividade' },
+    { id: 'previsao', label: 'Previsão' },
     { id: 'estatisticas', label: 'Estatísticas' },
     { id: 'diario', label: 'Dia' },
   ]
@@ -695,6 +907,8 @@ export default function Admin() {
       {aba === 'relatorio' && <TabRelatorio />}
       {aba === 'ranking' && <TabRanking />}
       {aba === 'categorias' && <TabRankingCategorias />}
+      {aba === 'produtividade' && <TabProdutividade />}
+      {aba === 'previsao' && <TabPrevisao />}
       {aba === 'estatisticas' && <TabEstatisticas />}
       {aba === 'diario' && <TabRelatorioDia />}
     </div>

@@ -1,15 +1,8 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Search, AlertTriangle, Calendar, List } from 'lucide-react'
+import { AlertTriangle, Clock, Calendar } from 'lucide-react'
 import api from '../api.js'
-import { StatusBadge, PagamentoBadge } from '../components/StatusBadge.jsx'
-
-const STATUS_LISTA = ['Todos', 'Em andamento', 'Pronto para retirada', 'Entregue']
-
-function formatarData(dt) {
-  if (!dt) return '—'
-  return new Date(dt).toLocaleDateString('pt-BR')
-}
+import { StatusBadge } from '../components/StatusBadge.jsx'
 
 function formatarValor(v) {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v || 0)
@@ -17,151 +10,132 @@ function formatarValor(v) {
 
 function hojeISO() {
   const d = new Date()
-  const y = d.getFullYear()
-  const m = String(d.getMonth() + 1).padStart(2, '0')
-  const dd = String(d.getDate()).padStart(2, '0')
-  return `${y}-${m}-${dd}`
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
 function estaEmAtraso(os) {
   if (!os.prazo_entrega) return false
   if (os.status === 'Pronto para retirada' || os.status === 'Entregue') return false
-  const prazo = String(os.prazo_entrega).split('T')[0]
-  return prazo < hojeISO()
+  return String(os.prazo_entrega).split('T')[0] < hojeISO()
 }
 
-function ehAgendaHoje(os) {
+function foiCriadaHoje(os) {
+  if (!os.criado_em) return false
+  const criado = new Date(os.criado_em)
+  const d = `${criado.getFullYear()}-${String(criado.getMonth() + 1).padStart(2, '0')}-${String(criado.getDate()).padStart(2, '0')}`
+  return d === hojeISO()
+}
+
+function temPrazoHoje(os) {
   if (!os.prazo_entrega) return false
   if (os.status === 'Entregue') return false
   return String(os.prazo_entrega).split('T')[0] === hojeISO()
 }
 
-function descricaoItem(item) {
-  const partes = [item.categoria]
-  if (item.subcategoria) partes.push(item.subcategoria)
-  if (item.lado) partes.push(item.lado)
-  return partes.filter(Boolean).join(' — ')
-}
-
 function diasAtraso(os) {
   if (!os.prazo_entrega) return 0
-  const prazo = new Date(String(os.prazo_entrega).split('T')[0])
-  const hoje = new Date(hojeISO())
-  const diff = hoje - prazo
-  return Math.floor(diff / (1000 * 60 * 60 * 24))
+  const prazo = new Date(String(os.prazo_entrega).split('T')[0] + 'T12:00:00')
+  const hoje = new Date(hojeISO() + 'T12:00:00')
+  return Math.floor((hoje - prazo) / (1000 * 60 * 60 * 24))
 }
 
-function progressoItens(os) {
-  const total = os.itens.length
-  const feitos = os.itens.filter(item => {
-    const servicos = item.servicos || []
-    if (servicos.length === 0) return false
-    return servicos.every(s => (item.servicos_concluidos || []).includes(s))
-  }).length
-  return { total, feitos }
+function tempoRelativo(dt) {
+  if (!dt) return ''
+  const diff = Date.now() - new Date(dt).getTime()
+  const mins = Math.floor(diff / 60000)
+  if (mins < 1) return 'agora'
+  if (mins < 60) return `${mins} min atrás`
+  const horas = Math.floor(mins / 60)
+  if (horas < 24) return `${horas}h atrás`
+  return `${Math.floor(horas / 24)}d atrás`
 }
 
-function CardAgenda({ os }) {
+function resumoItens(os) {
+  if (os.itens.length === 0) return '—'
+  if (os.itens.length === 1) {
+    const item = os.itens[0]
+    const partes = [item.categoria]
+    if (item.subcategoria) partes.push(item.subcategoria)
+    const svcs = (item.servicos || []).slice(0, 2).join(', ')
+    return svcs ? `${partes.join(' — ')} · ${svcs}` : partes.join(' — ')
+  }
+  return `${os.itens.length} itens`
+}
+
+function CardAtraso({ os }) {
   const navigate = useNavigate()
-  const atraso = estaEmAtraso(os)
+  const dias = diasAtraso(os)
   return (
     <button
       onClick={() => navigate(`/os/${os.id}`)}
-      className={`card w-full text-left hover:shadow-lg active:scale-[0.99] transition-all border-2 ${atraso ? 'border-red-400' : 'border-amber-300'}`}
+      className="card w-full text-left hover:shadow-lg active:scale-[0.99] transition-all border-l-4 border-red-500"
     >
-      <div className="flex items-center justify-between gap-2 mb-2 flex-wrap">
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-amber-700 font-black text-sm">#{String(os.numero).padStart(3, '0')}</span>
-          {atraso && (
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-1 flex-wrap">
+            <span className="text-amber-700 font-black text-sm">#{String(os.numero).padStart(3, '0')}</span>
             <span className="inline-flex items-center gap-1 bg-red-600 text-white rounded-lg px-2 py-0.5 text-xs font-extrabold">
-              <AlertTriangle size={12} /> EM ATRASO
+              <AlertTriangle size={11} /> Atrasado
             </span>
-          )}
+          </div>
+          <p className="text-lg font-bold text-gray-900 truncate">{os.cliente.nome}</p>
+          <p className="text-sm text-gray-500 mt-0.5 truncate">{resumoItens(os)}</p>
+          <p className="text-sm text-red-600 font-semibold mt-0.5">
+            {dias} dia{dias !== 1 ? 's' : ''} em atraso
+          </p>
         </div>
-        <p className="text-base font-bold text-gray-900">{os.cliente.nome}</p>
-      </div>
-      <div className="space-y-1">
-        {os.itens.map(item => {
-          const servicos = item.servicos || []
-          const concluidos = item.servicos_concluidos || []
-          const concluido = servicos.length > 0 && servicos.every(s => concluidos.includes(s))
-          const entregue = item.entregue
-          return (
-            <div key={item.id}
-              className={`flex items-start justify-between gap-2 py-1 px-2 rounded-lg text-sm ${entregue ? 'bg-gray-50 opacity-60' : !concluido ? 'bg-amber-50' : 'bg-green-50'}`}>
-              <div className="flex-1 min-w-0">
-                <p className={`font-semibold truncate ${entregue ? 'line-through text-gray-400' : 'text-gray-800'}`}>
-                  {descricaoItem(item)}
-                </p>
-                {servicos.length > 0 && (
-                  <p className="text-xs text-gray-500 truncate">{servicos.join(', ')}</p>
-                )}
-              </div>
-              <span className={`text-xs font-bold shrink-0 px-2 py-0.5 rounded-lg ${
-                entregue ? 'bg-green-100 text-green-700' :
-                concluido ? 'bg-blue-100 text-blue-700' :
-                'bg-orange-100 text-orange-700'
-              }`}>
-                {entregue ? 'Entregue' : concluido ? 'Pronto' : 'Pendente'}
-              </span>
-            </div>
-          )
-        })}
+        <div className="text-right shrink-0">
+          <p className="text-lg font-extrabold text-amber-700">{formatarValor(os.total)}</p>
+        </div>
       </div>
     </button>
   )
 }
 
-function CardOS({ os, atraso }) {
+function CardHoje({ os }) {
   const navigate = useNavigate()
-  const resumo = os.itens.length === 1
-    ? `${os.itens[0].categoria} — ${(os.itens[0].servicos || []).join(', ')}`
-    : `${os.itens.length} itens`
-  const prog = progressoItens(os)
-
   return (
     <button
       onClick={() => navigate(`/os/${os.id}`)}
-      className={`card w-full text-left hover:shadow-lg active:scale-[0.99] transition-all ` +
-        (atraso ? 'border-2 border-red-400 ring-2 ring-red-200' : '')}
+      className="card w-full text-left hover:shadow-lg active:scale-[0.99] transition-all border-l-4"
+      style={{ borderLeftColor: '#A0522D' }}
     >
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1 flex-wrap">
-            <span className="text-amber-700 font-black text-sm">
-              #{String(os.numero).padStart(3, '0')}
-            </span>
+            <span className="text-amber-700 font-black text-sm">#{String(os.numero).padStart(3, '0')}</span>
+            <span className="text-xs text-gray-400">{tempoRelativo(os.criado_em)}</span>
             <StatusBadge status={os.status} />
-            <PagamentoBadge status={os.status_pagamento} />
-            {atraso && (
-              <span className="inline-flex items-center gap-1 bg-red-600 text-white border-2 border-red-700 rounded-lg px-2 py-1 text-xs font-extrabold animate-pulse">
-                <AlertTriangle size={14} /> EM ATRASO
-              </span>
-            )}
           </div>
-          <p className="text-xl font-bold text-gray-900 truncate">{os.cliente.nome}</p>
-          <p className="text-gray-500 text-sm mt-0.5 truncate">{resumo}</p>
-          {prog.total > 0 && (
-            <p className="text-sm font-semibold text-amber-700 mt-0.5">
-              {prog.feitos}/{prog.total} itens concluídos
-            </p>
-          )}
-          {os.prazo_entrega && (
-            <p className={`text-sm mt-0.5 font-semibold ` +
-              (atraso ? 'text-red-600' : 'text-gray-500')}>
-              Prazo: {formatarData(os.prazo_entrega)}
-              {atraso && ` (${diasAtraso(os)} dia${diasAtraso(os) !== 1 ? 's' : ''} em atraso)`}
-            </p>
-          )}
+          <p className="text-lg font-bold text-gray-900 truncate">{os.cliente.nome}</p>
+          <p className="text-sm text-gray-500 mt-0.5 truncate">{resumoItens(os)}</p>
         </div>
         <div className="text-right shrink-0">
-          <p className="text-xl font-extrabold text-amber-700">{formatarValor(os.total)}</p>
+          <p className="text-lg font-extrabold text-amber-700">{formatarValor(os.total)}</p>
           {os.resta > 0 && (
-            <p className="text-sm text-orange-500 font-semibold">
-              Resta {formatarValor(os.resta)}
-            </p>
+            <p className="text-xs text-orange-500 font-semibold">Resta {formatarValor(os.resta)}</p>
           )}
-          <p className="text-xs text-gray-400 mt-1">{formatarData(os.criado_em)}</p>
+        </div>
+      </div>
+    </button>
+  )
+}
+
+function CardPrazoHoje({ os }) {
+  const navigate = useNavigate()
+  return (
+    <button
+      onClick={() => navigate(`/os/${os.id}`)}
+      className="card w-full text-left hover:shadow-lg active:scale-[0.99] transition-all border-l-4 border-orange-400"
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-1 flex-wrap">
+            <span className="text-amber-700 font-black text-sm">#{String(os.numero).padStart(3, '0')}</span>
+            <StatusBadge status={os.status} />
+          </div>
+          <p className="text-lg font-bold text-gray-900 truncate">{os.cliente.nome}</p>
+          <p className="text-sm text-gray-500 mt-0.5 truncate">{resumoItens(os)}</p>
         </div>
       </div>
     </button>
@@ -170,122 +144,84 @@ function CardOS({ os, atraso }) {
 
 export default function Painel() {
   const [ordens, setOrdens] = useState([])
-  const [filtroStatus, setFiltroStatus] = useState('Todos')
-  const [busca, setBusca] = useState('')
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => { carregarOrdens() }, [])
+  useEffect(() => {
+    api.get('/ordens/').then(r => setOrdens(r.data)).finally(() => setLoading(false))
+  }, [])
 
-  async function carregarOrdens() {
-    setLoading(true)
-    try {
-      const { data } = await api.get('/ordens/')
-      setOrdens(data)
-    } finally {
-      setLoading(false)
-    }
-  }
+  const emAtraso = ordens.filter(o => estaEmAtraso(o))
+  const notasHoje = ordens.filter(o => foiCriadaHoje(o))
+  const prazoHoje = ordens.filter(o => temPrazoHoje(o) && !foiCriadaHoje(o))
 
-  const ordensBusca = ordens.filter(o =>
-    busca === '' ||
-    o.cliente.nome.toLowerCase().includes(busca.toLowerCase()) ||
-    String(o.numero).includes(busca)
-  )
+  if (loading) return <p className="text-center text-gray-500 py-10 text-lg">Carregando...</p>
 
-  const ordensEmAtraso = ordensBusca.filter(o => estaEmAtraso(o))
-  const agendaHoje = ordensBusca.filter(o => ehAgendaHoje(o))
-  const ordensFiltradas = ordensBusca.filter(o =>
-    filtroStatus === 'Todos' || o.status === filtroStatus
-  )
+  const semNada = emAtraso.length === 0 && notasHoje.length === 0 && prazoHoje.length === 0
 
   return (
-    <div className="space-y-4">
-      <h2 className="text-2xl font-extrabold text-gray-800">Ordens de Serviço</h2>
+    <div className="space-y-5">
+      <h2 className="text-2xl font-extrabold text-gray-800">Painel</h2>
 
-      {/* Busca */}
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={22} />
-        <input
-          className="input-field pl-10"
-          type="text"
-          placeholder="Buscar por cliente ou nº..."
-          value={busca}
-          onChange={e => setBusca(e.target.value)}
-        />
-      </div>
+      {semNada && (
+        <div className="card text-center py-10">
+          <p className="text-4xl">🥿</p>
+          <p className="text-gray-500 mt-2 font-semibold">Nenhuma atividade para hoje</p>
+          <p className="text-gray-400 text-sm mt-1">Veja todas as notas no Arquivo</p>
+        </div>
+      )}
 
-      {loading ? (
-        <p className="text-center text-gray-500 py-10 text-lg">Carregando...</p>
-      ) : (
-        <>
-          {/* ── Notas em atraso ── */}
-          {ordensEmAtraso.length > 0 && (
-            <div className="space-y-2">
-              <div className="flex items-center gap-2">
-                <AlertTriangle size={18} className="text-red-600" />
-                <h3 className="font-extrabold text-red-700 text-base">
-                  Notas em atraso ({ordensEmAtraso.length})
-                </h3>
-              </div>
-              <div className="space-y-2">
-                {ordensEmAtraso.map(os => (
-                  <CardOS key={os.id} os={os} atraso={true} />
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* ── Agenda de hoje ── */}
-          {agendaHoje.length > 0 && (
-            <div className="space-y-2">
-              <div className="flex items-center gap-2">
-                <Calendar size={18} className="text-amber-600" />
-                <h3 className="font-extrabold text-amber-700 text-base">
-                  Agenda de hoje ({agendaHoje.length})
-                </h3>
-              </div>
-              <div className="space-y-2 pl-1 border-l-4 border-amber-300">
-                {agendaHoje.map(os => (
-                  <CardAgenda key={os.id} os={os} />
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* ── Todas as notas ── */}
-          <div className="space-y-2">
-            <div className="flex items-center gap-2">
-              <List size={18} className="text-gray-600" />
-              <h3 className="font-extrabold text-gray-700 text-base">Todas as notas</h3>
-            </div>
-
-            {/* Filtros de status */}
-            <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
-              {STATUS_LISTA.map(s => (
-                <button
-                  key={s}
-                  onClick={() => setFiltroStatus(s)}
-                  className={`whitespace-nowrap px-4 py-2 rounded-xl font-semibold text-sm border-2 transition-colors ` +
-                    (filtroStatus === s
-                      ? 'bg-amber-600 text-white border-amber-600'
-                      : 'bg-white text-gray-600 border-gray-300 hover:border-amber-400')}
-                >
-                  {s}
-                </button>
-              ))}
-            </div>
-
-            {ordensFiltradas.length === 0 ? (
-              <p className="text-center text-gray-400 py-6 text-lg">Nenhuma OS encontrada.</p>
-            ) : (
-              <div className="space-y-3">
-                {ordensFiltradas.map(os => (
-                  <CardOS key={os.id} os={os} atraso={estaEmAtraso(os)} />
-                ))}
-              </div>
-            )}
+      {/* Seção 1: Em atraso */}
+      {emAtraso.length > 0 && (
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <AlertTriangle size={18} className="text-red-600" />
+            <h3 className="font-extrabold text-red-700 text-base flex items-center gap-2">
+              Em atraso
+              <span className="bg-red-600 text-white rounded-full px-2 py-0.5 text-xs font-bold">
+                {emAtraso.length}
+              </span>
+            </h3>
           </div>
-        </>
+          <div className="space-y-2">
+            {emAtraso.map(os => <CardAtraso key={os.id} os={os} />)}
+          </div>
+        </div>
+      )}
+
+      {/* Seção 2: Notas de hoje */}
+      {notasHoje.length > 0 && (
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <Clock size={18} style={{ color: '#A0522D' }} />
+            <h3 className="font-extrabold text-base flex items-center gap-2" style={{ color: '#A0522D' }}>
+              Notas de hoje
+              <span className="text-white rounded-full px-2 py-0.5 text-xs font-bold" style={{ backgroundColor: '#A0522D' }}>
+                {notasHoje.length}
+              </span>
+            </h3>
+          </div>
+          <div className="space-y-2">
+            {notasHoje.map(os => <CardHoje key={os.id} os={os} />)}
+          </div>
+        </div>
+      )}
+
+      {/* Seção 3: Prazo hoje */}
+      {prazoHoje.length > 0 && (
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <Calendar size={18} className="text-orange-500" />
+            <h3 className="font-extrabold text-orange-600 text-base flex items-center gap-2">
+              Prazo hoje
+              <span className="bg-orange-500 text-white rounded-full px-2 py-0.5 text-xs font-bold">
+                {prazoHoje.length}
+              </span>
+            </h3>
+          </div>
+          <div className="space-y-2">
+            {prazoHoje.map(os => <CardPrazoHoje key={os.id} os={os} />)}
+          </div>
+        </div>
       )}
     </div>
   )
