@@ -801,9 +801,10 @@ function TabPrevisao() {
         {dados.dias.map(dia => (
           <div
             key={dia.data}
-            className={`card border-l-4 ${dia.destaque ? 'border-red-500' : 'border-amber-300'} ${dia.destaque ? 'bg-red-50' : ''}`}
+            className={`card border-l-4 ${dia.destaque ? 'border-red-500 bg-red-50' : 'border-amber-300'}`}
           >
-            <div className="flex items-center justify-between mb-2">
+            {/* Cabeçalho do dia */}
+            <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="font-extrabold text-gray-800">
                   {dia.dia_semana}, {formatarDiaMes(dia.data)}
@@ -815,42 +816,77 @@ function TabPrevisao() {
                 )}
               </div>
               <span className={`text-2xl font-black ${dia.destaque ? 'text-red-600' : 'text-amber-700'}`}>
-                {dia.qtd_os}
+                {dia.qtd_os} OS
               </span>
             </div>
-            {dia.ordens.length === 0 ? (
+
+            {dia.qtd_os === 0 ? (
               <p className="text-sm text-gray-400">Nenhuma OS com prazo neste dia</p>
             ) : (
-              <div className="space-y-1">
-                {dia.ordens.map(os => {
-                  const st = STATUS_LABEL[os.status] || { label: os.status, cls: 'bg-gray-100 text-gray-600' }
-                  return (
-                    <button
-                      key={os.id}
-                      onClick={() => navigate(`/os/${os.id}`)}
-                      className="w-full flex items-center justify-between text-left bg-white rounded-lg px-2 py-1.5 hover:bg-amber-50 transition-colors"
-                    >
-                      <div className="flex items-center gap-2 min-w-0">
-                        <span className="text-amber-700 font-bold text-xs shrink-0">
-                          #{String(os.numero).padStart(3, '0')}
-                        </span>
-                        <span className="text-sm font-semibold text-gray-800 truncate">
-                          {os.cliente_nome}
-                        </span>
+              <>
+                {/* Agrupamento por categoria */}
+                {dia.categorias.length > 0 && (
+                  <div className="space-y-2 mb-3">
+                    {dia.categorias.map(cat => (
+                      <div key={cat.categoria} className="bg-white rounded-xl p-2.5 border border-gray-200">
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="font-bold text-gray-800 text-sm">{cat.categoria}</span>
+                          <span className="text-xs font-semibold text-gray-500 bg-gray-100 rounded-full px-2 py-0.5">
+                            {cat.total_itens} {cat.total_itens === 1 ? 'item' : 'itens'}
+                          </span>
+                        </div>
+                        {cat.servicos.length > 0 && (
+                          <p className="text-xs text-gray-600">
+                            {cat.servicos.map(s => `${s.servico}: ${s.quantidade}`).join(' · ')}
+                          </p>
+                        )}
                       </div>
-                      <span className={`text-xs font-bold rounded-lg px-2 py-0.5 shrink-0 ml-2 ${st.cls}`}>
-                        {st.label}
-                      </span>
-                    </button>
-                  )
-                })}
-              </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Resumo total do dia */}
+                {dia.resumo_servicos.length > 0 && (
+                  <div className="bg-amber-50 border border-amber-200 rounded-xl p-2.5">
+                    <p className="text-xs font-extrabold text-amber-700 mb-1">Total do dia:</p>
+                    <p className="text-xs text-gray-700 leading-relaxed">
+                      {dia.resumo_servicos.map(s => `${s.servico} ${s.quantidade}`).join(' · ')}
+                    </p>
+                  </div>
+                )}
+
+                {/* Lista de OS clicáveis */}
+                <div className="mt-2 space-y-1">
+                  {dia.ordens.map(os => {
+                    const st = STATUS_LABEL[os.status] || { label: os.status, cls: 'bg-gray-100 text-gray-600' }
+                    return (
+                      <button
+                        key={os.id}
+                        onClick={() => navigate(`/os/${os.id}`)}
+                        className="w-full flex items-center justify-between text-left bg-white rounded-lg px-2 py-1.5 hover:bg-amber-50 transition-colors border border-gray-100"
+                      >
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="text-amber-700 font-bold text-xs shrink-0">
+                            #{String(os.numero).padStart(3, '0')}
+                          </span>
+                          <span className="text-sm font-semibold text-gray-800 truncate">
+                            {os.cliente_nome}
+                          </span>
+                        </div>
+                        <span className={`text-xs font-bold rounded-lg px-2 py-0.5 shrink-0 ml-2 ${st.cls}`}>
+                          {st.label}
+                        </span>
+                      </button>
+                    )
+                  })}
+                </div>
+              </>
             )}
           </div>
         ))}
       </div>
 
-      {/* Ranking de serviços previstos */}
+      {/* Ranking de serviços previstos na semana */}
       {dados.ranking_servicos.length > 0 && (
         <div className="card">
           <h3 className="font-bold text-gray-700 text-lg mb-3">Serviços previstos para a semana</h3>

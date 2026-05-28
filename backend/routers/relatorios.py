@@ -506,6 +506,10 @@ def previsao_servicos(
             models.OrdemServico.status != models.StatusOS.entregue,
         ).all()
 
+        # Agrupar por categoria e serviços para o dia
+        categorias_dict: dict = {}
+        resumo_dia: dict = {}
+
         for o in ordens:
             for item in o.itens:
                 try:
@@ -513,8 +517,36 @@ def previsao_servicos(
                 except Exception:
                     servicos = []
                 qtd = item.quantidade or 1
+                cat = item.categoria or "Sem categoria"
+
+                if cat not in categorias_dict:
+                    categorias_dict[cat] = {"total_itens": 0, "servicos": {}}
+                categorias_dict[cat]["total_itens"] += qtd
+
                 for s in servicos:
+                    categorias_dict[cat]["servicos"][s] = categorias_dict[cat]["servicos"].get(s, 0) + qtd
+                    resumo_dia[s] = resumo_dia.get(s, 0) + qtd
                     servicos_totais[s] = servicos_totais.get(s, 0) + qtd
+
+        categorias_list = sorted(
+            [
+                schemas.CategoriaPrevisao(
+                    categoria=cat,
+                    total_itens=data["total_itens"],
+                    servicos=sorted(
+                        [schemas.ServicoPrevisao(servico=s, quantidade=q) for s, q in data["servicos"].items()],
+                        key=lambda x: x.quantidade, reverse=True,
+                    ),
+                )
+                for cat, data in categorias_dict.items()
+            ],
+            key=lambda x: x.total_itens, reverse=True,
+        )
+
+        resumo_servicos = sorted(
+            [schemas.ServicoPrevisao(servico=s, quantidade=q) for s, q in resumo_dia.items()],
+            key=lambda x: x.quantidade, reverse=True,
+        )
 
         resultado.append(schemas.PrevisaoDia(
             data=dia_str,
@@ -526,6 +558,8 @@ def previsao_servicos(
                 cliente_nome=o.cliente.nome if o.cliente else "—",
                 status=o.status,
             ) for o in ordens],
+            categorias=categorias_list,
+            resumo_servicos=resumo_servicos,
             destaque=len(ordens) >= 5,
         ))
 

@@ -265,17 +265,25 @@ class OSPrevisaoDia(BaseModel):
     status: str
 
 
+class ServicoPrevisao(BaseModel):
+    servico: str
+    quantidade: int
+
+
+class CategoriaPrevisao(BaseModel):
+    categoria: str
+    total_itens: int
+    servicos: List[ServicoPrevisao]
+
+
 class PrevisaoDia(BaseModel):
     data: str
     dia_semana: str
     qtd_os: int
     ordens: List[OSPrevisaoDia]
+    categorias: List[CategoriaPrevisao] = []
+    resumo_servicos: List[ServicoPrevisao] = []
     destaque: bool = False
-
-
-class ServicoPrevisao(BaseModel):
-    servico: str
-    quantidade: int
 
 
 class PrevisaoResumo(BaseModel):

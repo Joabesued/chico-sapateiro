@@ -990,14 +990,32 @@ export default function DetalhesOS() {
                   </label>
                 </div>
 
-                <div className="grid grid-cols-3 gap-2">
-                  <div>
-                    <label className="block text-xs font-bold text-gray-600 mb-1">Qtd.</label>
-                    <input className="input-field text-sm py-2 text-center font-bold" type="number"
-                      inputMode="numeric" min="1" placeholder="1"
+                {/* Quantidade com +/- */}
+                <div>
+                  <label className="block text-xs font-bold text-gray-600 mb-1">Quantidade</label>
+                  <div className="flex items-center gap-1.5">
+                    <button type="button"
+                      onClick={() => setItemEdit(idx, 'quantidade', Math.max(1, (item.quantidade || 1) - 1))}
+                      className="w-8 h-9 rounded-lg border-2 border-gray-300 bg-white font-bold text-base text-gray-600 hover:border-amber-400 hover:bg-amber-50 flex items-center justify-center shrink-0 transition-colors">
+                      −
+                    </button>
+                    <input
+                      className="input-field text-sm py-2 text-center font-bold flex-1"
+                      type="number" inputMode="numeric" min="1"
                       value={item.quantidade || 1}
-                      onChange={e => setItemEdit(idx, 'quantidade', Math.max(1, parseInt(e.target.value) || 1))} />
+                      onChange={e => {
+                        const v = parseInt(e.target.value)
+                        if (!isNaN(v)) setItemEdit(idx, 'quantidade', Math.max(1, v))
+                      }}
+                    />
+                    <button type="button"
+                      onClick={() => setItemEdit(idx, 'quantidade', (item.quantidade || 1) + 1)}
+                      className="w-8 h-9 rounded-lg border-2 border-gray-300 bg-white font-bold text-base text-gray-600 hover:border-amber-400 hover:bg-amber-50 flex items-center justify-center shrink-0 transition-colors">
+                      +
+                    </button>
                   </div>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
                   <input className="input-field text-sm py-2" placeholder="Cor"
                     value={item.cor} onChange={e => setItemEdit(idx, 'cor', e.target.value)} />
                   <input className="input-field font-bold text-sm py-2" placeholder="Valor unit." inputMode="decimal"

@@ -457,20 +457,40 @@ function ItemEditor({
         )}
       </div>
 
-      {/* Quantidade + Cor + Valor */}
-      <div className="grid grid-cols-3 gap-3">
-        <div>
-          <label className="block font-bold text-gray-700 mb-1">Qtd.</label>
+      {/* Quantidade com +/- */}
+      <div>
+        <label className="block font-bold text-gray-700 mb-1">Quantidade</label>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => onSet('quantidade', Math.max(1, (item.quantidade || 1) - 1))}
+            className="w-11 h-11 rounded-xl border-2 border-gray-300 bg-white font-bold text-xl text-gray-700 hover:border-amber-400 hover:bg-amber-50 active:bg-amber-100 flex items-center justify-center shrink-0 transition-colors"
+          >
+            −
+          </button>
           <input
-            className="input-field font-bold text-center"
+            className="input-field font-bold text-center text-xl flex-1"
             type="number"
             inputMode="numeric"
             min="1"
-            placeholder="1"
-            value={item.quantidade}
-            onChange={e => onSet('quantidade', Math.max(1, parseInt(e.target.value) || 1))}
+            value={item.quantidade || 1}
+            onChange={e => {
+              const v = parseInt(e.target.value)
+              if (!isNaN(v)) onSet('quantidade', Math.max(1, v))
+            }}
           />
+          <button
+            type="button"
+            onClick={() => onSet('quantidade', (item.quantidade || 1) + 1)}
+            className="w-11 h-11 rounded-xl border-2 border-gray-300 bg-white font-bold text-xl text-gray-700 hover:border-amber-400 hover:bg-amber-50 active:bg-amber-100 flex items-center justify-center shrink-0 transition-colors"
+          >
+            +
+          </button>
         </div>
+      </div>
+
+      {/* Cor + Valor */}
+      <div className="grid grid-cols-2 gap-3">
         <div>
           <label className="block font-bold text-gray-700 mb-1">Cor do material</label>
           <input className="input-field" type="text" placeholder="Ex: Preto..."
@@ -596,8 +616,8 @@ function ItemConfirmadoCard({ item, idx, onEditar, onRemover }) {
             <p className="font-bold text-blue-600 text-sm">Sem cobrança</p>
           ) : qtd > 1 ? (
             <>
-              <p className="text-xs text-gray-500">{formatarValor(valorUnit)} cada</p>
-              <p className="font-extrabold text-amber-700 text-lg">{formatarValor(totalItem)}</p>
+              <p className="text-xs text-gray-500">{qtd}× · {formatarValor(valorUnit)} cada</p>
+              <p className="font-extrabold text-amber-700 text-lg">Total: {formatarValor(totalItem)}</p>
             </>
           ) : (
             <p className="font-extrabold text-amber-700 text-lg">{formatarValor(valorUnit)}</p>
