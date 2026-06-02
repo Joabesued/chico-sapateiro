@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
-import { Plus, Trash2, Check, X, UserCheck, Mic, MicOff, Camera, Edit2 } from 'lucide-react'
+import { Plus, Trash2, Check, X, UserCheck, Mic, MicOff, Camera, Edit2, Search } from 'lucide-react'
 import api from '../api.js'
 import SeletorPrazo from '../components/SeletorPrazo.jsx'
 
@@ -10,13 +10,27 @@ const CATEGORIAS_BASE = new Set([
   'Mala', 'Cinto', 'Bolsa', 'Capa de prancha', 'Carteira',
 ])
 
-// ─── Constantes ────────────────────────────────────────────────────────────────
-
 const SERVICOS = [
   'Retocar', 'Pintar', 'Solado', 'Protetor', 'Capa fixa',
   'Colagem', 'Costura', 'Trocar carrinho (mala)', 'Trocar roda',
   'Alça', 'Cabeçote', 'Ziper', 'Puxador',
 ]
+
+const SERVICO_ICONES = {
+  'Retocar': '✏️',
+  'Pintar': '🎨',
+  'Solado': '👟',
+  'Protetor': '🛡️',
+  'Capa fixa': '📦',
+  'Colagem': '🔗',
+  'Costura': '✂️',
+  'Trocar carrinho (mala)': '🧳',
+  'Trocar roda': '⚙️',
+  'Alça': '🪡',
+  'Cabeçote': '🔧',
+  'Ziper': '🔒',
+  'Puxador': '✋',
+}
 
 const CALCADOS = ['Sapato social', 'Tênis', 'Sapatênis', 'Mocassins', 'Sandália']
 const LADOS = ['Par', 'Pé esquerdo', 'Pé direito']
@@ -29,8 +43,6 @@ const VOZ_SUPORTADA = typeof window !== 'undefined' &&
 
 function ehCalcado(cat) { return CALCADOS.includes(cat) }
 function ehMala(cat) { return cat === 'Mala' }
-
-// ─── Utilitários ───────────────────────────────────────────────────────────────
 
 function parseMoeda(v) {
   return parseFloat(String(v).replace(',', '.')) || 0
@@ -79,13 +91,15 @@ async function uploadFotoSupabase(file) {
   return `${supabaseUrl}/storage/v1/object/public/os-fotos/${fileName}`
 }
 
-// ─── Sub-componente: editor de um item ─────────────────────────────────────────
+// ─── Sub-componente: stepper de criação de item ────────────────────────────────
 
-function ItemEditor({
+function ItemEditorStepper({
   item, categorias, onSet, onConfirm, onCancel,
   onAddCategoria, onDeleteCategoria, modoEdicao,
   servicosCustomDB, onAddServicoCustom, onDeleteServicoCustom,
 }) {
+  const [etapa, setEtapa] = useState(1)
+  const [buscaServico, setBuscaServico] = useState('')
   const [novaCategoriaModo, setNovaCategoriaModo] = useState(false)
   const [novaCategoriaNome, setNovaCategoriaNome] = useState('')
   const [servicoCustomModo, setServicoCustomModo] = useState(false)
@@ -94,6 +108,51 @@ function ItemEditor({
   const [uploadandoFoto, setUploadandoFoto] = useState(false)
   const recognitionRef = useRef(null)
   const fotoInputRef = useRef(null)
+
+  const calcado = ehCalcado(item.categoria)
+  const ehSandalia = item.categoria === 'Sandália'
+  const mala = ehMala(item.categoria)
+  const temTrocarRoda = item.servicos.includes('Trocar roda')
+  const valorUnit = parseMoeda(item.valor)
+  const qtd = item.quantidade || 1
+  const totalItem = valorUnit * qtd
+
+  const categoriasCalcados = categorias.filter(c => CALCADOS.includes(c.nome))
+  const categoriasDiversos = categorias.filter(c => !CALCADOS.includes(c.nome))
+
+  const customNomes = (servicosCustomDB || []).map(sc => sc.nome)
+  const servicosOrfaos = item.servicos.filter(s => !SERVICOS.includes(s) && !customNomes.includes(s))
+  const todasDisponiveis = [...SERVICOS, ...customNomes]
+  const servicosFiltrados = buscaServico.trim()
+    ? todasDisponiveis.filter(s => s.toLowerCase().includes(buscaServico.toLowerCase()))
+    : todasDisponiveis
+  const orfaosFiltrados = servicosOrfaos.filter(s =>
+    !buscaServico.trim() || s.toLowerCase().includes(buscaServico.toLowerCase())
+  )
+  const customFiltrados = (servicosCustomDB || []).filter(sc =>
+    !buscaServico.trim() || sc.nome.toLowerCase().includes(buscaServico.toLowerCase())
+  )
+
+  function podeAvancar1() {
+    if (!item.categoria) return false
+    if (calcado && !item.lado) return false
+    if (ehSandalia && !item.subcategoria) return false
+    if (mala && (!item.subcategoria || !item.lado)) return false
+    return true
+  }
+
+  function podeAvancar2() {
+    return item.servicos.length > 0
+  }
+
+  function handleCat(cat) {
+    const oldIsMala = ehMala(item.categoria)
+    const newIsMala = ehMala(cat)
+    const newIsCalcado = ehCalcado(cat)
+    onSet('categoria', cat)
+    if (cat !== 'Sandália') onSet('subcategoria', '')
+    if (oldIsMala || newIsMala || (!newIsCalcado && !newIsMala)) onSet('lado', '')
+  }
 
   function toggleServico(s) {
     const tem = item.servicos.includes(s)
@@ -162,216 +221,260 @@ function ItemEditor({
     }
   }
 
-  const temTrocarRoda = item.servicos.includes('Trocar roda')
-  const calcado = ehCalcado(item.categoria)
-  const ehSandalia = item.categoria === 'Sandália'
-  const mala = ehMala(item.categoria)
+  const NOMES_ETAPAS = ['Categoria', 'Serviços', 'Detalhes']
 
-  // Serviços no item que não estão nos padrão nem no DB (orfãos de sessões antigas)
-  const servicosOrfaos = item.servicos.filter(
-    s => !SERVICOS.includes(s) && !(servicosCustomDB || []).some(sc => sc.nome === s)
-  )
+  const btnCat = (ativa) =>
+    `px-4 py-2.5 rounded-xl font-semibold text-sm border-2 transition-colors ` +
+    (ativa ? 'bg-amber-600 text-white border-amber-600' : 'bg-white text-gray-700 border-gray-300 hover:border-amber-400')
 
   return (
-    <div className="border-2 border-amber-400 rounded-2xl p-4 space-y-4 bg-amber-50">
-      <span className="font-black text-amber-700 text-base">
+    <div className="border-2 border-amber-400 rounded-2xl p-4 bg-amber-50 space-y-5">
+
+      {/* Cabeçalho */}
+      <span className="font-black text-amber-700 text-base block">
         {modoEdicao ? 'Editando item' : 'Novo item'}
       </span>
 
-      {/* Categoria */}
-      <div>
-        <label className="block font-bold text-gray-700 mb-2">Categoria *</label>
-        <div className="flex flex-wrap gap-2">
-          {categorias.map(catObj => {
-            const cat = catObj.nome
-            const isBase = CATEGORIAS_BASE.has(cat)
-            const ativa = item.categoria === cat
-            return (
-              <div key={catObj.id} className="relative group">
-                <button
-                  type="button"
-                  onClick={() => {
-                    const oldIsMala = ehMala(item.categoria)
-                    const newIsMala = ehMala(cat)
-                    const newIsCalcado = ehCalcado(cat)
-                    onSet('categoria', cat)
-                    if (cat !== 'Sandália') onSet('subcategoria', '')
-                    if (oldIsMala || newIsMala || (!newIsCalcado && !newIsMala)) onSet('lado', '')
-                  }}
-                  className={`px-3 py-2 rounded-xl font-semibold text-sm border-2 transition-colors ` +
-                    (ativa
-                      ? 'bg-amber-600 text-white border-amber-600'
-                      : 'bg-white text-gray-700 border-gray-300 hover:border-amber-400') +
-                    (!isBase ? ' pr-7' : '')}
-                >
-                  {cat}
-                </button>
-                {!isBase && (
-                  <button
-                    type="button"
-                    onClick={e => { e.stopPropagation(); onDeleteCategoria(catObj.id, cat) }}
-                    className="absolute right-1 top-1/2 -translate-y-1/2 p-0.5 rounded text-red-400 hover:text-red-600 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-opacity"
-                    title="Excluir categoria"
-                  >
-                    <Trash2 size={12} />
-                  </button>
-                )}
+      {/* Barra de progresso */}
+      <div className="flex items-start">
+        {NOMES_ETAPAS.map((nome, i) => {
+          const n = i + 1
+          const concluida = etapa > n
+          const atual = etapa === n
+          return (
+            <div key={n} className="flex items-center flex-1 last:flex-none">
+              <div className="flex flex-col items-center">
+                <div className={
+                  `w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm border-2 transition-colors ` +
+                  (concluida ? 'bg-green-500 border-green-500 text-white' :
+                   atual     ? 'bg-amber-600 border-amber-600 text-white' :
+                               'bg-white border-gray-300 text-gray-400')
+                }>
+                  {concluida ? <Check size={14} /> : n}
+                </div>
+                <span className={`text-xs font-semibold mt-1 whitespace-nowrap ` + (atual ? 'text-amber-700' : 'text-gray-400')}>
+                  {nome}
+                </span>
               </div>
-            )
-          })}
-          {!novaCategoriaModo ? (
-            <button
-              type="button"
-              onClick={() => setNovaCategoriaModo(true)}
-              className="px-3 py-2 rounded-xl font-semibold text-sm border-2 border-dashed border-amber-400 text-amber-700 hover:bg-white flex items-center gap-1"
-            >
-              <Plus size={14} /> Nova
-            </button>
-          ) : (
-            <div className="flex items-center gap-1 w-full mt-1">
-              <input
-                autoFocus
-                className="input-field flex-1 py-2 text-sm"
-                placeholder="Nome da categoria"
-                value={novaCategoriaNome}
-                onChange={e => setNovaCategoriaNome(e.target.value)}
-                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); salvarNovaCategoria() } }}
-              />
-              <button type="button" onClick={salvarNovaCategoria}
-                className="bg-amber-600 text-white p-2 rounded-xl hover:bg-amber-700"><Check size={18} /></button>
-              <button type="button" onClick={() => { setNovaCategoriaModo(false); setNovaCategoriaNome('') }}
-                className="bg-gray-100 text-gray-600 p-2 rounded-xl hover:bg-gray-200"><X size={18} /></button>
+              {i < 2 && (
+                <div className={`flex-1 h-0.5 mb-5 mx-2 transition-colors ` + (etapa > n ? 'bg-green-400' : 'bg-gray-200')} />
+              )}
             </div>
-          )}
-        </div>
+          )
+        })}
       </div>
 
-      {/* Calçado — qual peça */}
-      {calcado && (
-        <div>
-          <label className="block font-bold text-gray-700 mb-2">Qual peça? *</label>
-          <div className="flex flex-wrap gap-2">
-            {LADOS.map(l => (
-              <button key={l} type="button" onClick={() => onSet('lado', l)}
-                className={`px-3 py-2 rounded-xl font-semibold text-sm border-2 transition-colors ` +
-                  (item.lado === l
-                    ? 'bg-amber-600 text-white border-amber-600'
-                    : 'bg-white text-gray-700 border-gray-300 hover:border-amber-400')}>
-                {l}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
+      {/* ── Etapa 1: Categoria ── */}
+      {etapa === 1 && (
+        <div className="space-y-4">
 
-      {/* Sandália — tipo */}
-      {ehSandalia && (
-        <div>
-          <label className="block font-bold text-gray-700 mb-2">Tipo de sandália *</label>
-          <div className="flex flex-wrap gap-2">
-            {SUBCATEGORIAS_SANDALIA.map(sc => (
-              <button key={sc} type="button" onClick={() => onSet('subcategoria', sc)}
-                className={`px-3 py-2 rounded-xl font-semibold text-sm border-2 transition-colors ` +
-                  (item.subcategoria === sc
-                    ? 'bg-amber-600 text-white border-amber-600'
-                    : 'bg-white text-gray-700 border-gray-300 hover:border-amber-400')}>
-                {sc}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Mala */}
-      {mala && (
-        <>
+          {/* Calçados */}
           <div>
-            <label className="block font-bold text-gray-700 mb-2">Tamanho *</label>
+            <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Calçados</p>
             <div className="flex flex-wrap gap-2">
-              {MALA_TAMANHOS.map(t => (
-                <button key={t} type="button" onClick={() => onSet('subcategoria', t)}
-                  className={`px-3 py-2 rounded-xl font-semibold text-sm border-2 transition-colors ` +
-                    (item.subcategoria === t
-                      ? 'bg-amber-600 text-white border-amber-600'
-                      : 'bg-white text-gray-700 border-gray-300 hover:border-amber-400')}>
-                  {t}
+              {categoriasCalcados.map(catObj => (
+                <button key={catObj.id} type="button" onClick={() => handleCat(catObj.nome)}
+                  className={btnCat(item.categoria === catObj.nome)}>
+                  {catObj.nome}
                 </button>
               ))}
             </div>
           </div>
+
+          {/* Sub-opção: qual peça? */}
+          {calcado && (
+            <div>
+              <label className="block font-bold text-gray-700 mb-2">Qual peça? *</label>
+              <div className="flex flex-wrap gap-2">
+                {LADOS.map(l => (
+                  <button key={l} type="button" onClick={() => onSet('lado', l)}
+                    className={btnCat(item.lado === l)}>
+                    {l}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Sub-opção: tipo de sandália */}
+          {ehSandalia && (
+            <div>
+              <label className="block font-bold text-gray-700 mb-2">Tipo de sandália *</label>
+              <div className="flex flex-wrap gap-2">
+                {SUBCATEGORIAS_SANDALIA.map(sc => (
+                  <button key={sc} type="button" onClick={() => onSet('subcategoria', sc)}
+                    className={btnCat(item.subcategoria === sc)}>
+                    {sc}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Diversos */}
           <div>
-            <label className="block font-bold text-gray-700 mb-2">Material *</label>
+            <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Diversos</p>
             <div className="flex flex-wrap gap-2">
-              {MALA_MATERIAIS.map(m => (
-                <button key={m} type="button" onClick={() => onSet('lado', m)}
-                  className={`px-3 py-2 rounded-xl font-semibold text-sm border-2 transition-colors ` +
-                    (item.lado === m
-                      ? 'bg-amber-600 text-white border-amber-600'
-                      : 'bg-white text-gray-700 border-gray-300 hover:border-amber-400')}>
-                  {m}
+              {categoriasDiversos.map(catObj => {
+                const cat = catObj.nome
+                const isBase = CATEGORIAS_BASE.has(cat)
+                return (
+                  <div key={catObj.id} className="relative group">
+                    <button type="button" onClick={() => handleCat(cat)}
+                      className={btnCat(item.categoria === cat) + (!isBase ? ' pr-7' : '')}>
+                      {cat}
+                    </button>
+                    {!isBase && (
+                      <button type="button"
+                        onClick={e => { e.stopPropagation(); onDeleteCategoria(catObj.id, cat) }}
+                        className="absolute right-1 top-1/2 -translate-y-1/2 p-0.5 rounded text-red-400 hover:text-red-600 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Trash2 size={12} />
+                      </button>
+                    )}
+                  </div>
+                )
+              })}
+              {!novaCategoriaModo ? (
+                <button type="button" onClick={() => setNovaCategoriaModo(true)}
+                  className="px-3 py-2 rounded-xl font-semibold text-sm border-2 border-dashed border-amber-400 text-amber-700 hover:bg-white flex items-center gap-1">
+                  <Plus size={14} /> Nova
                 </button>
-              ))}
+              ) : (
+                <div className="flex items-center gap-1 w-full mt-1">
+                  <input autoFocus className="input-field flex-1 py-2 text-sm"
+                    placeholder="Nome da categoria"
+                    value={novaCategoriaNome}
+                    onChange={e => setNovaCategoriaNome(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); salvarNovaCategoria() } }}
+                  />
+                  <button type="button" onClick={salvarNovaCategoria}
+                    className="bg-amber-600 text-white p-2 rounded-xl hover:bg-amber-700"><Check size={18} /></button>
+                  <button type="button" onClick={() => { setNovaCategoriaModo(false); setNovaCategoriaNome('') }}
+                    className="bg-gray-100 text-gray-600 p-2 rounded-xl hover:bg-gray-200"><X size={18} /></button>
+                </div>
+              )}
             </div>
           </div>
-        </>
+
+          {/* Sub-opções Mala */}
+          {mala && (
+            <div className="space-y-3">
+              <div>
+                <label className="block font-bold text-gray-700 mb-2">Tamanho *</label>
+                <div className="flex flex-wrap gap-2">
+                  {MALA_TAMANHOS.map(t => (
+                    <button key={t} type="button" onClick={() => onSet('subcategoria', t)}
+                      className={btnCat(item.subcategoria === t)}>
+                      {t}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <label className="block font-bold text-gray-700 mb-2">Material *</label>
+                <div className="flex flex-wrap gap-2">
+                  {MALA_MATERIAIS.map(m => (
+                    <button key={m} type="button" onClick={() => onSet('lado', m)}
+                      className={btnCat(item.lado === m)}>
+                      {m}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Navegação */}
+          <div className="flex gap-2 pt-2">
+            <button type="button" onClick={onCancel}
+              className="px-4 py-3 rounded-xl border-2 border-gray-300 text-gray-600 font-bold hover:bg-gray-50 flex items-center gap-1">
+              <X size={16} /> Cancelar
+            </button>
+            <button type="button" onClick={() => setEtapa(2)}
+              disabled={!podeAvancar1()}
+              className={`flex-1 py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-colors ` +
+                (podeAvancar1()
+                  ? 'bg-amber-600 text-white hover:bg-amber-700'
+                  : 'bg-gray-200 text-gray-400 cursor-not-allowed')}>
+              Próximo →
+            </button>
+          </div>
+        </div>
       )}
 
-      {/* Serviços */}
-      <div>
-        <label className="block font-bold text-gray-700 mb-2">
-          Serviços * <span className="font-normal text-gray-400 text-sm">(selecione um ou mais)</span>
-        </label>
-        <div className="flex flex-wrap gap-2">
-          {/* Serviços padrão */}
-          {SERVICOS.map(s => (
-            <button key={s} type="button" onClick={() => toggleServico(s)}
-              className={`px-3 py-2 rounded-xl font-semibold text-sm border-2 transition-colors ` +
-                (item.servicos.includes(s)
-                  ? 'bg-amber-600 text-white border-amber-600'
-                  : 'bg-white text-gray-700 border-gray-300 hover:border-amber-400')}>
-              {s}
-            </button>
-          ))}
+      {/* ── Etapa 2: Serviços ── */}
+      {etapa === 2 && (
+        <div className="space-y-4">
 
-          {/* Serviços customizados do banco */}
-          {(servicosCustomDB || []).map(sc => (
-            <div key={sc.id} className="relative group">
-              <button type="button" onClick={() => toggleServico(sc.nome)}
-                className={`px-3 py-2 rounded-xl font-semibold text-sm border-2 transition-colors pr-7 ` +
-                  (item.servicos.includes(sc.nome)
+          {/* Busca */}
+          <div className="relative">
+            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+            <input
+              className="input-field pl-9 text-sm"
+              type="search"
+              placeholder="Buscar serviço..."
+              value={buscaServico}
+              onChange={e => setBuscaServico(e.target.value)}
+            />
+          </div>
+
+          {/* Grid de serviços */}
+          <div className="grid grid-cols-3 gap-2">
+
+            {/* Serviços orfãos (já selecionados, fora do padrão/DB) */}
+            {orfaosFiltrados.map(s => (
+              <button key={s} type="button" onClick={() => toggleServico(s)}
+                className="flex flex-col items-center justify-center p-2 rounded-xl border-2 bg-amber-600 text-white border-amber-600 font-semibold text-xs gap-1 min-h-[72px]">
+                <span className="text-xl">🔧</span>
+                <span className="text-center leading-tight break-words w-full">{s}</span>
+              </button>
+            ))}
+
+            {/* Serviços padrão */}
+            {servicosFiltrados.filter(s => SERVICOS.includes(s)).map(s => (
+              <button key={s} type="button" onClick={() => toggleServico(s)}
+                className={`flex flex-col items-center justify-center p-2 rounded-xl border-2 font-semibold text-xs gap-1 transition-colors min-h-[72px] ` +
+                  (item.servicos.includes(s)
                     ? 'bg-amber-600 text-white border-amber-600'
-                    : 'bg-white text-gray-700 border-gray-300 hover:border-amber-400')}>
-                {sc.nome}
+                    : 'bg-white text-gray-700 border-gray-200 hover:border-amber-400')}>
+                <span className="text-xl">{SERVICO_ICONES[s] || '🔧'}</span>
+                <span className="text-center leading-tight break-words w-full">{s}</span>
               </button>
-              <button
-                type="button"
-                onClick={e => { e.stopPropagation(); onDeleteServicoCustom(sc.id, sc.nome) }}
-                className="absolute right-1 top-1/2 -translate-y-1/2 p-0.5 rounded text-red-400 hover:text-red-600 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-opacity"
-                title="Excluir serviço personalizado"
-              >
-                <Trash2 size={12} />
+            ))}
+
+            {/* Serviços personalizados do banco */}
+            {customFiltrados.map(sc => (
+              <div key={sc.id} className="relative">
+                <button type="button" onClick={() => toggleServico(sc.nome)}
+                  className={`w-full flex flex-col items-center justify-center p-2 rounded-xl border-2 font-semibold text-xs gap-1 transition-colors min-h-[72px] ` +
+                    (item.servicos.includes(sc.nome)
+                      ? 'bg-amber-600 text-white border-amber-600'
+                      : 'bg-white text-gray-700 border-gray-200 hover:border-amber-400')}>
+                  <span className="text-xl">⭐</span>
+                  <span className="text-center leading-tight break-words w-full">{sc.nome}</span>
+                </button>
+                <button type="button"
+                  onClick={e => { e.stopPropagation(); onDeleteServicoCustom(sc.id, sc.nome) }}
+                  className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-red-100 text-red-500 border border-red-200 flex items-center justify-center hover:bg-red-500 hover:text-white transition-colors z-10">
+                  <X size={10} />
+                </button>
+              </div>
+            ))}
+
+            {/* Botão adicionar serviço personalizado */}
+            {!servicoCustomModo && (
+              <button type="button" onClick={() => setServicoCustomModo(true)}
+                className="flex flex-col items-center justify-center p-2 rounded-xl border-2 border-dashed border-amber-400 text-amber-700 font-semibold text-xs gap-1 min-h-[72px] hover:bg-white transition-colors">
+                <Plus size={20} />
+                <span>Adicionar</span>
               </button>
-            </div>
-          ))}
+            )}
+          </div>
 
-          {/* Serviços orfãos (selecionados mas não no padrão/DB) */}
-          {servicosOrfaos.map(s => (
-            <button key={s} type="button" onClick={() => toggleServico(s)}
-              className="px-3 py-2 rounded-xl font-semibold text-sm border-2 bg-amber-600 text-white border-amber-600 flex items-center gap-1">
-              {s} <X size={14} />
-            </button>
-          ))}
-
-          {!servicoCustomModo ? (
-            <button type="button" onClick={() => setServicoCustomModo(true)}
-              className="px-3 py-2 rounded-xl font-semibold text-sm border-2 border-dashed border-amber-400 text-amber-700 hover:bg-white flex items-center gap-1">
-              <Plus size={14} /> Adicionar serviço
-            </button>
-          ) : (
-            <div className="flex items-center gap-1 w-full mt-1">
-              <input
-                autoFocus
-                className="input-field flex-1 py-2 text-sm"
+          {/* Input serviço personalizado */}
+          {servicoCustomModo && (
+            <div className="flex items-center gap-1">
+              <input autoFocus className="input-field flex-1 py-2 text-sm"
                 placeholder="Nome do serviço personalizado"
                 value={servicoCustomTexto}
                 onChange={e => setServicoCustomTexto(e.target.value)}
@@ -383,200 +486,188 @@ function ItemEditor({
                 className="bg-gray-100 text-gray-600 p-2 rounded-xl hover:bg-gray-200"><X size={18} /></button>
             </div>
           )}
-        </div>
 
-        {/* Qtd. rodas */}
-        {temTrocarRoda && (
-          <div className="mt-3 flex items-center gap-3">
-            <span className="font-semibold text-gray-700 text-sm">Quantidade de rodas:</span>
-            <div className="flex gap-2">
-              {[1, 2, 3, 4].map(n => (
-                <button key={n} type="button" onClick={() => onSet('qtd_rodas', n)}
-                  className={`w-10 h-10 rounded-xl font-bold text-base border-2 transition-colors ` +
-                    (item.qtd_rodas === n
-                      ? 'bg-amber-600 text-white border-amber-600'
-                      : 'bg-white text-gray-700 border-gray-300 hover:border-amber-400')}>
-                  {n}
+          {/* Sem resultados */}
+          {buscaServico.trim() && servicosFiltrados.length === 0 && orfaosFiltrados.length === 0 && customFiltrados.length === 0 && (
+            <p className="text-center text-gray-400 text-sm py-2">Nenhum serviço encontrado</p>
+          )}
+
+          {/* Qtd. rodas */}
+          {temTrocarRoda && (
+            <div className="flex items-center gap-3">
+              <span className="font-semibold text-gray-700 text-sm">Qtd. de rodas:</span>
+              <div className="flex gap-2">
+                {[1, 2, 3, 4].map(n => (
+                  <button key={n} type="button" onClick={() => onSet('qtd_rodas', n)}
+                    className={`w-10 h-10 rounded-xl font-bold text-base border-2 transition-colors ` +
+                      (item.qtd_rodas === n ? 'bg-amber-600 text-white border-amber-600' : 'bg-white text-gray-700 border-gray-300 hover:border-amber-400')}>
+                    {n}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Observação do serviço + voz */}
+          <div>
+            <label className="block font-bold text-gray-700 mb-1 text-sm">
+              Observação do serviço <span className="font-normal text-gray-400">(opcional)</span>
+            </label>
+            <div className="relative">
+              <textarea
+                className="input-field text-sm pr-12"
+                rows={2}
+                placeholder="Descreva o que deve ser feito..."
+                value={item.observacao_servico}
+                onChange={e => onSet('observacao_servico', e.target.value)}
+              />
+              {VOZ_SUPORTADA && (
+                <button type="button" onClick={gravando ? pararVoz : iniciarVoz}
+                  title={gravando ? 'Parar gravação' : 'Ditado por voz (pt-BR)'}
+                  className={`absolute right-2 top-2 p-2 rounded-xl transition-colors ` +
+                    (gravando ? 'bg-red-500 text-white animate-pulse' : 'bg-gray-100 text-gray-600 hover:bg-amber-100 hover:text-amber-700')}>
+                  {gravando ? <MicOff size={18} /> : <Mic size={18} />}
                 </button>
-              ))}
+              )}
+            </div>
+            {gravando && (
+              <p className="text-red-500 text-xs font-semibold mt-1 animate-pulse">Gravando... fale agora</p>
+            )}
+          </div>
+
+          {/* Revisão */}
+          <div>
+            <label className="flex items-center gap-3 cursor-pointer select-none">
+              <input type="checkbox" checked={item.revisao}
+                onChange={e => { onSet('revisao', e.target.checked); if (e.target.checked) onSet('valor', '0') }}
+                className="w-5 h-5 accent-blue-600 cursor-pointer"
+              />
+              <span className="font-bold text-gray-700">Marcar como revisão / garantia</span>
+            </label>
+            {item.revisao && (
+              <p className="text-xs text-blue-600 font-semibold mt-1">
+                Item sem cobrança — valor zerado automaticamente
+              </p>
+            )}
+          </div>
+
+          {/* Quantidade */}
+          <div>
+            <label className="block font-bold text-gray-700 mb-1">Quantidade</label>
+            <div className="flex items-center gap-2">
+              <button type="button"
+                onClick={() => onSet('quantidade', Math.max(1, qtd - 1))}
+                className="w-11 h-11 rounded-xl border-2 border-gray-300 bg-white font-bold text-xl text-gray-700 hover:border-amber-400 hover:bg-amber-50 active:bg-amber-100 flex items-center justify-center shrink-0 transition-colors">
+                −
+              </button>
+              <input className="input-field font-bold text-center text-xl flex-1"
+                type="number" inputMode="numeric" min="1" value={qtd}
+                onChange={e => { const v = parseInt(e.target.value); if (!isNaN(v)) onSet('quantidade', Math.max(1, v)) }}
+              />
+              <button type="button"
+                onClick={() => onSet('quantidade', qtd + 1)}
+                className="w-11 h-11 rounded-xl border-2 border-gray-300 bg-white font-bold text-xl text-gray-700 hover:border-amber-400 hover:bg-amber-50 active:bg-amber-100 flex items-center justify-center shrink-0 transition-colors">
+                +
+              </button>
             </div>
           </div>
-        )}
 
-        {/* Observação com voz */}
-        <div className="mt-3">
-          <label className="block font-bold text-gray-700 mb-1 text-sm">
-            Observação do serviço <span className="font-normal text-gray-400">(opcional)</span>
-          </label>
-          <div className="relative">
-            <textarea
-              className="input-field text-sm pr-12"
-              rows={2}
-              placeholder="Descreva livremente o que deve ser feito..."
-              value={item.observacao_servico}
-              onChange={e => onSet('observacao_servico', e.target.value)}
+          {/* Valor unitário */}
+          <div>
+            <label className="block font-bold text-gray-700 mb-1">Valor unit. (R$) *</label>
+            <input
+              className="input-field font-bold text-xl"
+              type="text" inputMode="decimal" placeholder="0,00"
+              value={item.valor}
+              onChange={e => onSet('valor', e.target.value)}
+              disabled={item.revisao}
             />
-            {VOZ_SUPORTADA && (
-              <button
-                type="button"
-                onClick={gravando ? pararVoz : iniciarVoz}
-                title={gravando ? 'Parar gravação' : 'Ditado por voz (pt-BR)'}
-                className={`absolute right-2 top-2 p-2 rounded-xl transition-colors ` +
-                  (gravando
-                    ? 'bg-red-500 text-white animate-pulse'
-                    : 'bg-gray-100 text-gray-600 hover:bg-amber-100 hover:text-amber-700')}
-              >
-                {gravando ? <MicOff size={18} /> : <Mic size={18} />}
+            {!item.revisao && valorUnit > 0 && qtd > 1 && (
+              <p className="text-sm text-amber-700 font-semibold mt-1">
+                Total: {formatarValor(totalItem)} ({qtd}× {formatarValor(valorUnit)})
+              </p>
+            )}
+          </div>
+
+          {/* Navegação */}
+          <div className="flex gap-2 pt-2">
+            <button type="button" onClick={() => setEtapa(1)}
+              className="px-4 py-3 rounded-xl border-2 border-gray-300 text-gray-600 font-bold hover:bg-gray-50 flex items-center gap-1">
+              ← Voltar
+            </button>
+            <button type="button" onClick={() => setEtapa(3)}
+              disabled={!podeAvancar2()}
+              className={`flex-1 py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-colors ` +
+                (podeAvancar2()
+                  ? 'bg-amber-600 text-white hover:bg-amber-700'
+                  : 'bg-gray-200 text-gray-400 cursor-not-allowed')}>
+              Próximo →
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── Etapa 3: Detalhes ── */}
+      {etapa === 3 && (
+        <div className="space-y-4">
+
+          {/* Cor */}
+          <div>
+            <label className="block font-bold text-gray-700 mb-1">Cor do material</label>
+            <input className="input-field" type="text" placeholder="Ex: Preto..."
+              value={item.cor} onChange={e => onSet('cor', e.target.value)} />
+          </div>
+
+          {/* Observação livre */}
+          <div>
+            <label className="block font-bold text-gray-700 mb-1">
+              Observação <span className="font-normal text-gray-400 text-sm">(opcional)</span>
+            </label>
+            <textarea className="input-field" rows={3} placeholder="Detalhes adicionais..."
+              value={item.descricao} onChange={e => onSet('descricao', e.target.value)} />
+          </div>
+
+          {/* Foto */}
+          <div>
+            <label className="block font-bold text-gray-700 mb-2">
+              Foto do item <span className="font-normal text-gray-400 text-sm">(JPG/PNG máx. 5MB)</span>
+            </label>
+            <input ref={fotoInputRef} type="file" accept="image/jpeg,image/png"
+              capture="environment" className="hidden" onChange={handleFotoChange} />
+            {item.foto_url ? (
+              <div className="flex items-center gap-3">
+                <img src={item.foto_url} alt="Foto do item"
+                  className="w-20 h-20 object-cover rounded-xl border-2 border-amber-300" />
+                <div className="flex flex-col gap-2">
+                  <button type="button" onClick={() => fotoInputRef.current?.click()}
+                    className="text-sm font-semibold text-amber-700 hover:underline">Trocar foto</button>
+                  <button type="button" onClick={() => onSet('foto_url', '')}
+                    className="text-sm font-semibold text-red-500 hover:underline">Remover foto</button>
+                </div>
+              </div>
+            ) : (
+              <button type="button" onClick={() => fotoInputRef.current?.click()}
+                disabled={uploadandoFoto}
+                className="flex items-center gap-2 px-4 py-2 rounded-xl border-2 border-dashed border-gray-300 text-gray-500 hover:border-amber-400 hover:text-amber-700 transition-colors font-semibold text-sm">
+                <Camera size={18} />
+                {uploadandoFoto ? 'Enviando...' : 'Adicionar foto'}
               </button>
             )}
           </div>
-          {gravando && (
-            <p className="text-red-500 text-xs font-semibold mt-1 animate-pulse">Gravando... fale agora</p>
-          )}
-        </div>
-      </div>
 
-      {/* Revisão */}
-      <div>
-        <label className="flex items-center gap-3 cursor-pointer select-none">
-          <input
-            type="checkbox"
-            checked={item.revisao}
-            onChange={e => {
-              onSet('revisao', e.target.checked)
-              if (e.target.checked) onSet('valor', '0')
-            }}
-            className="w-5 h-5 accent-blue-600 cursor-pointer"
-          />
-          <span className="font-bold text-gray-700">Marcar como revisão / garantia</span>
-        </label>
-        {item.revisao && (
-          <p className="text-xs text-blue-600 font-semibold mt-1">
-            Item sem cobrança — valor zerado automaticamente
-          </p>
-        )}
-      </div>
-
-      {/* Quantidade com +/- */}
-      <div>
-        <label className="block font-bold text-gray-700 mb-1">Quantidade</label>
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => onSet('quantidade', Math.max(1, (item.quantidade || 1) - 1))}
-            className="w-11 h-11 rounded-xl border-2 border-gray-300 bg-white font-bold text-xl text-gray-700 hover:border-amber-400 hover:bg-amber-50 active:bg-amber-100 flex items-center justify-center shrink-0 transition-colors"
-          >
-            −
-          </button>
-          <input
-            className="input-field font-bold text-center text-xl flex-1"
-            type="number"
-            inputMode="numeric"
-            min="1"
-            value={item.quantidade || 1}
-            onChange={e => {
-              const v = parseInt(e.target.value)
-              if (!isNaN(v)) onSet('quantidade', Math.max(1, v))
-            }}
-          />
-          <button
-            type="button"
-            onClick={() => onSet('quantidade', (item.quantidade || 1) + 1)}
-            className="w-11 h-11 rounded-xl border-2 border-gray-300 bg-white font-bold text-xl text-gray-700 hover:border-amber-400 hover:bg-amber-50 active:bg-amber-100 flex items-center justify-center shrink-0 transition-colors"
-          >
-            +
-          </button>
-        </div>
-      </div>
-
-      {/* Cor + Valor */}
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <label className="block font-bold text-gray-700 mb-1">Cor do material</label>
-          <input className="input-field" type="text" placeholder="Ex: Preto..."
-            value={item.cor} onChange={e => onSet('cor', e.target.value)} />
-        </div>
-        <div>
-          <label className="block font-bold text-gray-700 mb-1">Valor unit. (R$) *</label>
-          <input
-            className="input-field font-bold"
-            type="text"
-            inputMode="decimal"
-            placeholder="0,00"
-            value={item.valor}
-            onChange={e => onSet('valor', e.target.value)}
-            disabled={item.revisao}
-          />
-        </div>
-      </div>
-
-      {/* Descrição */}
-      <div>
-        <label className="block font-bold text-gray-700 mb-1">
-          Observação geral <span className="font-normal text-gray-400 text-sm">(opcional)</span>
-        </label>
-        <input className="input-field" type="text" placeholder="Detalhes adicionais..."
-          value={item.descricao} onChange={e => onSet('descricao', e.target.value)} />
-      </div>
-
-      {/* Foto */}
-      <div>
-        <label className="block font-bold text-gray-700 mb-2">
-          Foto do item <span className="font-normal text-gray-400 text-sm">(JPG/PNG máx. 5MB)</span>
-        </label>
-        <input
-          ref={fotoInputRef}
-          type="file"
-          accept="image/jpeg,image/png"
-          capture="environment"
-          className="hidden"
-          onChange={handleFotoChange}
-        />
-        {item.foto_url ? (
-          <div className="flex items-center gap-3">
-            <img src={item.foto_url} alt="Foto do item"
-              className="w-20 h-20 object-cover rounded-xl border-2 border-amber-300" />
-            <div className="flex flex-col gap-2">
-              <button type="button" onClick={() => fotoInputRef.current?.click()}
-                className="text-sm font-semibold text-amber-700 hover:underline">
-                Trocar foto
-              </button>
-              <button type="button" onClick={() => onSet('foto_url', '')}
-                className="text-sm font-semibold text-red-500 hover:underline">
-                Remover foto
-              </button>
-            </div>
+          {/* Navegação */}
+          <div className="flex gap-2 pt-2">
+            <button type="button" onClick={() => setEtapa(2)}
+              className="px-4 py-3 rounded-xl border-2 border-gray-300 text-gray-600 font-bold hover:bg-gray-50 flex items-center gap-1">
+              ← Voltar
+            </button>
+            <button type="button" onClick={onConfirm}
+              className="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2 text-base">
+              <Check size={20} /> {modoEdicao ? 'Atualizar item' : 'Confirmar item ✓'}
+            </button>
           </div>
-        ) : (
-          <button
-            type="button"
-            onClick={() => fotoInputRef.current?.click()}
-            disabled={uploadandoFoto}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl border-2 border-dashed border-gray-300 text-gray-500 hover:border-amber-400 hover:text-amber-700 transition-colors font-semibold text-sm"
-          >
-            <Camera size={18} />
-            {uploadandoFoto ? 'Enviando...' : 'Adicionar foto'}
-          </button>
-        )}
-      </div>
-
-      {/* Confirmar + Cancelar */}
-      <div className="flex gap-2">
-        <button
-          type="button"
-          onClick={onConfirm}
-          className="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2 text-base"
-        >
-          <Check size={20} /> {modoEdicao ? 'Atualizar item' : 'Confirmar item'}
-        </button>
-        <button
-          type="button"
-          onClick={onCancel}
-          className="flex-1 border-2 border-gray-300 text-gray-600 font-bold py-3 rounded-xl flex items-center justify-center gap-2 text-base hover:bg-gray-50"
-        >
-          <X size={20} /> Cancelar
-        </button>
-      </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -646,7 +737,6 @@ export default function NovaOS() {
   const [categorias, setCategorias] = useState([])
   const [servicosCustomDB, setServicosCustomDB] = useState([])
 
-  // Cliente
   const [clienteNome, setClienteNome] = useState('')
   const [clienteTelefone, setClienteTelefone] = useState('')
   const [clienteSelecionado, setClienteSelecionado] = useState(false)
@@ -654,7 +744,6 @@ export default function NovaOS() {
   const [mostrarSugestoes, setMostrarSugestoes] = useState(false)
   const blurTimer = useRef(null)
 
-  // Itens
   const [itensConfirmados, setItensConfirmados] = useState([])
   const [itemAtual, setItemAtual] = useState(itemVazio())
   const [editandoIdx, setEditandoIdx] = useState(null)
@@ -670,7 +759,6 @@ export default function NovaOS() {
     api.get('/servicos/').then(r => setServicosCustomDB(r.data)).catch(() => {})
   }, [])
 
-  // Autocomplete
   const busca = clienteNome.trim().toLowerCase()
   const buscaDig = clienteNome.replace(/\D/g, '')
   const sugestoes = busca.length < 1 ? [] : todosClientes.filter(c => {
@@ -910,7 +998,6 @@ export default function NovaOS() {
             Itens {qtdItens > 0 && <span className="text-amber-600">({qtdItens} confirmado{qtdItens > 1 ? 's' : ''})</span>}
           </h3>
 
-          {/* Itens confirmados */}
           {itensConfirmados.map((it, idx) => (
             <ItemConfirmadoCard
               key={idx}
@@ -921,16 +1008,14 @@ export default function NovaOS() {
             />
           ))}
 
-          {/* Feedback de sucesso temporário */}
           {feedbackSucesso && (
             <div className="bg-green-100 border-2 border-green-400 rounded-xl p-3 flex items-center gap-2 text-green-700 font-bold">
               <Check size={20} /> Item adicionado ✓
             </div>
           )}
 
-          {/* Editor do item atual */}
           {itemAtual !== null && (
-            <ItemEditor
+            <ItemEditorStepper
               item={itemAtual}
               categorias={categorias}
               onSet={setItemField}
@@ -945,7 +1030,6 @@ export default function NovaOS() {
             />
           )}
 
-          {/* Botão adicionar item — só aparece sem editor aberto */}
           {itemAtual === null && (
             <button
               type="button"
@@ -967,7 +1051,6 @@ export default function NovaOS() {
         <div className="card space-y-3">
           <h3 className="text-lg font-bold text-gray-700 border-b pb-2">Pagamento</h3>
 
-          {/* Total */}
           <div className="flex items-center justify-between bg-amber-50 rounded-xl px-4 py-3">
             <div>
               <p className="text-gray-500 text-sm font-semibold">Total</p>
@@ -978,27 +1061,21 @@ export default function NovaOS() {
             <p className="font-extrabold text-amber-700 text-xl">{formatarValor(totalLiquido)}</p>
           </div>
 
-          {/* Valor pago */}
           <div>
             <label className="block font-bold text-gray-700 mb-1">Valor pago (R$)</label>
             <input
               className={`input-field text-xl font-bold ` + (entradaInvalida ? 'border-red-400 focus:border-red-500' : '')}
-              type="text"
-              inputMode="decimal"
-              placeholder="0,00"
+              type="text" inputMode="decimal" placeholder="0,00"
               value={entrada}
               onChange={e => setEntrada(e.target.value)}
             />
           </div>
 
-          {/* Desconto */}
           <div>
             <label className="block font-bold text-gray-700 mb-1">Desconto (R$)</label>
             <input
               className="input-field"
-              type="text"
-              inputMode="decimal"
-              placeholder="0,00"
+              type="text" inputMode="decimal" placeholder="0,00"
               value={desconto}
               onChange={e => setDesconto(e.target.value)}
             />
@@ -1010,7 +1087,6 @@ export default function NovaOS() {
             </p>
           )}
 
-          {/* Resta */}
           <div className="flex items-center justify-between bg-orange-50 rounded-xl px-4 py-3">
             <p className="text-gray-500 text-sm font-semibold">Resta</p>
             <p className="font-extrabold text-orange-600 text-xl">{formatarValor(resta)}</p>
