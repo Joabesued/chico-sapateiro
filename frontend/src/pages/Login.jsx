@@ -2,11 +2,12 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import api from '../api.js'
+import logo from '../assets/logo.png'
 
 export default function Login() {
   const [form, setForm] = useState({ username: '', password: '' })
   const [loading, setLoading] = useState(false)
-  const [backendOk, setBackendOk] = useState(null) // null=verificando, true=ok, false=off
+  const [backendOk, setBackendOk] = useState(null)
   const navigate = useNavigate()
 
   useEffect(() => {
@@ -18,7 +19,6 @@ export default function Login() {
       await api.get('/auth/ping', { timeout: 3000 })
       setBackendOk(true)
     } catch (err) {
-      // 401/422 significa que o backend respondeu (está rodando)
       if (err.response) {
         setBackendOk(true)
       } else {
@@ -41,7 +41,6 @@ export default function Login() {
       navigate('/painel')
     } catch (err) {
       if (!err.response) {
-        // Sem resposta = backend desligado ou timeout
         toast.error('Servidor não encontrado. Verifique se o backend está rodando.')
         setBackendOk(false)
       } else if (err.response.status === 401) {
@@ -55,33 +54,47 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-screen bg-amber-700 flex flex-col items-center justify-center p-6">
-      <div className="bg-white rounded-3xl shadow-2xl p-8 w-full max-w-sm">
+    <div className="min-h-screen flex flex-col items-center justify-center p-6" style={{ backgroundColor: '#FAFAFA' }}>
+      <div className="bg-white w-full max-w-sm" style={{ borderRadius: 20, boxShadow: '0 4px 32px rgba(0,0,0,0.10)', padding: 32 }}>
         <div className="text-center mb-8">
-          <div className="text-6xl mb-3">👞</div>
-          <h1 className="text-3xl font-extrabold text-amber-800">Chico Sapateiro</h1>
-          <p className="text-gray-500 mt-1">Sistema de Gestão</p>
+          <div className="flex justify-center mb-4">
+            <img
+              src={logo}
+              alt="Chico Sapateiro"
+              style={{ height: 72, width: 'auto', objectFit: 'contain' }}
+              onError={e => {
+                e.target.style.display = 'none'
+                e.target.nextElementSibling.style.display = 'flex'
+              }}
+            />
+            <div style={{ display: 'none', backgroundColor: '#3E1F12', borderRadius: 16, width: 72, height: 72, alignItems: 'center', justifyContent: 'center', fontSize: 36 }}>
+              👟
+            </div>
+          </div>
+          <h1 className="text-2xl font-bold" style={{ color: '#1A1A1A' }}>
+            Chico <span style={{ color: '#A0522D' }}>Sapateiro</span>
+          </h1>
+          <p className="text-sm mt-1" style={{ color: '#999999' }}>Sistema de Gestão</p>
         </div>
 
-        {/* Indicador de status do backend */}
         {backendOk === false && (
-          <div className="mb-4 bg-red-50 border-2 border-red-300 rounded-xl p-3 text-center">
-            <p className="text-red-700 font-bold text-sm">Backend desligado</p>
-            <p className="text-red-500 text-xs mt-1">
+          <div className="mb-4 rounded-xl p-3 text-center" style={{ backgroundColor: '#FEE2E2', border: '1px solid #FECACA' }}>
+            <p className="font-bold text-sm" style={{ color: '#991B1B' }}>Backend desligado</p>
+            <p className="text-xs mt-1" style={{ color: '#b91c1c' }}>
               Inicie o servidor antes de fazer login.
               <br />Execute o arquivo <strong>iniciar.bat</strong>
             </p>
           </div>
         )}
         {backendOk === true && (
-          <div className="mb-4 bg-green-50 border-2 border-green-200 rounded-xl p-2 text-center">
-            <p className="text-green-600 font-semibold text-sm">Servidor conectado</p>
+          <div className="mb-4 rounded-xl p-2 text-center" style={{ backgroundColor: '#D1FAE5', border: '1px solid #A7F3D0' }}>
+            <p className="font-semibold text-sm" style={{ color: '#065F46' }}>Servidor conectado</p>
           </div>
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-lg font-bold text-gray-700 mb-2">Usuário</label>
+            <label className="block text-sm font-bold mb-2" style={{ color: '#1A1A1A' }}>Usuário</label>
             <input
               className="input-field"
               type="text"
@@ -92,7 +105,7 @@ export default function Login() {
             />
           </div>
           <div>
-            <label className="block text-lg font-bold text-gray-700 mb-2">Senha</label>
+            <label className="block text-sm font-bold mb-2" style={{ color: '#1A1A1A' }}>Senha</label>
             <input
               className="input-field"
               type="password"

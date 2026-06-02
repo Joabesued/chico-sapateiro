@@ -11,7 +11,6 @@ const OPCOES = [
 ]
 
 function toISO(d) {
-  // Garante formato YYYY-MM-DD no fuso local
   const pad = n => String(n).padStart(2, '0')
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
 }
@@ -49,10 +48,10 @@ export default function SeletorPrazo({ value, onChange }) {
               key={op.label}
               type="button"
               onClick={() => selecionar(data)}
-              className={`py-3 rounded-xl font-bold text-sm border-2 transition-colors ` +
-                (ativo
-                  ? 'bg-amber-600 text-white border-amber-600'
-                  : 'bg-white text-gray-700 border-gray-300 hover:border-amber-400 hover:bg-amber-50')}
+              className="py-3 rounded-xl font-bold text-sm transition-colors"
+              style={ativo
+                ? { backgroundColor: '#3E1F12', color: 'white', border: '2px solid #3E1F12' }
+                : { backgroundColor: 'white', color: '#374151', border: '2px solid #F0F0F0' }}
             >
               {op.label}
             </button>
@@ -64,10 +63,10 @@ export default function SeletorPrazo({ value, onChange }) {
       <button
         type="button"
         onClick={() => setModoCalendario(v => !v)}
-        className={`w-full flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-sm border-2 transition-colors ` +
-          (modoCalendario
-            ? 'bg-gray-700 text-white border-gray-700'
-            : 'bg-white text-gray-600 border-gray-300 hover:border-amber-400 hover:bg-amber-50')}
+        className="w-full flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-sm transition-colors"
+        style={modoCalendario
+          ? { backgroundColor: '#374151', color: 'white', border: '2px solid #374151' }
+          : { backgroundColor: 'white', color: '#374151', border: '2px solid #F0F0F0' }}
       >
         <Calendar size={16} />
         {modoCalendario ? 'Fechar calendário' : 'Escolher data'}
@@ -83,9 +82,8 @@ export default function SeletorPrazo({ value, onChange }) {
         />
       )}
 
-      {/* Data selecionada */}
       {value && (
-        <p className="text-center text-amber-700 font-bold text-base">
+        <p className="text-center font-bold text-base" style={{ color: '#3E1F12' }}>
           📅 {formatarData(value)}
         </p>
       )}

@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft } from 'lucide-react'
 import toast from 'react-hot-toast'
 import api from '../api.js'
-import StatusBadge, { PagamentoBadge } from '../components/StatusBadge.jsx'
+import StatusBadge, { PagamentoBadge, STATUS_BAR_COLOR } from '../components/StatusBadge.jsx'
 
 function formatarData(dt) {
   if (!dt) return '—'
@@ -55,15 +55,19 @@ export default function ClienteDetalhe() {
     }
   }
 
-  if (loading) return <p className="text-center py-10 text-lg text-gray-500">Carregando...</p>
+  if (loading) return <p className="text-center py-10 text-lg" style={{ color: '#999999' }}>Carregando...</p>
 
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-3">
-        <button onClick={() => navigate('/clientes')} className="p-2 rounded-xl hover:bg-amber-100">
+        <button
+          onClick={() => navigate('/clientes')}
+          className="p-2 rounded-xl transition-colors hover:bg-gray-100"
+          style={{ color: '#3E1F12' }}
+        >
           <ArrowLeft size={26} />
         </button>
-        <h2 className="text-2xl font-extrabold text-gray-800">Histórico do Cliente</h2>
+        <h2 className="text-2xl font-extrabold" style={{ color: '#1A1A1A' }}>Histórico do Cliente</h2>
       </div>
 
       {/* Info do cliente */}
@@ -91,14 +95,14 @@ export default function ClienteDetalhe() {
           <>
             <div className="flex items-start justify-between">
               <div>
-                <p className="text-2xl font-bold text-gray-900">{cliente?.nome}</p>
-                <p className="text-gray-500 text-lg">{cliente?.telefone || 'Sem telefone'}</p>
+                <p className="text-2xl font-bold" style={{ color: '#1A1A1A' }}>{cliente?.nome}</p>
+                <p className="text-lg" style={{ color: '#999999' }}>{cliente?.telefone || 'Sem telefone'}</p>
               </div>
               <button onClick={() => setEditando(true)} className="btn-secondary text-sm py-2 px-3">
                 Editar
               </button>
             </div>
-            <p className="text-gray-500">{ordens.length} {ordens.length === 1 ? 'ordem' : 'ordens'} no total</p>
+            <p style={{ color: '#999999' }}>{ordens.length} {ordens.length === 1 ? 'ordem' : 'ordens'} no total</p>
           </>
         )}
       </div>
@@ -106,33 +110,35 @@ export default function ClienteDetalhe() {
       {/* Ordens */}
       <div className="space-y-3">
         {ordens.length === 0 ? (
-          <p className="text-center text-gray-400 py-8 text-lg">Nenhuma OS encontrada.</p>
+          <p className="text-center py-8 text-lg" style={{ color: '#999999' }}>Nenhuma OS encontrada.</p>
         ) : ordens.map(os => (
           <button
             key={os.id}
             onClick={() => navigate(`/os/${os.id}`)}
-            className="card w-full text-left hover:shadow-lg active:scale-[0.99] transition-all"
+            className="w-full text-left hover:shadow-md active:scale-[0.99] transition-all overflow-hidden"
+            style={{ background: 'white', borderRadius: 14, boxShadow: '0 1px 6px rgba(0,0,0,0.06)', border: '1px solid #F0F0F0', display: 'flex' }}
           >
-            <div className="flex items-start justify-between gap-3">
+            <div style={{ width: 3, backgroundColor: STATUS_BAR_COLOR[os.status] || '#F0F0F0', borderRadius: '14px 0 0 14px', flexShrink: 0 }} />
+            <div className="flex-1 p-4 flex items-start justify-between gap-3">
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-1 flex-wrap">
-                  <span className="text-amber-700 font-black text-sm">
+                  <span className="font-black text-sm" style={{ color: '#A0522D' }}>
                     #{String(os.numero).padStart(3, '0')}
                   </span>
                   <StatusBadge status={os.status} />
                   <PagamentoBadge status={os.status_pagamento} />
                 </div>
-                <p className="text-gray-700 font-semibold text-sm truncate">
+                <p className="font-semibold text-sm truncate" style={{ color: '#4B5563' }}>
                   {os.itens.length === 1
                     ? `${os.itens[0].categoria} — ${(os.itens[0].servicos || []).join(', ')}`
                     : `${os.itens.length} itens`}
                 </p>
-                <p className="text-sm text-gray-400">{formatarData(os.criado_em)}</p>
+                <p className="text-sm" style={{ color: '#999999' }}>{formatarData(os.criado_em)}</p>
               </div>
               <div className="text-right shrink-0">
-                <p className="text-xl font-extrabold text-amber-700">{formatarValor(os.total)}</p>
+                <p className="text-xl font-extrabold" style={{ color: '#A0522D' }}>{formatarValor(os.total)}</p>
                 {os.resta > 0 && (
-                  <p className="text-sm text-orange-500 font-semibold">Resta {formatarValor(os.resta)}</p>
+                  <p className="text-sm font-semibold" style={{ color: '#F59E0B' }}>Resta {formatarValor(os.resta)}</p>
                 )}
               </div>
             </div>

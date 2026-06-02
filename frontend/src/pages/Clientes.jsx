@@ -69,20 +69,20 @@ export default function Clientes() {
   return (
     <div className="space-y-4">
       {!loading && clientes.length > 0 && (
-        <div className="flex items-center gap-2 bg-blue-50 border border-blue-200 rounded-xl px-4 py-2 text-blue-700 font-semibold text-sm">
+        <div className="rounded-xl px-4 py-2 text-sm font-semibold flex items-center gap-2" style={{ backgroundColor: '#F5ECD7', color: '#3E1F12' }}>
           <span>👥</span>
           <span>{clientes.length} cliente{clientes.length !== 1 ? 's' : ''} cadastrado{clientes.length !== 1 ? 's' : ''}</span>
         </div>
       )}
 
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-extrabold text-gray-800">Clientes</h2>
+        <h2 className="text-2xl font-extrabold" style={{ color: '#1A1A1A' }}>Clientes</h2>
         <button
           onClick={() => setNovoModo(m => !m)}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-sm border-2 transition-colors ` +
-            (novoModo
-              ? 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'
-              : 'bg-amber-600 text-white border-amber-600 hover:bg-amber-700')}
+          className="flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-sm transition-colors"
+          style={novoModo
+            ? { backgroundColor: 'white', color: '#4B5563', border: '1px solid #F0F0F0' }
+            : { backgroundColor: '#3E1F12', color: 'white', border: '1px solid #3E1F12' }}
         >
           {novoModo ? <X size={16} /> : <Plus size={16} />}
           {novoModo ? 'Cancelar' : 'Novo cliente'}
@@ -91,8 +91,8 @@ export default function Clientes() {
 
       {/* Formulário de cadastro */}
       {novoModo && (
-        <div className="card space-y-3 border-2 border-amber-300">
-          <h3 className="font-bold text-gray-700">Cadastrar novo cliente</h3>
+        <div className="card space-y-3" style={{ border: '1px solid #E8D5B0' }}>
+          <h3 className="font-bold" style={{ color: '#1A1A1A' }}>Cadastrar novo cliente</h3>
           <input
             className="input-field"
             type="text"
@@ -122,7 +122,7 @@ export default function Clientes() {
 
       {/* Busca */}
       <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={22} />
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2" size={22} style={{ color: '#999999' }} />
         <input
           className="input-field pl-10"
           type="text"
@@ -133,36 +133,37 @@ export default function Clientes() {
       </div>
 
       {loading ? (
-        <p className="text-center py-10 text-gray-500 text-lg">Carregando...</p>
+        <p className="text-center py-10 text-lg" style={{ color: '#999999' }}>Carregando...</p>
       ) : filtrados.length === 0 ? (
-        <p className="text-center py-10 text-gray-400 text-lg">Nenhum cliente encontrado.</p>
+        <p className="text-center py-10 text-lg" style={{ color: '#999999' }}>Nenhum cliente encontrado.</p>
       ) : (
         <div className="space-y-3">
           {filtrados.map(c => (
             <div
               key={c.id}
-              className="card hover:shadow-lg active:scale-[0.99] transition-all cursor-pointer"
+              className="card hover:shadow-md active:scale-[0.99] transition-all cursor-pointer"
               onClick={() => navigate(`/clientes/${c.id}`)}
             >
               <div className="flex items-center justify-between">
                 <div className="flex-1 min-w-0">
-                  <p className="text-xl font-bold text-gray-900">{c.nome}</p>
-                  <p className="text-gray-500">{c.telefone || 'Sem telefone'}</p>
+                  <p className="text-xl font-bold" style={{ color: '#1A1A1A' }}>{c.nome}</p>
+                  <p style={{ color: '#999999' }}>{c.telefone || 'Sem telefone'}</p>
                   {c.ultima_os && (
-                    <p className="text-sm text-gray-400 mt-0.5">
+                    <p className="text-sm mt-0.5" style={{ color: '#999999' }}>
                       Última OS: {formatarData(c.ultima_os)}
                     </p>
                   )}
                 </div>
                 <div className="flex items-center gap-3 ml-2">
                   <div className="text-right">
-                    <span className="text-3xl font-black text-amber-600">{c.total_os}</span>
-                    <p className="text-sm text-gray-400">{c.total_os === 1 ? 'ordem' : 'ordens'}</p>
+                    <span className="text-3xl font-black" style={{ color: '#A0522D' }}>{c.total_os}</span>
+                    <p className="text-sm" style={{ color: '#999999' }}>{c.total_os === 1 ? 'ordem' : 'ordens'}</p>
                   </div>
                   <button
                     onClick={e => removerCliente(e, c.id)}
                     disabled={removendoId === c.id}
-                    className="p-2 rounded-xl bg-red-50 text-red-400 hover:bg-red-100 hover:text-red-600 transition-colors"
+                    className="p-2 rounded-xl transition-colors"
+                    style={{ backgroundColor: '#FEE2E2', color: '#f87171' }}
                     title="Remover cliente"
                   >
                     <Trash2 size={18} />

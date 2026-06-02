@@ -71,7 +71,7 @@ async function uploadFotoSupabase(file) {
   return `${supabaseUrl}/storage/v1/object/public/os-fotos/${fileName}`
 }
 
-// ─── Stepper de criação de item ────────────────────────────────────────────────
+// ─── Stepper de criação de item ─────────────────────────────────────────────────
 
 function ItemEditorStepper({
   item, categorias, onSet, onConfirm, onCancel,
@@ -80,7 +80,7 @@ function ItemEditorStepper({
 }) {
   const [etapa, setEtapa] = useState(1)
   const [buscaServico, setBuscaServico] = useState('')
-  const [novaCategoriaModo, setNovaCategoriaModo] = useState(null) // null | 'calcado' | 'diverso'
+  const [novaCategoriaModo, setNovaCategoriaModo] = useState(null)
   const [novaCategoriaNome, setNovaCategoriaNome] = useState('')
   const [servicoCustomModo, setServicoCustomModo] = useState(false)
   const [servicoCustomTexto, setServicoCustomTexto] = useState('')
@@ -89,11 +89,9 @@ function ItemEditorStepper({
   const recognitionRef = useRef(null)
   const fotoInputRef = useRef(null)
 
-  // Categorias separadas por tipo
   const categoriasCalcados = categorias.filter(c => c.tipo === 'calcado')
   const categoriasDiversos = categorias.filter(c => c.tipo === 'diverso')
 
-  // Derivados do item atual
   const calcado = categoriasCalcados.some(c => c.nome === item.categoria)
   const ehSandalia = item.categoria === 'Sandália'
   const mala = ehMala(item.categoria)
@@ -102,7 +100,6 @@ function ItemEditorStepper({
   const qtd = item.quantidade || 1
   const totalItem = valorUnit * qtd
 
-  // Serviços filtrados
   const customNomes = (servicosCustomDB || []).map(sc => sc.nome)
   const servicosOrfaos = item.servicos.filter(s => !SERVICOS.includes(s) && !customNomes.includes(s))
   const todasDisponiveis = [...SERVICOS, ...customNomes]
@@ -116,7 +113,6 @@ function ItemEditorStepper({
     !buscaServico.trim() || s.toLowerCase().includes(buscaServico.toLowerCase())
   )
 
-  // Validações de navegação
   function podeAvancar1() {
     if (!item.categoria) return false
     if (calcado && !item.lado) return false
@@ -129,7 +125,6 @@ function ItemEditorStepper({
     return item.servicos.length > 0
   }
 
-  // Handler de categoria (mesma lógica do original)
   function handleCat(cat) {
     const oldIsMala = ehMala(item.categoria)
     const newIsMala = ehMala(cat)
@@ -197,11 +192,19 @@ function ItemEditorStepper({
 
   const NOMES_ETAPAS = ['Categoria', 'Serviços', 'Observações']
 
-  const btnCat = (ativa) =>
-    `px-4 py-2.5 rounded-xl font-semibold text-sm border-2 transition-colors ` +
-    (ativa ? 'bg-amber-600 text-white border-amber-600' : 'bg-white text-gray-700 border-gray-300 hover:border-amber-400')
+  const btnCat = (ativa) => ({
+    padding: '10px 16px',
+    borderRadius: 10,
+    fontWeight: 600,
+    fontSize: 13,
+    border: '1px solid',
+    cursor: 'pointer',
+    transition: 'all 0.15s',
+    backgroundColor: ativa ? '#3E1F12' : 'white',
+    color: ativa ? 'white' : '#374151',
+    borderColor: ativa ? '#3E1F12' : '#E8D5B0',
+  })
 
-  // Formulário de nova categoria (reutilizado nas 2 seções)
   function InputNovaCategoria() {
     return (
       <div className="flex items-center gap-1 w-full mt-1">
@@ -212,17 +215,21 @@ function ItemEditorStepper({
           onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); salvarNovaCategoria() } }}
         />
         <button type="button" onClick={salvarNovaCategoria}
-          className="bg-amber-600 text-white p-2 rounded-xl hover:bg-amber-700"><Check size={18} /></button>
+          className="text-white p-2 rounded-xl" style={{ backgroundColor: '#3E1F12' }}>
+          <Check size={18} />
+        </button>
         <button type="button" onClick={() => { setNovaCategoriaModo(null); setNovaCategoriaNome('') }}
-          className="bg-gray-100 text-gray-600 p-2 rounded-xl hover:bg-gray-200"><X size={18} /></button>
+          className="bg-gray-100 text-gray-600 p-2 rounded-xl hover:bg-gray-200">
+          <X size={18} />
+        </button>
       </div>
     )
   }
 
   return (
-    <div className="border-2 border-amber-400 rounded-2xl p-4 bg-amber-50 space-y-5">
+    <div className="rounded-2xl p-4 space-y-5" style={{ border: '1px solid #E8D5B0', backgroundColor: '#F5ECD7' }}>
 
-      <span className="font-black text-amber-700 text-base block">
+      <span className="font-black text-base block" style={{ color: '#3E1F12' }}>
         {modoEdicao ? 'Editando item' : 'Novo item'}
       </span>
 
@@ -235,20 +242,22 @@ function ItemEditorStepper({
           return (
             <div key={n} className="flex items-center flex-1 last:flex-none">
               <div className="flex flex-col items-center">
-                <div className={
-                  `w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm border-2 transition-colors ` +
-                  (concluida ? 'bg-green-500 border-green-500 text-white' :
-                   atual     ? 'bg-amber-600 border-amber-600 text-white' :
-                               'bg-white border-gray-300 text-gray-400')
-                }>
+                <div className="w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm transition-colors"
+                  style={concluida
+                    ? { backgroundColor: '#10B981', color: 'white' }
+                    : atual
+                    ? { backgroundColor: '#3E1F12', color: 'white' }
+                    : { backgroundColor: 'white', color: '#999999', border: '1px solid #E8D5B0' }}>
                   {concluida ? <Check size={14} /> : n}
                 </div>
-                <span className={`text-xs font-semibold mt-1 whitespace-nowrap ` + (atual ? 'text-amber-700' : 'text-gray-400')}>
+                <span className="text-xs font-semibold mt-1 whitespace-nowrap"
+                  style={{ color: atual ? '#3E1F12' : '#999999' }}>
                   {nome}
                 </span>
               </div>
               {i < 2 && (
-                <div className={`flex-1 h-0.5 mb-5 mx-2 transition-colors ` + (etapa > n ? 'bg-green-400' : 'bg-gray-200')} />
+                <div className="flex-1 h-0.5 mb-5 mx-2 transition-colors"
+                  style={{ backgroundColor: etapa > n ? '#10B981' : '#E8D5B0' }} />
               )}
             </div>
           )
@@ -258,17 +267,15 @@ function ItemEditorStepper({
       {/* ── Etapa 1: Categoria ── */}
       {etapa === 1 && (
         <div className="space-y-4">
-
-          {/* Seção: Calçados */}
           <div>
-            <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Calçados</p>
+            <p className="text-xs font-bold uppercase tracking-wider mb-2" style={{ color: '#999999' }}>Calçados</p>
             <div className="flex flex-wrap gap-2">
               {categoriasCalcados.map(catObj => {
                 const isBase = CATEGORIAS_BASE.has(catObj.nome)
                 return (
                   <div key={catObj.id} className="relative group">
                     <button type="button" onClick={() => handleCat(catObj.nome)}
-                      className={btnCat(item.categoria === catObj.nome) + (!isBase ? ' pr-7' : '')}>
+                      style={{ ...btnCat(item.categoria === catObj.nome), paddingRight: !isBase ? 28 : 16 }}>
                       {catObj.nome}
                     </button>
                     {!isBase && (
@@ -285,49 +292,47 @@ function ItemEditorStepper({
                 <InputNovaCategoria />
               ) : (
                 <button type="button" onClick={() => setNovaCategoriaModo('calcado')}
-                  className="px-3 py-2 rounded-xl font-semibold text-sm border-2 border-dashed border-amber-400 text-amber-700 hover:bg-white flex items-center gap-1">
+                  className="flex items-center gap-1 font-semibold text-sm"
+                  style={{ padding: '10px 16px', borderRadius: 10, border: '1px dashed #A0522D', color: '#A0522D', backgroundColor: 'transparent' }}>
                   <Plus size={14} /> Novo calçado
                 </button>
               )}
             </div>
           </div>
 
-          {/* Sub-opção: qual peça? */}
           {calcado && (
             <div>
-              <label className="block font-bold text-gray-700 mb-2">Qual peça? *</label>
+              <label className="block font-bold mb-2" style={{ color: '#1A1A1A' }}>Qual peça? *</label>
               <div className="flex flex-wrap gap-2">
                 {LADOS.map(l => (
                   <button key={l} type="button" onClick={() => onSet('lado', l)}
-                    className={btnCat(item.lado === l)}>{l}</button>
+                    style={btnCat(item.lado === l)}>{l}</button>
                 ))}
               </div>
             </div>
           )}
 
-          {/* Sub-opção: tipo de sandália */}
           {ehSandalia && (
             <div>
-              <label className="block font-bold text-gray-700 mb-2">Tipo de sandália *</label>
+              <label className="block font-bold mb-2" style={{ color: '#1A1A1A' }}>Tipo de sandália *</label>
               <div className="flex flex-wrap gap-2">
                 {SUBCATEGORIAS_SANDALIA.map(sc => (
                   <button key={sc} type="button" onClick={() => onSet('subcategoria', sc)}
-                    className={btnCat(item.subcategoria === sc)}>{sc}</button>
+                    style={btnCat(item.subcategoria === sc)}>{sc}</button>
                 ))}
               </div>
             </div>
           )}
 
-          {/* Seção: Diversos */}
           <div>
-            <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Diversos</p>
+            <p className="text-xs font-bold uppercase tracking-wider mb-2" style={{ color: '#999999' }}>Diversos</p>
             <div className="flex flex-wrap gap-2">
               {categoriasDiversos.map(catObj => {
                 const isBase = CATEGORIAS_BASE.has(catObj.nome)
                 return (
                   <div key={catObj.id} className="relative group">
                     <button type="button" onClick={() => handleCat(catObj.nome)}
-                      className={btnCat(item.categoria === catObj.nome) + (!isBase ? ' pr-7' : '')}>
+                      style={{ ...btnCat(item.categoria === catObj.nome), paddingRight: !isBase ? 28 : 16 }}>
                       {catObj.nome}
                     </button>
                     {!isBase && (
@@ -344,77 +349,76 @@ function ItemEditorStepper({
                 <InputNovaCategoria />
               ) : (
                 <button type="button" onClick={() => setNovaCategoriaModo('diverso')}
-                  className="px-3 py-2 rounded-xl font-semibold text-sm border-2 border-dashed border-amber-400 text-amber-700 hover:bg-white flex items-center gap-1">
+                  className="flex items-center gap-1 font-semibold text-sm"
+                  style={{ padding: '10px 16px', borderRadius: 10, border: '1px dashed #A0522D', color: '#A0522D', backgroundColor: 'transparent' }}>
                   <Plus size={14} /> Novo diverso
                 </button>
               )}
             </div>
           </div>
 
-          {/* Sub-opções Mala */}
           {mala && (
             <div className="space-y-3">
               <div>
-                <label className="block font-bold text-gray-700 mb-2">Tamanho *</label>
+                <label className="block font-bold mb-2" style={{ color: '#1A1A1A' }}>Tamanho *</label>
                 <div className="flex flex-wrap gap-2">
                   {MALA_TAMANHOS.map(t => (
                     <button key={t} type="button" onClick={() => onSet('subcategoria', t)}
-                      className={btnCat(item.subcategoria === t)}>{t}</button>
+                      style={btnCat(item.subcategoria === t)}>{t}</button>
                   ))}
                 </div>
               </div>
               <div>
-                <label className="block font-bold text-gray-700 mb-2">Material *</label>
+                <label className="block font-bold mb-2" style={{ color: '#1A1A1A' }}>Material *</label>
                 <div className="flex flex-wrap gap-2">
                   {MALA_MATERIAIS.map(m => (
                     <button key={m} type="button" onClick={() => onSet('lado', m)}
-                      className={btnCat(item.lado === m)}>{m}</button>
+                      style={btnCat(item.lado === m)}>{m}</button>
                   ))}
                 </div>
               </div>
             </div>
           )}
 
-          {/* Navegação etapa 1 */}
           <div className="flex gap-2 pt-2">
             <button type="button" onClick={onCancel}
-              className="px-4 py-3 rounded-xl border-2 border-gray-300 text-gray-600 font-bold hover:bg-gray-50 flex items-center gap-1">
+              className="px-4 py-3 rounded-xl font-bold hover:bg-gray-50 flex items-center gap-1"
+              style={{ border: '1px solid #E8D5B0', color: '#4B5563' }}>
               <X size={16} /> Cancelar
             </button>
             <button type="button" onClick={() => setEtapa(2)}
               disabled={!podeAvancar1()}
-              className={`flex-1 py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-colors ` +
-                (podeAvancar1() ? 'bg-amber-600 text-white hover:bg-amber-700' : 'bg-gray-200 text-gray-400 cursor-not-allowed')}>
+              className="flex-1 py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-colors"
+              style={podeAvancar1()
+                ? { backgroundColor: '#3E1F12', color: 'white' }
+                : { backgroundColor: '#E5E7EB', color: '#9CA3AF', cursor: 'not-allowed' }}>
               Próximo →
             </button>
           </div>
         </div>
       )}
 
-      {/* ── Etapa 2: Serviços + Cor + Quantidade + Valor ── */}
+      {/* ── Etapa 2: Serviços ── */}
       {etapa === 2 && (
         <div className="space-y-4">
-
-          {/* Cor — primeiro campo */}
           <div>
-            <label className="block font-bold text-gray-700 mb-1">Cor do material</label>
+            <label className="block font-bold mb-1" style={{ color: '#1A1A1A' }}>Cor do material</label>
             <input className="input-field" type="text" placeholder="Ex: Preto, Marrom..."
               value={item.cor} onChange={e => onSet('cor', e.target.value)} />
           </div>
 
-          {/* Busca de serviços */}
           <div className="relative">
-            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: '#999999' }} />
             <input className="input-field pl-9 text-sm" type="search"
               placeholder="Buscar serviço..." value={buscaServico}
               onChange={e => setBuscaServico(e.target.value)} />
           </div>
 
-          {/* Grid de serviços */}
           <div className="grid grid-cols-3 gap-2">
             {orfaosFiltrados.map(s => (
               <button key={s} type="button" onClick={() => toggleServico(s)}
-                className="flex flex-col items-center justify-center p-2 rounded-xl border-2 bg-amber-600 text-white border-amber-600 font-semibold text-xs gap-1 min-h-[72px]">
+                className="flex flex-col items-center justify-center p-2 rounded-xl font-semibold text-xs gap-1 min-h-[72px]"
+                style={{ backgroundColor: '#3E1F12', color: 'white', border: '1px solid #3E1F12' }}>
                 <span className="text-xl">🔧</span>
                 <span className="text-center leading-tight break-words w-full">{s}</span>
               </button>
@@ -422,10 +426,10 @@ function ItemEditorStepper({
 
             {servicosFiltrados.filter(s => SERVICOS.includes(s)).map(s => (
               <button key={s} type="button" onClick={() => toggleServico(s)}
-                className={`flex flex-col items-center justify-center p-2 rounded-xl border-2 font-semibold text-xs gap-1 transition-colors min-h-[72px] ` +
-                  (item.servicos.includes(s)
-                    ? 'bg-amber-600 text-white border-amber-600'
-                    : 'bg-white text-gray-700 border-gray-200 hover:border-amber-400')}>
+                className="flex flex-col items-center justify-center p-2 rounded-xl font-semibold text-xs gap-1 transition-colors min-h-[72px]"
+                style={item.servicos.includes(s)
+                  ? { backgroundColor: '#3E1F12', color: 'white', border: '1px solid #3E1F12' }
+                  : { backgroundColor: 'white', color: '#374151', border: '1px solid #E8D5B0' }}>
                 <span className="text-xl">{SERVICO_ICONES[s] || '🔧'}</span>
                 <span className="text-center leading-tight break-words w-full">{s}</span>
               </button>
@@ -434,16 +438,17 @@ function ItemEditorStepper({
             {customFiltrados.map(sc => (
               <div key={sc.id} className="relative">
                 <button type="button" onClick={() => toggleServico(sc.nome)}
-                  className={`w-full flex flex-col items-center justify-center p-2 rounded-xl border-2 font-semibold text-xs gap-1 transition-colors min-h-[72px] ` +
-                    (item.servicos.includes(sc.nome)
-                      ? 'bg-amber-600 text-white border-amber-600'
-                      : 'bg-white text-gray-700 border-gray-200 hover:border-amber-400')}>
+                  className="w-full flex flex-col items-center justify-center p-2 rounded-xl font-semibold text-xs gap-1 transition-colors min-h-[72px]"
+                  style={item.servicos.includes(sc.nome)
+                    ? { backgroundColor: '#3E1F12', color: 'white', border: '1px solid #3E1F12' }
+                    : { backgroundColor: 'white', color: '#374151', border: '1px solid #E8D5B0' }}>
                   <span className="text-xl">⭐</span>
                   <span className="text-center leading-tight break-words w-full">{sc.nome}</span>
                 </button>
                 <button type="button"
                   onClick={e => { e.stopPropagation(); onDeleteServicoCustom(sc.id, sc.nome) }}
-                  className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-red-100 text-red-500 border border-red-200 flex items-center justify-center hover:bg-red-500 hover:text-white transition-colors z-10">
+                  className="absolute -top-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center z-10"
+                  style={{ backgroundColor: '#FEE2E2', color: '#EF4444', border: '1px solid #FECACA' }}>
                   <X size={10} />
                 </button>
               </div>
@@ -451,7 +456,8 @@ function ItemEditorStepper({
 
             {!servicoCustomModo && (
               <button type="button" onClick={() => setServicoCustomModo(true)}
-                className="flex flex-col items-center justify-center p-2 rounded-xl border-2 border-dashed border-amber-400 text-amber-700 font-semibold text-xs gap-1 min-h-[72px] hover:bg-white transition-colors">
+                className="flex flex-col items-center justify-center p-2 rounded-xl font-semibold text-xs gap-1 min-h-[72px] transition-colors"
+                style={{ border: '1px dashed #A0522D', color: '#A0522D', backgroundColor: 'transparent' }}>
                 <Plus size={20} /><span>Adicionar</span>
               </button>
             )}
@@ -466,24 +472,28 @@ function ItemEditorStepper({
                 onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); adicionarServicoCustom() } }}
               />
               <button type="button" onClick={adicionarServicoCustom}
-                className="bg-amber-600 text-white p-2 rounded-xl hover:bg-amber-700"><Check size={18} /></button>
+                className="text-white p-2 rounded-xl" style={{ backgroundColor: '#3E1F12' }}>
+                <Check size={18} />
+              </button>
               <button type="button" onClick={() => { setServicoCustomModo(false); setServicoCustomTexto('') }}
-                className="bg-gray-100 text-gray-600 p-2 rounded-xl hover:bg-gray-200"><X size={18} /></button>
+                className="bg-gray-100 text-gray-600 p-2 rounded-xl hover:bg-gray-200">
+                <X size={18} />
+              </button>
             </div>
           )}
 
           {buscaServico.trim() && servicosFiltrados.length === 0 && orfaosFiltrados.length === 0 && customFiltrados.length === 0 && (
-            <p className="text-center text-gray-400 text-sm py-2">Nenhum serviço encontrado</p>
+            <p className="text-center text-sm py-2" style={{ color: '#999999' }}>Nenhum serviço encontrado</p>
           )}
 
-          {/* Quantidade de rodas — campo numérico com −/+ (min 1, max 8) */}
           {temTrocarRoda && (
             <div>
-              <label className="block font-bold text-gray-700 mb-1">Quantidade de rodas</label>
+              <label className="block font-bold mb-1" style={{ color: '#1A1A1A' }}>Quantidade de rodas</label>
               <div className="flex items-center gap-2">
                 <button type="button"
                   onClick={() => onSet('qtd_rodas', Math.max(1, (item.qtd_rodas || 2) - 1))}
-                  className="w-11 h-11 rounded-xl border-2 border-gray-300 bg-white font-bold text-xl text-gray-700 hover:border-amber-400 hover:bg-amber-50 flex items-center justify-center shrink-0 transition-colors">
+                  className="w-11 h-11 rounded-xl font-bold text-xl flex items-center justify-center shrink-0 transition-colors"
+                  style={{ border: '1px solid #E8D5B0', backgroundColor: 'white', color: '#374151' }}>
                   −
                 </button>
                 <input className="input-field font-bold text-center text-xl flex-1"
@@ -496,18 +506,18 @@ function ItemEditorStepper({
                 />
                 <button type="button"
                   onClick={() => onSet('qtd_rodas', Math.min(8, (item.qtd_rodas || 2) + 1))}
-                  className="w-11 h-11 rounded-xl border-2 border-gray-300 bg-white font-bold text-xl text-gray-700 hover:border-amber-400 hover:bg-amber-50 flex items-center justify-center shrink-0 transition-colors">
+                  className="w-11 h-11 rounded-xl font-bold text-xl flex items-center justify-center shrink-0 transition-colors"
+                  style={{ border: '1px solid #E8D5B0', backgroundColor: 'white', color: '#374151' }}>
                   +
                 </button>
               </div>
-              <p className="text-xs text-gray-400 mt-1">Mínimo 1 · Máximo 8</p>
+              <p className="text-xs mt-1" style={{ color: '#999999' }}>Mínimo 1 · Máximo 8</p>
             </div>
           )}
 
-          {/* Observação do serviço + voz */}
           <div>
-            <label className="block font-bold text-gray-700 mb-1 text-sm">
-              Observação do serviço <span className="font-normal text-gray-400">(opcional)</span>
+            <label className="block font-bold mb-1 text-sm" style={{ color: '#1A1A1A' }}>
+              Observação do serviço <span className="font-normal" style={{ color: '#999999' }}>(opcional)</span>
             </label>
             <div className="relative">
               <textarea className="input-field text-sm pr-12" rows={2}
@@ -518,36 +528,37 @@ function ItemEditorStepper({
               {VOZ_SUPORTADA && (
                 <button type="button" onClick={gravando ? pararVoz : iniciarVoz}
                   title={gravando ? 'Parar gravação' : 'Ditado por voz (pt-BR)'}
-                  className={`absolute right-2 top-2 p-2 rounded-xl transition-colors ` +
-                    (gravando ? 'bg-red-500 text-white animate-pulse' : 'bg-gray-100 text-gray-600 hover:bg-amber-100 hover:text-amber-700')}>
+                  className="absolute right-2 top-2 p-2 rounded-xl transition-colors"
+                  style={gravando
+                    ? { backgroundColor: '#EF4444', color: 'white' }
+                    : { backgroundColor: '#F3F4F6', color: '#4B5563' }}>
                   {gravando ? <MicOff size={18} /> : <Mic size={18} />}
                 </button>
               )}
             </div>
-            {gravando && <p className="text-red-500 text-xs font-semibold mt-1 animate-pulse">Gravando... fale agora</p>}
+            {gravando && <p className="text-xs font-semibold mt-1 animate-pulse" style={{ color: '#EF4444' }}>Gravando... fale agora</p>}
           </div>
 
-          {/* Revisão */}
           <div>
             <label className="flex items-center gap-3 cursor-pointer select-none">
               <input type="checkbox" checked={item.revisao}
                 onChange={e => { onSet('revisao', e.target.checked); if (e.target.checked) onSet('valor', '0') }}
-                className="w-5 h-5 accent-blue-600 cursor-pointer"
+                className="w-5 h-5 cursor-pointer" style={{ accentColor: '#3E1F12' }}
               />
-              <span className="font-bold text-gray-700">Marcar como revisão / garantia</span>
+              <span className="font-bold" style={{ color: '#1A1A1A' }}>Marcar como revisão / garantia</span>
             </label>
             {item.revisao && (
-              <p className="text-xs text-blue-600 font-semibold mt-1">Item sem cobrança — valor zerado automaticamente</p>
+              <p className="text-xs font-semibold mt-1" style={{ color: '#3E1F12' }}>Item sem cobrança — valor zerado automaticamente</p>
             )}
           </div>
 
-          {/* Quantidade */}
           <div>
-            <label className="block font-bold text-gray-700 mb-1">Quantidade</label>
+            <label className="block font-bold mb-1" style={{ color: '#1A1A1A' }}>Quantidade</label>
             <div className="flex items-center gap-2">
               <button type="button"
                 onClick={() => onSet('quantidade', Math.max(1, qtd - 1))}
-                className="w-11 h-11 rounded-xl border-2 border-gray-300 bg-white font-bold text-xl text-gray-700 hover:border-amber-400 hover:bg-amber-50 active:bg-amber-100 flex items-center justify-center shrink-0 transition-colors">
+                className="w-11 h-11 rounded-xl font-bold text-xl flex items-center justify-center shrink-0 transition-colors"
+                style={{ border: '1px solid #E8D5B0', backgroundColor: 'white', color: '#374151' }}>
                 −
               </button>
               <input className="input-field font-bold text-center text-xl flex-1"
@@ -556,15 +567,15 @@ function ItemEditorStepper({
               />
               <button type="button"
                 onClick={() => onSet('quantidade', qtd + 1)}
-                className="w-11 h-11 rounded-xl border-2 border-gray-300 bg-white font-bold text-xl text-gray-700 hover:border-amber-400 hover:bg-amber-50 active:bg-amber-100 flex items-center justify-center shrink-0 transition-colors">
+                className="w-11 h-11 rounded-xl font-bold text-xl flex items-center justify-center shrink-0 transition-colors"
+                style={{ border: '1px solid #E8D5B0', backgroundColor: 'white', color: '#374151' }}>
                 +
               </button>
             </div>
           </div>
 
-          {/* Valor unitário */}
           <div>
-            <label className="block font-bold text-gray-700 mb-1">Valor unit. (R$) *</label>
+            <label className="block font-bold mb-1" style={{ color: '#1A1A1A' }}>Valor unit. (R$) *</label>
             <input className="input-field font-bold text-xl"
               type="text" inputMode="decimal" placeholder="0,00"
               value={item.valor}
@@ -572,22 +583,24 @@ function ItemEditorStepper({
               disabled={item.revisao}
             />
             {!item.revisao && valorUnit > 0 && qtd > 1 && (
-              <p className="text-sm text-amber-700 font-semibold mt-1">
+              <p className="text-sm font-semibold mt-1" style={{ color: '#A0522D' }}>
                 Total: {formatarValor(totalItem)} ({qtd}× {formatarValor(valorUnit)})
               </p>
             )}
           </div>
 
-          {/* Navegação etapa 2 */}
           <div className="flex gap-2 pt-2">
             <button type="button" onClick={() => setEtapa(1)}
-              className="px-4 py-3 rounded-xl border-2 border-gray-300 text-gray-600 font-bold hover:bg-gray-50 flex items-center gap-1">
+              className="px-4 py-3 rounded-xl font-bold hover:bg-gray-50 flex items-center gap-1"
+              style={{ border: '1px solid #E8D5B0', color: '#4B5563' }}>
               ← Voltar
             </button>
             <button type="button" onClick={() => setEtapa(3)}
               disabled={!podeAvancar2()}
-              className={`flex-1 py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-colors ` +
-                (podeAvancar2() ? 'bg-amber-600 text-white hover:bg-amber-700' : 'bg-gray-200 text-gray-400 cursor-not-allowed')}>
+              className="flex-1 py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-colors"
+              style={podeAvancar2()
+                ? { backgroundColor: '#3E1F12', color: 'white' }
+                : { backgroundColor: '#E5E7EB', color: '#9CA3AF', cursor: 'not-allowed' }}>
               Próximo →
             </button>
           </div>
@@ -597,11 +610,9 @@ function ItemEditorStepper({
       {/* ── Etapa 3: Observações ── */}
       {etapa === 3 && (
         <div className="space-y-4">
-
-          {/* Observação livre */}
           <div>
-            <label className="block font-bold text-gray-700 mb-1">
-              Observações <span className="font-normal text-gray-400 text-sm">(opcional)</span>
+            <label className="block font-bold mb-1" style={{ color: '#1A1A1A' }}>
+              Observações <span className="font-normal text-sm" style={{ color: '#999999' }}>(opcional)</span>
             </label>
             <textarea className="input-field" rows={4}
               placeholder="Anotações gerais sobre o item..."
@@ -610,42 +621,44 @@ function ItemEditorStepper({
             />
           </div>
 
-          {/* Foto */}
           <div>
-            <label className="block font-bold text-gray-700 mb-2">
-              Foto do item <span className="font-normal text-gray-400 text-sm">(JPG/PNG máx. 5MB)</span>
+            <label className="block font-bold mb-2" style={{ color: '#1A1A1A' }}>
+              Foto do item <span className="font-normal text-sm" style={{ color: '#999999' }}>(JPG/PNG máx. 5MB)</span>
             </label>
             <input ref={fotoInputRef} type="file" accept="image/jpeg,image/png"
               capture="environment" className="hidden" onChange={handleFotoChange} />
             {item.foto_url ? (
               <div className="flex items-center gap-3">
                 <img src={item.foto_url} alt="Foto do item"
-                  className="w-20 h-20 object-cover rounded-xl border-2 border-amber-300" />
+                  className="w-20 h-20 object-cover rounded-xl"
+                  style={{ border: '1px solid #E8D5B0' }} />
                 <div className="flex flex-col gap-2">
                   <button type="button" onClick={() => fotoInputRef.current?.click()}
-                    className="text-sm font-semibold text-amber-700 hover:underline">Trocar foto</button>
+                    className="text-sm font-semibold" style={{ color: '#A0522D' }}>Trocar foto</button>
                   <button type="button" onClick={() => onSet('foto_url', '')}
-                    className="text-sm font-semibold text-red-500 hover:underline">Remover foto</button>
+                    className="text-sm font-semibold" style={{ color: '#EF4444' }}>Remover foto</button>
                 </div>
               </div>
             ) : (
               <button type="button" onClick={() => fotoInputRef.current?.click()}
                 disabled={uploadandoFoto}
-                className="flex items-center gap-2 px-4 py-2 rounded-xl border-2 border-dashed border-gray-300 text-gray-500 hover:border-amber-400 hover:text-amber-700 transition-colors font-semibold text-sm">
+                className="flex items-center gap-2 px-4 py-2 rounded-xl font-semibold text-sm transition-colors"
+                style={{ border: '1px dashed #E8D5B0', color: '#999999' }}>
                 <Camera size={18} />
                 {uploadandoFoto ? 'Enviando...' : 'Adicionar foto'}
               </button>
             )}
           </div>
 
-          {/* Navegação etapa 3 */}
           <div className="flex gap-2 pt-2">
             <button type="button" onClick={() => setEtapa(2)}
-              className="px-4 py-3 rounded-xl border-2 border-gray-300 text-gray-600 font-bold hover:bg-gray-50 flex items-center gap-1">
+              className="px-4 py-3 rounded-xl font-bold hover:bg-gray-50 flex items-center gap-1"
+              style={{ border: '1px solid #E8D5B0', color: '#4B5563' }}>
               ← Voltar
             </button>
             <button type="button" onClick={onConfirm}
-              className="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2 text-base">
+              className="flex-1 text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2 text-base"
+              style={{ backgroundColor: '#10B981' }}>
               <Check size={20} /> {modoEdicao ? 'Atualizar item' : 'Confirmar item ✓'}
             </button>
           </div>
@@ -655,7 +668,7 @@ function ItemEditorStepper({
   )
 }
 
-// ─── Card de item confirmado ────────────────────────────────────────────────────
+// ─── Card de item confirmado ─────────────────────────────────────────────────────
 
 function ItemConfirmadoCard({ item, idx, onEditar, onRemover }) {
   const valorUnit = parseMoeda(item.valor)
@@ -663,44 +676,45 @@ function ItemConfirmadoCard({ item, idx, onEditar, onRemover }) {
   const totalItem = valorUnit * qtd
 
   return (
-    <div className="bg-green-50 border-2 border-green-300 rounded-2xl p-3">
+    <div className="rounded-2xl p-3" style={{ backgroundColor: '#D1FAE5', border: '1px solid #A7F3D0' }}>
       <div className="flex items-start justify-between gap-2">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <Check size={16} className="text-green-600 shrink-0" />
-            <span className="font-black text-green-700 text-sm">Item {idx + 1}</span>
-            {qtd > 1 && <span className="font-bold text-blue-700 text-sm">{qtd}×</span>}
-            <span className="font-bold text-gray-800 text-sm">{item.categoria}</span>
-            {item.subcategoria && <span className="text-gray-500 text-xs">· {item.subcategoria}</span>}
-            {item.lado && <span className="text-gray-500 text-xs">· {item.lado}</span>}
+            <Check size={16} style={{ color: '#10B981', flexShrink: 0 }} />
+            <span className="font-black text-sm" style={{ color: '#065F46' }}>Item {idx + 1}</span>
+            {qtd > 1 && <span className="font-bold text-sm" style={{ color: '#1d4ed8' }}>{qtd}×</span>}
+            <span className="font-bold text-sm" style={{ color: '#1A1A1A' }}>{item.categoria}</span>
+            {item.subcategoria && <span className="text-xs" style={{ color: '#999999' }}>· {item.subcategoria}</span>}
+            {item.lado && <span className="text-xs" style={{ color: '#999999' }}>· {item.lado}</span>}
             {item.revisao && (
-              <span className="bg-blue-100 text-blue-700 border border-blue-300 rounded-lg px-2 py-0.5 text-xs font-bold">Revisão</span>
+              <span className="rounded-full px-2 py-0.5 text-xs font-bold" style={{ backgroundColor: '#DBEAFE', color: '#1d4ed8', border: '1px solid #93C5FD' }}>Revisão</span>
             )}
           </div>
-          <p className="text-xs text-gray-600 mt-1 truncate">{item.servicos.join(', ')}</p>
-          {item.cor && <p className="text-xs text-gray-500 mt-0.5">Cor: {item.cor}</p>}
+          <p className="text-xs mt-1 truncate" style={{ color: '#4B5563' }}>{item.servicos.join(', ')}</p>
+          {item.cor && <p className="text-xs mt-0.5" style={{ color: '#6B7280' }}>Cor: {item.cor}</p>}
           {item.foto_url && (
-            <img src={item.foto_url} alt="" className="mt-1 w-12 h-12 object-cover rounded-lg border border-green-300" />
+            <img src={item.foto_url} alt="" className="mt-1 w-12 h-12 object-cover rounded-lg"
+              style={{ border: '1px solid #A7F3D0' }} />
           )}
         </div>
         <div className="text-right shrink-0">
           {item.revisao ? (
-            <p className="font-bold text-blue-600 text-sm">Sem cobrança</p>
+            <p className="font-bold text-sm" style={{ color: '#1d4ed8' }}>Sem cobrança</p>
           ) : qtd > 1 ? (
             <>
-              <p className="text-xs text-gray-500">{qtd}× · {formatarValor(valorUnit)} cada</p>
-              <p className="font-extrabold text-amber-700 text-lg">Total: {formatarValor(totalItem)}</p>
+              <p className="text-xs" style={{ color: '#6B7280' }}>{qtd}× · {formatarValor(valorUnit)} cada</p>
+              <p className="font-extrabold text-lg" style={{ color: '#A0522D' }}>Total: {formatarValor(totalItem)}</p>
             </>
           ) : (
-            <p className="font-extrabold text-amber-700 text-lg">{formatarValor(valorUnit)}</p>
+            <p className="font-extrabold text-lg" style={{ color: '#A0522D' }}>{formatarValor(valorUnit)}</p>
           )}
           <div className="flex gap-1 mt-1 justify-end">
             <button type="button" onClick={() => onEditar(idx)}
-              className="p-1.5 rounded-lg bg-amber-100 text-amber-700 hover:bg-amber-200">
+              className="p-1.5 rounded-lg" style={{ backgroundColor: '#F5ECD7', color: '#A0522D' }}>
               <Edit2 size={14} />
             </button>
             <button type="button" onClick={() => onRemover(idx)}
-              className="p-1.5 rounded-lg bg-red-100 text-red-500 hover:bg-red-200">
+              className="p-1.5 rounded-lg" style={{ backgroundColor: '#FEE2E2', color: '#EF4444' }}>
               <Trash2 size={14} />
             </button>
           </div>
@@ -710,7 +724,7 @@ function ItemConfirmadoCard({ item, idx, onEditar, onRemover }) {
   )
 }
 
-// ─── Componente principal ───────────────────────────────────────────────────────
+// ─── Componente principal ────────────────────────────────────────────────────────
 
 export default function NovaOS() {
   const navigate = useNavigate()
@@ -905,18 +919,20 @@ export default function NovaOS() {
 
   return (
     <div className="space-y-4">
-      <h2 className="text-2xl font-extrabold text-gray-800">Nova Ordem de Serviço</h2>
+      <h2 className="text-2xl font-extrabold" style={{ color: '#1A1A1A' }}>Nova Ordem de Serviço</h2>
 
       <form onSubmit={handleSubmit} className="space-y-4">
 
         {/* ── Cliente ── */}
         <div className="card space-y-4">
-          <h3 className="text-lg font-bold text-gray-700 border-b pb-2">Cliente</h3>
+          <h3 className="text-base font-bold uppercase tracking-wide" style={{ color: '#999999', borderBottom: '1px solid #F0F0F0', paddingBottom: 8 }}>
+            Cliente
+          </h3>
           <div className="relative">
-            <label className="block font-bold text-gray-700 mb-1">
+            <label className="block font-bold mb-1 text-sm" style={{ color: '#1A1A1A' }}>
               Nome do cliente *
               {clienteSelecionado && (
-                <span className="ml-2 inline-flex items-center gap-1 text-green-600 font-semibold text-sm">
+                <span className="ml-2 inline-flex items-center gap-1 text-sm font-semibold" style={{ color: '#10B981' }}>
                   <UserCheck size={15} /> Cliente existente
                 </span>
               )}
@@ -930,13 +946,17 @@ export default function NovaOS() {
               autoComplete="off"
             />
             {mostrarSugestoes && sugestoes.length > 0 && (
-              <ul className="absolute z-50 left-0 right-0 top-full mt-1 bg-white border-2 border-amber-300 rounded-xl shadow-xl overflow-hidden">
+              <ul className="absolute z-50 left-0 right-0 top-full mt-1 bg-white rounded-xl shadow-xl overflow-hidden"
+                style={{ border: '1px solid #E8D5B0' }}>
                 {sugestoes.map(c => (
                   <li key={c.id}>
                     <button type="button" onMouseDown={() => selecionarCliente(c)}
-                      className="w-full text-left px-4 py-3 hover:bg-amber-50 active:bg-amber-100 flex items-center justify-between gap-3 border-b border-gray-100 last:border-0">
-                      <span className="font-bold text-gray-900">{c.nome}</span>
-                      <span className="text-gray-400 text-sm shrink-0">{c.telefone || 'sem telefone'}</span>
+                      className="w-full text-left px-4 py-3 flex items-center justify-between gap-3 transition-colors"
+                      style={{ borderBottom: '1px solid #F0F0F0' }}
+                      onMouseEnter={e => e.currentTarget.style.backgroundColor = '#F5ECD7'}
+                      onMouseLeave={e => e.currentTarget.style.backgroundColor = 'white'}>
+                      <span className="font-bold" style={{ color: '#1A1A1A' }}>{c.nome}</span>
+                      <span className="text-sm shrink-0" style={{ color: '#999999' }}>{c.telefone || 'sem telefone'}</span>
                     </button>
                   </li>
                 ))}
@@ -944,7 +964,7 @@ export default function NovaOS() {
             )}
           </div>
           <div>
-            <label className="block font-bold text-gray-700 mb-1">Telefone / WhatsApp</label>
+            <label className="block font-bold mb-1 text-sm" style={{ color: '#1A1A1A' }}>Telefone / WhatsApp</label>
             <input className="input-field" type="tel" placeholder="(11) 99999-9999"
               value={clienteTelefone}
               onChange={e => { setClienteTelefone(e.target.value); setClienteSelecionado(false) }}
@@ -954,8 +974,8 @@ export default function NovaOS() {
 
         {/* ── Itens ── */}
         <div className="card space-y-4">
-          <h3 className="text-lg font-bold text-gray-700 border-b pb-2">
-            Itens {qtdItens > 0 && <span className="text-amber-600">({qtdItens} confirmado{qtdItens > 1 ? 's' : ''})</span>}
+          <h3 className="text-base font-bold uppercase tracking-wide" style={{ color: '#999999', borderBottom: '1px solid #F0F0F0', paddingBottom: 8 }}>
+            Itens {qtdItens > 0 && <span style={{ color: '#A0522D' }}>({qtdItens} confirmado{qtdItens > 1 ? 's' : ''})</span>}
           </h3>
 
           {itensConfirmados.map((it, idx) => (
@@ -964,7 +984,8 @@ export default function NovaOS() {
           ))}
 
           {feedbackSucesso && (
-            <div className="bg-green-100 border-2 border-green-400 rounded-xl p-3 flex items-center gap-2 text-green-700 font-bold">
+            <div className="rounded-xl p-3 flex items-center gap-2 font-bold"
+              style={{ backgroundColor: '#D1FAE5', border: '1px solid #A7F3D0', color: '#065F46' }}>
               <Check size={20} /> Item adicionado ✓
             </div>
           )}
@@ -987,7 +1008,8 @@ export default function NovaOS() {
 
           {itemAtual === null && (
             <button type="button" onClick={() => setItemAtual(itemVazio())}
-              className="w-full border-2 border-dashed border-amber-400 text-amber-700 font-bold py-3 rounded-xl hover:bg-amber-50 flex items-center justify-center gap-2">
+              className="w-full font-bold py-3 rounded-xl flex items-center justify-center gap-2 transition-colors"
+              style={{ border: '1px dashed #A0522D', color: '#A0522D', backgroundColor: 'transparent' }}>
               <Plus size={20} /> {qtdItens > 0 ? 'Adicionar outro item' : 'Adicionar item'}
             </button>
           )}
@@ -995,52 +1017,57 @@ export default function NovaOS() {
 
         {/* ── Prazo ── */}
         <div className="card">
-          <h3 className="text-lg font-bold text-gray-700 border-b pb-2 mb-4">Prazo de entrega *</h3>
+          <h3 className="text-base font-bold uppercase tracking-wide mb-4" style={{ color: '#999999', borderBottom: '1px solid #F0F0F0', paddingBottom: 8 }}>
+            Prazo de entrega *
+          </h3>
           <SeletorPrazo value={prazo} onChange={setPrazo} />
         </div>
 
         {/* ── Pagamento ── */}
         <div className="card space-y-3">
-          <h3 className="text-lg font-bold text-gray-700 border-b pb-2">Pagamento</h3>
-          <div className="flex items-center justify-between bg-amber-50 rounded-xl px-4 py-3">
+          <h3 className="text-base font-bold uppercase tracking-wide" style={{ color: '#999999', borderBottom: '1px solid #F0F0F0', paddingBottom: 8 }}>
+            Pagamento
+          </h3>
+          <div className="flex items-center justify-between rounded-xl px-4 py-3" style={{ backgroundColor: '#F5ECD7' }}>
             <div>
-              <p className="text-gray-500 text-sm font-semibold">Total</p>
+              <p className="text-sm font-semibold" style={{ color: '#999999' }}>Total</p>
               {descontoNum > 0 && (
-                <p className="text-gray-400 text-xs">Subtotal {formatarValor(totalConfirmados)} − desconto {formatarValor(descontoNum)}</p>
+                <p className="text-xs" style={{ color: '#999999' }}>Subtotal {formatarValor(totalConfirmados)} − desconto {formatarValor(descontoNum)}</p>
               )}
             </div>
-            <p className="font-extrabold text-amber-700 text-xl">{formatarValor(totalLiquido)}</p>
+            <p className="font-extrabold text-xl" style={{ color: '#3E1F12' }}>{formatarValor(totalLiquido)}</p>
           </div>
           <div>
-            <label className="block font-bold text-gray-700 mb-1">Valor pago (R$)</label>
-            <input className={`input-field text-xl font-bold ` + (entradaInvalida ? 'border-red-400 focus:border-red-500' : '')}
+            <label className="block font-bold mb-1 text-sm" style={{ color: '#1A1A1A' }}>Valor pago (R$)</label>
+            <input className="input-field text-xl font-bold"
+              style={entradaInvalida ? { borderColor: '#EF4444' } : {}}
               type="text" inputMode="decimal" placeholder="0,00"
               value={entrada} onChange={e => setEntrada(e.target.value)}
             />
           </div>
           <div>
-            <label className="block font-bold text-gray-700 mb-1">Desconto (R$)</label>
+            <label className="block font-bold mb-1 text-sm" style={{ color: '#1A1A1A' }}>Desconto (R$)</label>
             <input className="input-field" type="text" inputMode="decimal" placeholder="0,00"
               value={desconto} onChange={e => setDesconto(e.target.value)}
             />
           </div>
           {entradaInvalida && (
-            <p className="text-red-600 text-sm font-semibold flex items-center gap-1">
+            <p className="text-sm font-semibold flex items-center gap-1" style={{ color: '#EF4444' }}>
               ⚠ O valor pago não pode ser maior que o total
             </p>
           )}
-          <div className="flex items-center justify-between bg-orange-50 rounded-xl px-4 py-3">
-            <p className="text-gray-500 text-sm font-semibold">Resta</p>
-            <p className="font-extrabold text-orange-600 text-xl">{formatarValor(resta)}</p>
+          <div className="flex items-center justify-between rounded-xl px-4 py-3" style={{ backgroundColor: '#FFF7ED' }}>
+            <p className="text-sm font-semibold" style={{ color: '#999999' }}>Resta</p>
+            <p className="font-extrabold text-xl" style={{ color: '#F59E0B' }}>{formatarValor(resta)}</p>
           </div>
         </div>
 
         <button type="submit"
           disabled={loading || qtdItens === 0 || entradaInvalida}
-          className={`w-full text-xl py-4 rounded-xl font-bold transition-colors ` +
-            (qtdItens === 0 || loading || entradaInvalida
-              ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-              : 'bg-amber-600 hover:bg-amber-700 active:bg-amber-800 text-white cursor-pointer')}>
+          className="w-full text-xl py-4 rounded-xl font-bold transition-colors"
+          style={qtdItens === 0 || loading || entradaInvalida
+            ? { backgroundColor: '#E5E7EB', color: '#9CA3AF', cursor: 'not-allowed' }
+            : { backgroundColor: '#3E1F12', color: 'white', cursor: 'pointer' }}>
           {loading
             ? 'Salvando...'
             : entradaInvalida

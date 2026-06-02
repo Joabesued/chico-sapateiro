@@ -35,53 +35,54 @@ function TabDashboard() {
   return (
     <div className="space-y-3">
       <div className="grid grid-cols-2 gap-3">
-        <div className="card text-center border-l-4 border-blue-400">
-          <p className="text-gray-500 font-semibold text-sm">OS abertas hoje</p>
-          <p className="text-5xl font-black text-blue-600 mt-1">{dados.os_abertas_hoje}</p>
+        <div className="card text-center" style={{ borderLeft: '3px solid #F59E0B' }}>
+          <p className="font-semibold text-sm" style={{ color: '#999999' }}>OS abertas hoje</p>
+          <p className="text-5xl font-black mt-1" style={{ color: '#F59E0B' }}>{dados.os_abertas_hoje}</p>
         </div>
-        <div className={`card text-center border-l-4 ${dados.os_em_atraso > 0 ? 'border-red-400' : 'border-green-400'}`}>
-          <p className="text-gray-500 font-semibold text-sm">Em atraso</p>
-          <p className={`text-5xl font-black mt-1 ${dados.os_em_atraso > 0 ? 'text-red-500' : 'text-green-600'}`}>
+        <div className="card text-center" style={{ borderLeft: `3px solid ${dados.os_em_atraso > 0 ? '#EF4444' : '#10B981'}` }}>
+          <p className="font-semibold text-sm" style={{ color: '#999999' }}>Em atraso</p>
+          <p className="text-5xl font-black mt-1" style={{ color: dados.os_em_atraso > 0 ? '#EF4444' : '#10B981' }}>
             {dados.os_em_atraso}
           </p>
         </div>
-        <div className="card text-center border-l-4 border-amber-400">
-          <p className="text-gray-500 font-semibold text-sm">Faturado no mês</p>
-          <p className="text-xl font-extrabold text-amber-700 mt-1">{formatarValor(dados.faturado_mes)}</p>
+        <div className="card text-center" style={{ borderLeft: '3px solid #A0522D' }}>
+          <p className="font-semibold text-sm" style={{ color: '#999999' }}>Faturado no mês</p>
+          <p className="text-xl font-extrabold mt-1" style={{ color: '#3E1F12' }}>{formatarValor(dados.faturado_mes)}</p>
         </div>
-        <div className="card text-center border-l-4 border-green-400">
-          <p className="text-gray-500 font-semibold text-sm">Recebido no mês</p>
-          <p className="text-xl font-extrabold text-green-600 mt-1">{formatarValor(dados.recebido_mes)}</p>
+        <div className="card text-center" style={{ borderLeft: '3px solid #10B981' }}>
+          <p className="font-semibold text-sm" style={{ color: '#999999' }}>Recebido no mês</p>
+          <p className="text-xl font-extrabold mt-1" style={{ color: '#10B981' }}>{formatarValor(dados.recebido_mes)}</p>
         </div>
       </div>
-      <div className="card text-center border-l-4 border-orange-400">
-        <p className="text-gray-500 font-semibold text-sm">Total pendente a receber</p>
-        <p className="text-2xl font-extrabold text-orange-500 mt-1">{formatarValor(dados.pendente_total)}</p>
+      <div className="card text-center" style={{ borderLeft: '3px solid #F59E0B' }}>
+        <p className="font-semibold text-sm" style={{ color: '#999999' }}>Total pendente a receber</p>
+        <p className="text-2xl font-extrabold mt-1" style={{ color: '#F59E0B' }}>{formatarValor(dados.pendente_total)}</p>
       </div>
 
       {/* Previsão de prazos */}
       <div className="grid grid-cols-3 gap-2">
-        <div className="card text-center p-3 border-l-4 border-amber-400">
-          <p className="text-gray-500 font-semibold text-xs">Prazo hoje</p>
-          <p className="text-3xl font-black text-amber-700 mt-1">{dados.os_prazo_hoje}</p>
+        <div className="card text-center p-3" style={{ borderLeft: '3px solid #F59E0B' }}>
+          <p className="font-semibold text-xs" style={{ color: '#999999' }}>Prazo hoje</p>
+          <p className="text-3xl font-black mt-1" style={{ color: '#3E1F12' }}>{dados.os_prazo_hoje}</p>
         </div>
-        <div className="card text-center p-3 border-l-4 border-yellow-400">
-          <p className="text-gray-500 font-semibold text-xs">Prazo amanhã</p>
-          <p className="text-3xl font-black text-yellow-600 mt-1">{dados.os_prazo_amanha}</p>
+        <div className="card text-center p-3" style={{ borderLeft: '3px solid #F59E0B' }}>
+          <p className="font-semibold text-xs" style={{ color: '#999999' }}>Prazo amanhã</p>
+          <p className="text-3xl font-black mt-1" style={{ color: '#A0522D' }}>{dados.os_prazo_amanha}</p>
         </div>
-        <div className="card text-center p-3 border-l-4 border-purple-400">
-          <p className="text-gray-500 font-semibold text-xs">Prazo semana</p>
-          <p className="text-3xl font-black text-purple-600 mt-1">{dados.os_prazo_semana}</p>
+        <div className="card text-center p-3" style={{ borderLeft: '3px solid #A0522D' }}>
+          <p className="font-semibold text-xs" style={{ color: '#999999' }}>Prazo semana</p>
+          <p className="text-3xl font-black mt-1" style={{ color: '#A0522D' }}>{dados.os_prazo_semana}</p>
         </div>
       </div>
 
       {dicas.length > 0 && (
         <div className="card space-y-2">
-          <h3 className="font-bold text-gray-700 text-base border-b pb-2">Dicas de gestão</h3>
+          <h3 className="font-bold text-base pb-2" style={{ color: '#1A1A1A', borderBottom: '1px solid #F0F0F0' }}>Dicas de gestão</h3>
           {dicas.map((dica, i) => (
-            <div key={i} className="flex items-start gap-2 bg-blue-50 border border-blue-200 rounded-xl p-3">
-              <span className="text-blue-500 text-base shrink-0">💡</span>
-              <p className="text-sm text-gray-700">{dica}</p>
+            <div key={i} className="flex items-start gap-2 rounded-xl p-3"
+              style={{ backgroundColor: '#F5ECD7', border: '1px solid #E8D5B0' }}>
+              <span className="text-base shrink-0">💡</span>
+              <p className="text-sm" style={{ color: '#374151' }}>{dica}</p>
             </div>
           ))}
         </div>
@@ -132,15 +133,19 @@ function TabRelatorio() {
         <div className="flex gap-2">
           <button
             onClick={() => setGeral(false)}
-            className={`flex-1 py-2.5 rounded-xl font-bold text-sm border-2 transition-colors ` +
-              (!geral ? 'bg-amber-600 text-white border-amber-600' : 'bg-white text-gray-600 border-gray-300 hover:border-amber-400')}
+            className="flex-1 py-2.5 rounded-xl font-bold text-sm transition-colors"
+            style={!geral
+              ? { backgroundColor: '#3E1F12', color: 'white', border: '1px solid #3E1F12' }
+              : { backgroundColor: 'white', color: '#4B5563', border: '1px solid #F0F0F0' }}
           >
             Por mês
           </button>
           <button
             onClick={() => setGeral(true)}
-            className={`flex-1 py-2.5 rounded-xl font-bold text-sm border-2 transition-colors ` +
-              (geral ? 'bg-amber-600 text-white border-amber-600' : 'bg-white text-gray-600 border-gray-300 hover:border-amber-400')}
+            className="flex-1 py-2.5 rounded-xl font-bold text-sm transition-colors"
+            style={geral
+              ? { backgroundColor: '#3E1F12', color: 'white', border: '1px solid #3E1F12' }
+              : { backgroundColor: 'white', color: '#4B5563', border: '1px solid #F0F0F0' }}
           >
             Geral (todos)
           </button>
@@ -164,7 +169,7 @@ function TabRelatorio() {
           <div className="grid grid-cols-2 gap-3">
             <div className="card text-center">
               <p className="text-gray-500 font-semibold text-sm">Total de OS</p>
-              <p className="text-5xl font-black text-amber-700 mt-1">{dados.total_os}</p>
+              <p className="text-5xl font-black mt-1" style={{ color: '#3E1F12' }}>{dados.total_os}</p>
             </div>
             <div className="card text-center">
               <p className="text-gray-500 font-semibold text-sm">Total faturado</p>
@@ -189,7 +194,7 @@ function TabRelatorio() {
                 {Object.entries(dados.os_por_status).map(([status, qtd]) => (
                   <div key={status} className="flex items-center justify-between py-2 border-b border-gray-100 last:border-0">
                     <span className={`font-semibold ${COR_STATUS[status] || 'text-gray-700'}`}>{status}</span>
-                    <span className="text-2xl font-black text-amber-700">{qtd}</span>
+                    <span className="text-2xl font-black" style={{ color: '#3E1F12' }}>{qtd}</span>
                   </div>
                 ))}
               </div>
@@ -205,7 +210,7 @@ function TabRelatorio() {
                 {Object.entries(dados.os_por_pagamento).map(([status, qtd]) => (
                   <div key={status} className="flex items-center justify-between py-2 border-b border-gray-100 last:border-0">
                     <span className={`font-semibold ${COR_PAGAMENTO[status] || 'text-gray-700'}`}>{status}</span>
-                    <span className="text-2xl font-black text-amber-700">{qtd}</span>
+                    <span className="text-2xl font-black" style={{ color: '#3E1F12' }}>{qtd}</span>
                   </div>
                 ))}
               </div>
@@ -223,7 +228,7 @@ function TabRelatorio() {
                   <button
                     key={os.numero}
                     onClick={() => navigate('/painel')}
-                    className="w-full text-left py-3 px-1 border-b border-gray-100 last:border-0 hover:bg-amber-50 rounded-lg transition-colors"
+                    className="w-full text-left py-3 px-1 border-b border-gray-100 last:border-0 rounded-lg transition-colors hover:bg-gray-50"
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex-1 min-w-0">
@@ -318,12 +323,12 @@ function TabRanking() {
                       <span className="font-semibold text-gray-800 text-sm">
                         {medalha(i)} {item.servico}
                       </span>
-                      <span className="font-black text-amber-700">{item.quantidade}×</span>
+                      <span className="font-black" style={{ color: '#3E1F12' }}>{item.quantidade}×</span>
                     </div>
                     <div className="w-full bg-gray-100 rounded-full h-2">
                       <div
-                        className="bg-amber-500 h-2 rounded-full"
-                        style={{ width: `${(item.quantidade / maxQtd) * 100}%` }}
+                        className="h-2 rounded-full"
+                        style={{ backgroundColor: '#A0522D', width: `${(item.quantidade / maxQtd) * 100}%` }}
                       />
                     </div>
                   </div>
@@ -415,14 +420,15 @@ function TabEstatisticas() {
                   {MESES_NOMES[d.mes - 1]}/{d.ano}
                 </span>
                 <div className="text-right">
-                  <span className="text-sm font-black text-amber-700">{formatarValor(d.total_faturado)}</span>
+                  <span className="text-sm font-black" style={{ color: '#3E1F12' }}>{formatarValor(d.total_faturado)}</span>
                   <span className="text-xs text-gray-400 ml-2">{d.total_os} OS</span>
                 </div>
               </div>
               <div className="w-full bg-gray-100 rounded-full h-4">
                 <div
-                  className="bg-amber-500 h-4 rounded-full"
+                  className="h-4 rounded-full"
                   style={{
+                    backgroundColor: '#A0522D',
                     width: d.total_faturado > 0
                       ? `${Math.max((d.total_faturado / maxFaturado) * 100, 2)}%`
                       : '0%',
@@ -436,9 +442,9 @@ function TabEstatisticas() {
 
       {/* Serviço top do mês */}
       {servicoTop && (
-        <div className="card text-center bg-amber-50 border-2 border-amber-200">
+        <div className="card text-center" style={{ backgroundColor: '#F5ECD7', border: '1px solid #E8D5B0' }}>
           <p className="text-gray-500 font-semibold text-sm">Serviço mais realizado este mês</p>
-          <p className="text-2xl font-black text-amber-700 mt-1">🏆 {servicoTop}</p>
+          <p className="text-2xl font-black mt-1" style={{ color: '#3E1F12' }}>🏆 {servicoTop}</p>
           <p className="text-gray-400 text-sm mt-0.5">
             {ranking.ranking_quantidade[0].quantidade} vez{ranking.ranking_quantidade[0].quantidade > 1 ? 'es' : ''}
           </p>
@@ -470,7 +476,7 @@ function TabEstatisticas() {
             <div key={`${d.mes}-${d.ano}`} className="flex items-center justify-between py-1.5 border-b border-gray-100 last:border-0">
               <span className="font-semibold text-gray-700 text-sm">{MESES_COMPLETOS[d.mes - 1]} / {d.ano}</span>
               <div className="text-right">
-                <span className="font-black text-amber-700 text-lg">{d.total_os}</span>
+                <span className="font-black text-lg" style={{ color: '#3E1F12' }}>{d.total_os}</span>
                 <span className="text-gray-400 text-sm ml-1">OS</span>
                 <span className="ml-3 font-semibold text-gray-600 text-sm">{formatarValor(d.total_faturado)}</span>
               </div>
@@ -542,9 +548,9 @@ function TabRelatorioDia() {
                 <p className="text-gray-500 font-semibold text-xs">OS Finalizadas</p>
                 <p className="text-4xl font-black text-green-600 mt-1">{dados.os_finalizadas}</p>
               </div>
-              <div className="card text-center border-l-4 border-amber-400 p-3">
+              <div className="card text-center p-3" style={{ borderLeft: '3px solid #A0522D' }}>
                 <p className="text-gray-500 font-semibold text-xs">Total Faturado</p>
-                <p className="text-xl font-extrabold text-amber-700 mt-1">{formatarValor(dados.total_faturado)}</p>
+                <p className="text-xl font-extrabold mt-1" style={{ color: '#3E1F12' }}>{formatarValor(dados.total_faturado)}</p>
               </div>
               <div className="card text-center border-l-4 border-emerald-400 p-3">
                 <p className="text-gray-500 font-semibold text-xs">Total Recebido</p>
@@ -560,7 +566,7 @@ function TabRelatorioDia() {
                     <button
                       key={os.numero}
                       onClick={() => navigate('/painel')}
-                      className="w-full text-left py-3 px-1 border-b border-gray-100 last:border-0 hover:bg-amber-50 rounded-lg transition-colors"
+                      className="w-full text-left py-3 px-1 border-b border-gray-100 last:border-0 rounded-lg transition-colors hover:bg-gray-50"
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex-1 min-w-0">
@@ -573,7 +579,7 @@ function TabRelatorioDia() {
                           </div>
                         </div>
                         <div className="text-right shrink-0">
-                          <p className="font-extrabold text-amber-700">{formatarValor(os.total)}</p>
+                          <p className="font-extrabold" style={{ color: '#A0522D' }}>{formatarValor(os.total)}</p>
                           {os.resta > 0 && (
                             <p className="text-xs text-orange-500 font-semibold">Resta: {formatarValor(os.resta)}</p>
                           )}
@@ -654,14 +660,14 @@ function TabRankingCategorias() {
                     <span className="font-semibold text-gray-800 text-sm">
                       {medalha(i)} {item.categoria}
                     </span>
-                    <span className="font-black text-amber-700">
+                    <span className="font-black" style={{ color: '#3E1F12' }}>
                       {item.quantidade} item{item.quantidade !== 1 ? 's' : ''}
                     </span>
                   </div>
                   <div className="w-full bg-gray-100 rounded-full h-2">
                     <div
-                      className="bg-amber-500 h-2 rounded-full"
-                      style={{ width: `${(item.quantidade / maxQtd) * 100}%` }}
+                      className="h-2 rounded-full"
+                      style={{ backgroundColor: '#A0522D', width: `${(item.quantidade / maxQtd) * 100}%` }}
                     />
                   </div>
                 </div>
@@ -708,9 +714,9 @@ function TabProdutividade() {
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-3">
-        <div className="card text-center border-l-4 border-amber-400">
+        <div className="card text-center" style={{ borderLeft: '3px solid #A0522D' }}>
           <p className="text-gray-500 font-semibold text-sm">Média notas/dia</p>
-          <p className="text-4xl font-black text-amber-700 mt-1">{dados.media_notas_dia}</p>
+          <p className="text-4xl font-black mt-1" style={{ color: '#3E1F12' }}>{dados.media_notas_dia}</p>
           <p className="text-xs text-gray-400 mt-0.5">notas por dia</p>
         </div>
         <div className="card text-center border-l-4 border-blue-400">
@@ -750,8 +756,8 @@ function TabProdutividade() {
               <span className="text-xs text-gray-300 w-10 shrink-0">{d.data.slice(5).replace('-', '/')}</span>
               <div className="flex-1 bg-gray-100 rounded-full h-5 overflow-hidden">
                 <div
-                  className="bg-amber-500 h-5 rounded-full flex items-center justify-end pr-1.5 transition-all"
-                  style={{ width: d.qtd > 0 ? `${Math.max((d.qtd / maxQtd) * 100, 10)}%` : '0%' }}
+                  className="h-5 rounded-full flex items-center justify-end pr-1.5 transition-all"
+                  style={{ backgroundColor: '#A0522D', width: d.qtd > 0 ? `${Math.max((d.qtd / maxQtd) * 100, 10)}%` : '0%' }}
                 >
                   {d.qtd > 0 && <span className="text-white text-xs font-black">{d.qtd}</span>}
                 </div>
@@ -801,7 +807,10 @@ function TabPrevisao() {
         {dados.dias.map(dia => (
           <div
             key={dia.data}
-            className={`card border-l-4 ${dia.destaque ? 'border-red-500 bg-red-50' : 'border-amber-300'}`}
+            className="card"
+            style={dia.destaque
+              ? { borderLeft: '3px solid #EF4444', backgroundColor: '#FEF2F2' }
+              : { borderLeft: '3px solid #E8D5B0' }}
           >
             {/* Cabeçalho do dia */}
             <div className="flex items-center justify-between mb-3">
@@ -815,7 +824,7 @@ function TabPrevisao() {
                   </span>
                 )}
               </div>
-              <span className={`text-2xl font-black ${dia.destaque ? 'text-red-600' : 'text-amber-700'}`}>
+              <span className="text-2xl font-black" style={{ color: dia.destaque ? '#EF4444' : '#3E1F12' }}>
                 {dia.qtd_os} OS
               </span>
             </div>
@@ -847,8 +856,8 @@ function TabPrevisao() {
 
                 {/* Resumo total do dia */}
                 {dia.resumo_servicos.length > 0 && (
-                  <div className="bg-amber-50 border border-amber-200 rounded-xl p-2.5">
-                    <p className="text-xs font-extrabold text-amber-700 mb-1">Total do dia:</p>
+                  <div className="rounded-xl p-2.5" style={{ backgroundColor: '#F5ECD7', border: '1px solid #E8D5B0' }}>
+                    <p className="text-xs font-extrabold mb-1" style={{ color: '#3E1F12' }}>Total do dia:</p>
                     <p className="text-xs text-gray-700 leading-relaxed">
                       {dia.resumo_servicos.map(s => `${s.servico} ${s.quantidade}`).join(' · ')}
                     </p>
@@ -863,10 +872,10 @@ function TabPrevisao() {
                       <button
                         key={os.id}
                         onClick={() => navigate(`/os/${os.id}`)}
-                        className="w-full flex items-center justify-between text-left bg-white rounded-lg px-2 py-1.5 hover:bg-amber-50 transition-colors border border-gray-100"
+                        className="w-full flex items-center justify-between text-left bg-white rounded-lg px-2 py-1.5 hover:bg-gray-50 transition-colors border border-gray-100"
                       >
                         <div className="flex items-center gap-2 min-w-0">
-                          <span className="text-amber-700 font-bold text-xs shrink-0">
+                          <span className="font-bold text-xs shrink-0" style={{ color: '#A0522D' }}>
                             #{String(os.numero).padStart(3, '0')}
                           </span>
                           <span className="text-sm font-semibold text-gray-800 truncate">
@@ -894,7 +903,7 @@ function TabPrevisao() {
             {dados.ranking_servicos.map((item, i) => (
               <div key={item.servico} className="flex items-center justify-between py-1.5 border-b border-gray-100 last:border-0">
                 <span className="font-semibold text-gray-700 text-sm">{i + 1}. {item.servico}</span>
-                <span className="font-black text-amber-700">{item.quantidade}×</span>
+                <span className="font-black" style={{ color: '#3E1F12' }}>{item.quantidade}×</span>
               </div>
             ))}
           </div>
@@ -922,17 +931,17 @@ export default function Admin() {
 
   return (
     <div className="space-y-4">
-      <h2 className="text-2xl font-extrabold text-gray-800">Área Administrativa</h2>
+      <h2 className="text-2xl font-extrabold" style={{ color: '#1A1A1A' }}>Área Administrativa</h2>
 
       <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
         {abas.map(a => (
           <button
             key={a.id}
             onClick={() => setAba(a.id)}
-            className={`px-4 py-2 rounded-xl font-bold text-sm whitespace-nowrap border-2 transition-colors shrink-0 ` +
-              (aba === a.id
-                ? 'bg-amber-600 text-white border-amber-600'
-                : 'bg-white text-gray-600 border-gray-300 hover:border-amber-400')}
+            className="px-4 py-2 rounded-xl font-bold text-sm whitespace-nowrap transition-colors shrink-0"
+            style={aba === a.id
+              ? { backgroundColor: '#3E1F12', color: 'white', border: '1px solid #3E1F12' }
+              : { backgroundColor: 'white', color: '#4B5563', border: '1px solid #F0F0F0' }}
           >
             {a.label}
           </button>

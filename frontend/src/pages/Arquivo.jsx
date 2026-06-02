@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Search } from 'lucide-react'
 import api from '../api.js'
-import { StatusBadge } from '../components/StatusBadge.jsx'
+import { StatusBadge, STATUS_BAR_COLOR } from '../components/StatusBadge.jsx'
 
 const MESES_COMPLETOS = [
   'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
@@ -73,11 +73,11 @@ export default function Arquivo() {
 
   return (
     <div className="space-y-4">
-      <h2 className="text-2xl font-extrabold text-gray-800">Arquivo de Notas</h2>
+      <h2 className="text-2xl font-extrabold" style={{ color: '#1A1A1A' }}>Arquivo de Notas</h2>
 
       {/* Busca */}
       <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={22} />
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2" size={22} style={{ color: '#999999' }} />
         <input
           className="input-field pl-10"
           type="text"
@@ -93,10 +93,10 @@ export default function Arquivo() {
           <button
             key={s}
             onClick={() => setFiltro(s)}
-            className={`whitespace-nowrap px-4 py-2 rounded-xl font-semibold text-sm border-2 transition-colors ` +
-              (filtro === s
-                ? 'bg-amber-600 text-white border-amber-600'
-                : 'bg-white text-gray-600 border-gray-300 hover:border-amber-400')}
+            className="whitespace-nowrap px-4 py-2 rounded-xl font-semibold text-sm transition-colors"
+            style={filtro === s
+              ? { backgroundColor: '#3E1F12', color: 'white', border: '1px solid #3E1F12' }
+              : { backgroundColor: 'white', color: '#4B5563', border: '1px solid #F0F0F0' }}
           >
             {s === 'Pronto para retirada' ? 'Pronto' : s}
           </button>
@@ -104,39 +104,43 @@ export default function Arquivo() {
       </div>
 
       {loading ? (
-        <p className="text-center text-gray-500 py-10 text-lg">Carregando...</p>
+        <p className="text-center py-10 text-lg" style={{ color: '#999999' }}>Carregando...</p>
       ) : grupos.length === 0 ? (
-        <p className="text-center text-gray-400 py-10 text-lg">Nenhuma OS encontrada.</p>
+        <p className="text-center py-10 text-lg" style={{ color: '#999999' }}>Nenhuma OS encontrada.</p>
       ) : (
         <div className="space-y-6">
           {grupos.map(([key, oss]) => (
             <div key={key}>
-              <h3 className="text-xs font-extrabold text-gray-400 uppercase tracking-widest mb-2 px-1">
-                {tituloGrupo(key)} · {oss.length} {oss.length === 1 ? 'nota' : 'notas'}
-              </h3>
+              <div className="flex items-center justify-between mb-2 px-1">
+                <h3 className="text-xs font-extrabold uppercase tracking-widest" style={{ color: '#999999' }}>
+                  {tituloGrupo(key)} · {oss.length} {oss.length === 1 ? 'nota' : 'notas'}
+                </h3>
+              </div>
               <div className="space-y-2">
                 {oss.map(os => (
                   <button
                     key={os.id}
                     onClick={() => navigate(`/os/${os.id}`)}
-                    className="card w-full text-left hover:shadow-lg active:scale-[0.99] transition-all"
+                    className="w-full text-left hover:shadow-md active:scale-[0.99] transition-all overflow-hidden"
+                    style={{ background: 'white', borderRadius: 14, boxShadow: '0 1px 6px rgba(0,0,0,0.06)', border: '1px solid #F0F0F0', display: 'flex' }}
                   >
-                    <div className="flex items-start justify-between gap-3">
+                    <div style={{ width: 3, backgroundColor: STATUS_BAR_COLOR[os.status] || '#F0F0F0', borderRadius: '14px 0 0 14px', flexShrink: 0 }} />
+                    <div className="flex-1 p-4 flex items-start justify-between gap-3">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1 flex-wrap">
-                          <span className="text-amber-700 font-black text-sm">
+                          <span className="font-black text-sm" style={{ color: '#A0522D' }}>
                             #{String(os.numero).padStart(3, '0')}
                           </span>
-                          <span className="text-xs text-gray-400">{formatarData(os.criado_em)}</span>
+                          <span className="text-xs" style={{ color: '#999999' }}>{formatarData(os.criado_em)}</span>
                           <StatusBadge status={os.status} />
                         </div>
-                        <p className="text-lg font-bold text-gray-900 truncate">{os.cliente.nome}</p>
-                        <p className="text-sm text-gray-500 mt-0.5 truncate">{resumoServicos(os)}</p>
+                        <p className="text-lg font-bold truncate" style={{ color: '#1A1A1A' }}>{os.cliente.nome}</p>
+                        <p className="text-sm mt-0.5 truncate" style={{ color: '#999999' }}>{resumoServicos(os)}</p>
                       </div>
                       <div className="text-right shrink-0">
-                        <p className="text-lg font-extrabold text-amber-700">{formatarValor(os.total)}</p>
+                        <p className="text-lg font-extrabold" style={{ color: '#A0522D' }}>{formatarValor(os.total)}</p>
                         {os.resta > 0 && (
-                          <p className="text-xs text-orange-500 font-semibold">
+                          <p className="text-xs font-semibold" style={{ color: '#F59E0B' }}>
                             Resta {formatarValor(os.resta)}
                           </p>
                         )}

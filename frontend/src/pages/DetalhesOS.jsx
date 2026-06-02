@@ -101,16 +101,15 @@ export default function DetalhesOS() {
   const [salvando, setSalvando] = useState(false)
   const [editando, setEditando] = useState(false)
 
-  // Estado de edição
   const [categorias, setCategorias] = useState([])
   const [servicosCustomDB, setServicosCustomDB] = useState([])
   const [itensEdit, setItensEdit] = useState([])
   const [entradaEdit, setEntradaEdit] = useState('')
   const [descontoEdit, setDescontoEdit] = useState('')
   const [prazoEdit, setPrazoEdit] = useState('')
-  const [novaCategoriaModo, setNovaCategoriaModo] = useState(null) // idx do item
+  const [novaCategoriaModo, setNovaCategoriaModo] = useState(null)
   const [novaCategoriaNome, setNovaCategoriaNome] = useState('')
-  const [servicoCustomModo, setServicoCustomModo] = useState(null) // idx do item
+  const [servicoCustomModo, setServicoCustomModo] = useState(null)
   const [servicoCustomTexto, setServicoCustomTexto] = useState('')
 
   useEffect(() => { carregarOS(); carregarCategorias() }, [id])
@@ -180,7 +179,6 @@ export default function DetalhesOS() {
       }
       return { ...it, servicos: [...it.servicos, nome] }
     }))
-    // Persistir no banco
     api.post('/servicos/', { nome }).then(r => {
       setServicosCustomDB(prev => {
         if (prev.some(s => s.nome === nome)) return prev
@@ -242,7 +240,6 @@ export default function DetalhesOS() {
     }
     setSalvando(true)
     try {
-      // Preserva checklist e estado de entrega pelos ids/posição.
       const estadoAnt = os.itens.map(i => ({
         id: i.id,
         concluidos: i.servicos_concluidos || [],
@@ -468,18 +465,15 @@ export default function DetalhesOS() {
       y += 4
     }
 
-    // Cabecalho
     linha('CHICO SAPATEIRO', { size: 20, bold: true, align: 'center', spaceAfter: 2 })
     linha('Ordem de Servico', { size: 12, align: 'center', spaceAfter: 4 })
     separador()
 
-    // Dados da OS
     linha(`Nota N.: #${String(os.numero).padStart(3, '0')}`, { size: 12, bold: true, spaceAfter: 2 })
     linha(`Data: ${formatarData(os.criado_em)}`, { size: 11, spaceAfter: 2 })
     if (os.prazo_entrega) linha(`Prazo: ${formatarData(os.prazo_entrega)}`, { size: 11, spaceAfter: 2 })
     linha(`Status: ${os.status}`, { size: 11, spaceAfter: 4 })
 
-    // Cliente
     linha('CLIENTE', { size: 12, bold: true, spaceAfter: 2 })
     linha(`Nome: ${os.cliente.nome}`, { size: 11, spaceAfter: 2 })
     if (os.cliente.telefone) linha(`Telefone: ${os.cliente.telefone}`, { size: 11, spaceAfter: 4 })
@@ -487,7 +481,6 @@ export default function DetalhesOS() {
 
     separador()
 
-    // Itens
     linha('ITENS', { size: 12, bold: true, spaceAfter: 3 })
     os.itens.forEach((item, idx) => {
       const qtd = item.quantidade || 1
@@ -495,23 +488,18 @@ export default function DetalhesOS() {
         categorias.some(c => c.nome === item.categoria && c.tipo === 'calcado')
       const tipoLabel = isCalcado ? 'Calcado' : 'Diversos'
 
-      // Titulo do item
       linha(`Item ${idx + 1} — ${tipoLabel}`, { size: 11, bold: true, spaceAfter: 1 })
 
-      // Categoria + lado + subcategoria
       const partesCat = [item.categoria]
       if (item.lado) partesCat.push(item.lado)
       if (item.subcategoria) partesCat.push(item.subcategoria)
       linha(partesCat.join(' | '), { size: 11, indent: 4, spaceAfter: 1 })
 
-      // Cor
       if (item.cor) linha(`Cor: ${item.cor}`, { size: 10, indent: 4, spaceAfter: 1 })
 
-      // Servicos
       const servs = formatarServicosTexto(item)
       if (servs) linha(`Servicos: ${servs}`, { size: 10, indent: 4, spaceAfter: 1 })
 
-      // Valor
       if (item.revisao) {
         linha('Sem cobranca (revisao)', { size: 10, indent: 4, bold: true, spaceAfter: 1 })
       } else if (qtd > 1) {
@@ -520,7 +508,6 @@ export default function DetalhesOS() {
         linha(`Valor: ${formatarValor(item.valor)}`, { size: 10, indent: 4, bold: true, spaceAfter: 1 })
       }
 
-      // Observacoes
       if (item.observacao_servico) linha(`Obs. servico: ${item.observacao_servico}`, { size: 10, indent: 4, spaceAfter: 1 })
       if (item.descricao) linha(`Obs.: ${item.descricao}`, { size: 10, indent: 4, spaceAfter: 4 })
       else y += 3
@@ -528,7 +515,6 @@ export default function DetalhesOS() {
 
     separador()
 
-    // Pagamento
     linha('PAGAMENTO', { size: 12, bold: true, spaceAfter: 2 })
     const desconto = os.desconto || 0
     if (desconto > 0) {
@@ -541,7 +527,6 @@ export default function DetalhesOS() {
     if (os.prazo_entrega) linha(`Prazo: ${formatarData(os.prazo_entrega)}`, { size: 11, spaceAfter: 1 })
     linha(`Situacao: ${os.status_pagamento}`, { size: 11, spaceAfter: 4 })
 
-    // Rodape
     doc.setFontSize(11)
     doc.setFont('helvetica', 'italic')
     doc.text('Chico Sapateiro — Obrigado pela preferencia!', pageWidth / 2, pageHeight - 12, { align: 'center' })
@@ -549,7 +534,7 @@ export default function DetalhesOS() {
     doc.save(`OS-${String(os.numero).padStart(3, '0')}-${os.cliente.nome.replace(/\s+/g, '_')}.pdf`)
   }
 
-  if (loading) return <p className="text-center py-10 text-lg text-gray-500">Carregando...</p>
+  if (loading) return <p className="text-center py-10 text-lg" style={{ color: '#999999' }}>Carregando...</p>
   if (!os) return null
 
   const totalEdit = itensEdit.reduce(
@@ -562,7 +547,6 @@ export default function DetalhesOS() {
   const entradaEditInvalida = entradaEditNum > totalEditLiquido
   const atraso = estaEmAtraso(os)
 
-  // Progresso de itens
   const totalItens = os.itens.length
   const itensConcluidos = os.itens.filter(it => {
     const s = it.servicos || []
@@ -571,25 +555,41 @@ export default function DetalhesOS() {
   }).length
   const itensEntregues = os.itens.filter(it => it.entregue).length
 
+  const btnCatEdit = (ativa) => ({
+    padding: '6px 10px',
+    borderRadius: 8,
+    fontWeight: 600,
+    fontSize: 12,
+    border: '1px solid',
+    cursor: 'pointer',
+    transition: 'all 0.15s',
+    backgroundColor: ativa ? '#3E1F12' : 'white',
+    color: ativa ? 'white' : '#374151',
+    borderColor: ativa ? '#3E1F12' : '#E8D5B0',
+  })
+
   return (
     <div className="space-y-4">
 
       {/* ── Header ── */}
       <div className="flex items-center gap-3 no-print">
-        <button onClick={() => navigate('/painel')} className="p-2 rounded-xl hover:bg-amber-100">
+        <button onClick={() => navigate('/painel')}
+          className="p-2 rounded-xl transition-colors hover:bg-gray-100"
+          style={{ color: '#3E1F12' }}>
           <ArrowLeft size={26} />
         </button>
         <div>
-          <h2 className="text-2xl font-extrabold text-gray-800">
+          <h2 className="text-2xl font-extrabold" style={{ color: '#1A1A1A' }}>
             Nota #{String(os.numero).padStart(3, '0')}
           </h2>
-          <p className="text-gray-500 text-sm">Criada em {formatarData(os.criado_em)}</p>
+          <p className="text-sm" style={{ color: '#999999' }}>Criada em {formatarData(os.criado_em)}</p>
         </div>
       </div>
 
       {/* ── Alerta de atraso ── */}
       {atraso && (
-        <div className="bg-red-50 border-2 border-red-400 rounded-2xl p-3 flex items-center gap-2 text-red-700 font-bold">
+        <div className="rounded-2xl p-3 flex items-center gap-2 font-bold"
+          style={{ backgroundColor: '#FEE2E2', border: '1px solid #FECACA', color: '#991B1B' }}>
           <AlertTriangle size={22} />
           <span>OS em atraso — prazo era {formatarData(os.prazo_entrega)}</span>
         </div>
@@ -599,25 +599,25 @@ export default function DetalhesOS() {
       <div className="card space-y-3">
         <div className="flex items-start justify-between">
           <div>
-            <p className="text-2xl font-extrabold text-gray-900">{os.cliente.nome}</p>
-            {os.cliente.telefone && <p className="text-gray-500">{os.cliente.telefone}</p>}
+            <p className="text-2xl font-extrabold" style={{ color: '#1A1A1A' }}>{os.cliente.nome}</p>
+            {os.cliente.telefone && <p style={{ color: '#999999' }}>{os.cliente.telefone}</p>}
           </div>
           <StatusBadge status={os.status} />
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           <PagamentoBadge status={os.status_pagamento} />
           {os.prazo_entrega && (
-            <span className={`text-sm font-semibold ` + (atraso ? 'text-red-600' : 'text-gray-500')}>
+            <span className="text-sm font-semibold" style={{ color: atraso ? '#EF4444' : '#999999' }}>
               📅 Prazo: {formatarData(os.prazo_entrega)}
             </span>
           )}
           {totalItens > 0 && (
-            <span className="text-sm font-semibold text-amber-700">
+            <span className="text-sm font-semibold" style={{ color: '#A0522D' }}>
               ✓ {itensConcluidos}/{totalItens} itens concluídos
             </span>
           )}
           {itensEntregues > 0 && (
-            <span className="text-sm font-semibold text-green-700">
+            <span className="text-sm font-semibold" style={{ color: '#10B981' }}>
               📦 {itensEntregues} de {totalItens} {itensEntregues === 1 ? 'item entregue' : 'itens entregues'}
             </span>
           )}
@@ -627,10 +627,11 @@ export default function DetalhesOS() {
       {/* ── Itens (visualização) ── */}
       {!editando ? (
         <div className="card space-y-3">
-          <div className="flex items-center justify-between border-b pb-2">
-            <h3 className="text-lg font-bold text-gray-700">Itens</h3>
+          <div className="flex items-center justify-between pb-2" style={{ borderBottom: '1px solid #F0F0F0' }}>
+            <h3 className="text-lg font-bold" style={{ color: '#1A1A1A' }}>Itens</h3>
             <button onClick={iniciarEdicao}
-              className="flex items-center gap-1 text-amber-700 font-semibold text-sm hover:underline no-print">
+              className="flex items-center gap-1 font-semibold text-sm hover:underline no-print"
+              style={{ color: '#A0522D' }}>
               <Pencil size={16} /> Editar
             </button>
           </div>
@@ -641,40 +642,42 @@ export default function DetalhesOS() {
             const itemConcluido = servicos.length > 0 && servicos.every(s => concluidos.includes(s))
             const qtd = item.quantidade || 1
             return (
-              <div key={item.id} className={`py-2 border-b last:border-0 transition-opacity ${item.entregue ? 'opacity-60' : ''}`}>
+              <div key={item.id} className={`py-2 transition-opacity ${item.entregue ? 'opacity-60' : ''}`}
+                style={{ borderBottom: '1px solid #F0F0F0' }}>
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex-1">
                     <div className="flex items-center gap-2 flex-wrap">
-                      {qtd > 1 && <span className="font-bold text-blue-700 text-sm">{qtd}×</span>}
-                      <p className={`font-bold ${item.entregue ? 'line-through text-gray-400' : 'text-gray-900'}`}>
+                      {qtd > 1 && <span className="font-bold text-sm" style={{ color: '#1d4ed8' }}>{qtd}×</span>}
+                      <p className={`font-bold ${item.entregue ? 'line-through' : ''}`}
+                        style={{ color: item.entregue ? '#999999' : '#1A1A1A' }}>
                         {descricaoItem(item)}
                       </p>
                       {item.revisao && (
-                        <span className="bg-blue-100 text-blue-700 border border-blue-300 rounded-lg px-2 py-0.5 text-xs font-bold">
+                        <span className="rounded-full px-2 py-0.5 text-xs font-bold"
+                          style={{ backgroundColor: '#DBEAFE', color: '#1d4ed8', border: '1px solid #93C5FD' }}>
                           Revisão
                         </span>
                       )}
                       {item.entregue && (
-                        <span className="bg-green-100 text-green-700 border border-green-300 rounded-lg px-2 py-0.5 text-xs font-bold">
+                        <span className="rounded-full px-2 py-0.5 text-xs font-bold"
+                          style={{ backgroundColor: '#D1FAE5', color: '#065F46', border: '1px solid #A7F3D0' }}>
                           Entregue
                         </span>
                       )}
                     </div>
 
-                    {/* Serviços como texto */}
                     {servicos.length > 0 && (
-                      <p className="text-sm text-gray-500 mt-1">{formatarServicosTexto(item)}</p>
+                      <p className="text-sm mt-1" style={{ color: '#999999' }}>{formatarServicosTexto(item)}</p>
                     )}
 
-                    {item.cor && <p className="text-sm text-gray-500 mt-1">Cor: {item.cor}</p>}
+                    {item.cor && <p className="text-sm mt-1" style={{ color: '#999999' }}>Cor: {item.cor}</p>}
                     {item.observacao_servico && (
-                      <p className="text-sm text-gray-600 mt-1">
+                      <p className="text-sm mt-1" style={{ color: '#4B5563' }}>
                         <span className="font-semibold">Obs. serviço:</span> {item.observacao_servico}
                       </p>
                     )}
-                    {item.descricao && <p className="text-sm text-gray-400 italic mt-1">{item.descricao}</p>}
+                    {item.descricao && <p className="text-sm italic mt-1" style={{ color: '#999999' }}>{item.descricao}</p>}
 
-                    {/* Checklist simplificado + botão de entrega */}
                     <div className="flex items-center gap-3 mt-2 flex-wrap">
                       {servicos.length > 0 && !item.entregue && (
                         <label className="flex items-center gap-2 cursor-pointer select-none text-sm">
@@ -682,9 +685,11 @@ export default function DetalhesOS() {
                             type="checkbox"
                             checked={itemConcluido}
                             onChange={() => toggleItemConcluido(item.id)}
-                            className="w-5 h-5 accent-amber-600 cursor-pointer"
+                            className="w-5 h-5 cursor-pointer"
+                            style={{ accentColor: '#3E1F12' }}
                           />
-                          <span className={itemConcluido ? 'line-through text-gray-400' : 'text-amber-700 font-semibold'}>
+                          <span className={itemConcluido ? 'line-through' : 'font-semibold'}
+                            style={{ color: itemConcluido ? '#999999' : '#A0522D' }}>
                             Item concluído
                           </span>
                         </label>
@@ -692,14 +697,16 @@ export default function DetalhesOS() {
                       {!item.entregue ? (
                         <button
                           onClick={() => toggleEntregue(item.id)}
-                          className="text-xs font-bold text-green-700 border border-green-400 bg-green-50 rounded-lg px-2.5 py-1 hover:bg-green-100 transition-colors"
+                          className="text-xs font-bold rounded-lg px-2.5 py-1 transition-colors"
+                          style={{ backgroundColor: '#D1FAE5', color: '#065F46', border: '1px solid #A7F3D0' }}
                         >
                           Marcar como entregue
                         </button>
                       ) : (
                         <button
                           onClick={() => toggleEntregue(item.id)}
-                          className="text-xs font-bold text-gray-500 border border-gray-300 bg-gray-50 rounded-lg px-2.5 py-1 hover:bg-gray-100 transition-colors"
+                          className="text-xs font-bold rounded-lg px-2.5 py-1 transition-colors"
+                          style={{ backgroundColor: '#F3F4F6', color: '#6B7280', border: '1px solid #E5E7EB' }}
                         >
                           Desfazer entrega
                         </button>
@@ -708,14 +715,14 @@ export default function DetalhesOS() {
                   </div>
                   <div className="text-right shrink-0">
                     {item.revisao ? (
-                      <p className="font-bold text-blue-600 text-sm">Sem cobrança</p>
+                      <p className="font-bold text-sm" style={{ color: '#1d4ed8' }}>Sem cobrança</p>
                     ) : qtd > 1 ? (
                       <>
-                        <p className="text-xs text-gray-500">{formatarValor(item.valor)} cada</p>
-                        <p className="font-extrabold text-amber-700">{formatarValor(item.valor * qtd)}</p>
+                        <p className="text-xs" style={{ color: '#999999' }}>{formatarValor(item.valor)} cada</p>
+                        <p className="font-extrabold" style={{ color: '#A0522D' }}>{formatarValor(item.valor * qtd)}</p>
                       </>
                     ) : (
-                      <p className="font-extrabold text-amber-700">{formatarValor(item.valor)}</p>
+                      <p className="font-extrabold" style={{ color: '#A0522D' }}>{formatarValor(item.valor)}</p>
                     )}
                   </div>
                 </div>
@@ -725,37 +732,37 @@ export default function DetalhesOS() {
 
           {(os.desconto || 0) > 0 && (
             <div className="space-y-1 pt-2">
-              <div className="flex items-center justify-between bg-gray-50 rounded-xl px-4 py-2">
-                <p className="text-gray-500 text-xs font-semibold">Subtotal</p>
-                <p className="font-semibold text-gray-700">{formatarValor(os.subtotal)}</p>
+              <div className="flex items-center justify-between rounded-xl px-4 py-2" style={{ backgroundColor: '#F3F4F6' }}>
+                <p className="text-xs font-semibold" style={{ color: '#999999' }}>Subtotal</p>
+                <p className="font-semibold" style={{ color: '#4B5563' }}>{formatarValor(os.subtotal)}</p>
               </div>
-              <div className="flex items-center justify-between bg-red-50 rounded-xl px-4 py-2">
-                <p className="text-red-500 text-xs font-semibold">Desconto</p>
-                <p className="font-semibold text-red-600">- {formatarValor(os.desconto)}</p>
+              <div className="flex items-center justify-between rounded-xl px-4 py-2" style={{ backgroundColor: '#FEE2E2' }}>
+                <p className="text-xs font-semibold" style={{ color: '#EF4444' }}>Desconto</p>
+                <p className="font-semibold" style={{ color: '#dc2626' }}>- {formatarValor(os.desconto)}</p>
               </div>
             </div>
           )}
           <div className="grid grid-cols-3 gap-2 pt-2 text-center">
-            <div className="bg-amber-50 rounded-xl p-3">
-              <p className="text-gray-500 text-xs font-semibold">Total</p>
-              <p className="font-extrabold text-amber-700 text-lg">{formatarValor(os.total)}</p>
+            <div className="rounded-xl p-3" style={{ backgroundColor: '#F5ECD7' }}>
+              <p className="text-xs font-semibold" style={{ color: '#999999' }}>Total</p>
+              <p className="font-extrabold text-lg" style={{ color: '#3E1F12' }}>{formatarValor(os.total)}</p>
             </div>
-            <div className="bg-green-50 rounded-xl p-3">
-              <p className="text-gray-500 text-xs font-semibold">Valor pago</p>
-              <p className="font-extrabold text-green-700 text-lg">{formatarValor(os.entrada)}</p>
+            <div className="rounded-xl p-3" style={{ backgroundColor: '#D1FAE5' }}>
+              <p className="text-xs font-semibold" style={{ color: '#999999' }}>Valor pago</p>
+              <p className="font-extrabold text-lg" style={{ color: '#065F46' }}>{formatarValor(os.entrada)}</p>
             </div>
-            <div className="bg-orange-50 rounded-xl p-3">
-              <p className="text-gray-500 text-xs font-semibold">Resta</p>
-              <p className="font-extrabold text-orange-600 text-lg">{formatarValor(os.resta)}</p>
+            <div className="rounded-xl p-3" style={{ backgroundColor: '#FFF7ED' }}>
+              <p className="text-xs font-semibold" style={{ color: '#999999' }}>Resta</p>
+              <p className="font-extrabold text-lg" style={{ color: '#F59E0B' }}>{formatarValor(os.resta)}</p>
             </div>
           </div>
         </div>
       ) : (
         /* ── Modo edição ── */
         <div className="card space-y-4">
-          <div className="flex items-center justify-between border-b pb-2">
-            <h3 className="text-lg font-bold text-gray-700">Editando OS</h3>
-            <button onClick={() => setEditando(false)} className="text-gray-400 hover:text-gray-700">
+          <div className="flex items-center justify-between pb-2" style={{ borderBottom: '1px solid #F0F0F0' }}>
+            <h3 className="text-lg font-bold" style={{ color: '#1A1A1A' }}>Editando OS</h3>
+            <button onClick={() => setEditando(false)} style={{ color: '#999999' }}>
               <X size={22} />
             </button>
           </div>
@@ -766,12 +773,13 @@ export default function DetalhesOS() {
             const sandalia = item.categoria === 'Sandália'
             const custom = item.servicos.filter(s => !SERVICOS.includes(s))
             return (
-              <div key={idx} className="border-2 border-gray-200 rounded-2xl p-3 space-y-3">
+              <div key={idx} className="rounded-2xl p-3 space-y-3"
+                style={{ border: '1px solid #F0F0F0' }}>
                 <div className="flex items-center justify-between">
-                  <span className="font-black text-amber-700 text-sm">Item {idx + 1}</span>
+                  <span className="font-black text-sm" style={{ color: '#A0522D' }}>Item {idx + 1}</span>
                   {itensEdit.length > 1 && (
                     <button type="button" onClick={() => setItensEdit(p => p.filter((_, i) => i !== idx))}
-                      className="text-red-400 hover:text-red-600">
+                      style={{ color: '#EF4444' }}>
                       <Trash2 size={18} />
                     </button>
                   )}
@@ -779,7 +787,7 @@ export default function DetalhesOS() {
 
                 {/* Categoria */}
                 <div>
-                  <p className="font-bold text-gray-700 text-sm mb-2">Categoria</p>
+                  <p className="font-bold text-sm mb-2" style={{ color: '#1A1A1A' }}>Categoria</p>
                   <div className="flex flex-wrap gap-1.5">
                     {categorias.map(catObj => {
                       const cat = catObj.nome
@@ -796,20 +804,15 @@ export default function DetalhesOS() {
                               if (cat !== 'Sandália') setItemEdit(idx, 'subcategoria', '')
                               if (oldIsMala || newIsMala || (!newIsCalcado && !newIsMala)) setItemEdit(idx, 'lado', '')
                             }}
-                            className={`px-2.5 py-1.5 rounded-lg font-semibold text-xs border-2 transition-colors ` +
-                              (ativa
-                                ? 'bg-amber-600 text-white border-amber-600'
-                                : 'bg-white text-gray-700 border-gray-300 hover:border-amber-400') +
-                              (!isBase ? ' pr-6' : '')}>
+                            style={{ ...btnCatEdit(ativa), paddingRight: !isBase ? 24 : 10 }}>
                             {cat}
                           </button>
                           {!isBase && (
                             <button
                               type="button"
                               onClick={e => { e.stopPropagation(); deletarCategoriaEdit(catObj.id, cat) }}
-                              className="absolute right-0.5 top-1/2 -translate-y-1/2 p-0.5 rounded text-red-400 hover:text-red-600 opacity-0 group-hover:opacity-100 transition-opacity"
-                              title="Excluir categoria"
-                            >
+                              className="absolute right-0.5 top-1/2 -translate-y-1/2 p-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity"
+                              style={{ color: '#EF4444' }}>
                               <Trash2 size={10} />
                             </button>
                           )}
@@ -829,7 +832,8 @@ export default function DetalhesOS() {
                             }
                           }}
                         />
-                        <button type="button" className="bg-amber-600 text-white p-1.5 rounded-lg"
+                        <button type="button" className="text-white p-1.5 rounded-lg"
+                          style={{ backgroundColor: '#3E1F12' }}
                           onClick={async () => {
                             const ok = await addCategoria(novaCategoriaNome.trim())
                             if (ok) { setItemEdit(idx, 'categoria', novaCategoriaNome.trim()); setNovaCategoriaModo(null); setNovaCategoriaNome('') }
@@ -843,25 +847,22 @@ export default function DetalhesOS() {
                       </div>
                     ) : (
                       <button type="button" onClick={() => setNovaCategoriaModo(idx)}
-                        className="px-2.5 py-1.5 rounded-lg font-semibold text-xs border-2 border-dashed border-amber-400 text-amber-700 hover:bg-amber-50 flex items-center gap-1">
+                        className="flex items-center gap-1 font-semibold text-xs"
+                        style={{ padding: '6px 10px', borderRadius: 8, border: '1px dashed #A0522D', color: '#A0522D', backgroundColor: 'transparent' }}>
                         <Plus size={12} /> Nova
                       </button>
                     )}
                   </div>
                 </div>
 
-                {/* Qual peça — calçados (vem antes das subcategorias) */}
                 {calcado && (
                   <div>
-                    <p className="font-bold text-gray-700 text-sm mb-2">Qual peça?</p>
+                    <p className="font-bold text-sm mb-2" style={{ color: '#1A1A1A' }}>Qual peça?</p>
                     <div className="flex flex-wrap gap-1.5">
                       {LADOS.map(l => (
                         <button key={l} type="button"
                           onClick={() => setItemEdit(idx, 'lado', l)}
-                          className={`px-2.5 py-1.5 rounded-lg font-semibold text-xs border-2 transition-colors ` +
-                            (item.lado === l
-                              ? 'bg-amber-600 text-white border-amber-600'
-                              : 'bg-white text-gray-700 border-gray-300 hover:border-amber-400')}>
+                          style={btnCatEdit(item.lado === l)}>
                           {l}
                         </button>
                       ))}
@@ -869,18 +870,14 @@ export default function DetalhesOS() {
                   </div>
                 )}
 
-                {/* Tipo de sandália (vem após qual peça) */}
                 {sandalia && (
                   <div>
-                    <p className="font-bold text-gray-700 text-sm mb-2">Tipo de sandália</p>
+                    <p className="font-bold text-sm mb-2" style={{ color: '#1A1A1A' }}>Tipo de sandália</p>
                     <div className="flex flex-wrap gap-1.5">
                       {SUBCATEGORIAS_SANDALIA.map(sc => (
                         <button key={sc} type="button"
                           onClick={() => setItemEdit(idx, 'subcategoria', sc)}
-                          className={`px-2.5 py-1.5 rounded-lg font-semibold text-xs border-2 transition-colors ` +
-                            (item.subcategoria === sc
-                              ? 'bg-amber-600 text-white border-amber-600'
-                              : 'bg-white text-gray-700 border-gray-300 hover:border-amber-400')}>
+                          style={btnCatEdit(item.subcategoria === sc)}>
                           {sc}
                         </button>
                       ))}
@@ -888,34 +885,27 @@ export default function DetalhesOS() {
                   </div>
                 )}
 
-                {/* Mala — tamanho e material */}
                 {ehMala(item.categoria) && (
                   <>
                     <div>
-                      <p className="font-bold text-gray-700 text-sm mb-2">Tamanho</p>
+                      <p className="font-bold text-sm mb-2" style={{ color: '#1A1A1A' }}>Tamanho</p>
                       <div className="flex flex-wrap gap-1.5">
                         {MALA_TAMANHOS.map(t => (
                           <button key={t} type="button"
                             onClick={() => setItemEdit(idx, 'subcategoria', t)}
-                            className={`px-2.5 py-1.5 rounded-lg font-semibold text-xs border-2 transition-colors ` +
-                              (item.subcategoria === t
-                                ? 'bg-amber-600 text-white border-amber-600'
-                                : 'bg-white text-gray-700 border-gray-300 hover:border-amber-400')}>
+                            style={btnCatEdit(item.subcategoria === t)}>
                             {t}
                           </button>
                         ))}
                       </div>
                     </div>
                     <div>
-                      <p className="font-bold text-gray-700 text-sm mb-2">Material</p>
+                      <p className="font-bold text-sm mb-2" style={{ color: '#1A1A1A' }}>Material</p>
                       <div className="flex flex-wrap gap-1.5">
                         {MALA_MATERIAIS.map(m => (
                           <button key={m} type="button"
                             onClick={() => setItemEdit(idx, 'lado', m)}
-                            className={`px-2.5 py-1.5 rounded-lg font-semibold text-xs border-2 transition-colors ` +
-                              (item.lado === m
-                                ? 'bg-amber-600 text-white border-amber-600'
-                                : 'bg-white text-gray-700 border-gray-300 hover:border-amber-400')}>
+                            style={btnCatEdit(item.lado === m)}>
                             {m}
                           </button>
                         ))}
@@ -926,39 +916,32 @@ export default function DetalhesOS() {
 
                 {/* Serviços */}
                 <div>
-                  <p className="font-bold text-gray-700 text-sm mb-2">Serviços</p>
+                  <p className="font-bold text-sm mb-2" style={{ color: '#1A1A1A' }}>Serviços</p>
                   <div className="flex flex-wrap gap-1.5">
                     {SERVICOS.map(s => (
                       <button key={s} type="button" onClick={() => toggleServicoEdit(idx, s)}
-                        className={`px-2.5 py-1.5 rounded-lg font-semibold text-xs border-2 transition-colors ` +
-                          (item.servicos.includes(s)
-                            ? 'bg-amber-600 text-white border-amber-600'
-                            : 'bg-white text-gray-700 border-gray-300 hover:border-amber-400')}>
+                        style={btnCatEdit(item.servicos.includes(s))}>
                         {s}
                       </button>
                     ))}
-                    {/* Serviços customizados do banco */}
                     {servicosCustomDB.map(sc => (
                       <div key={sc.id} className="relative group">
                         <button type="button" onClick={() => toggleServicoEdit(idx, sc.nome)}
-                          className={`px-2.5 py-1.5 rounded-lg font-semibold text-xs border-2 transition-colors pr-6 ` +
-                            (item.servicos.includes(sc.nome)
-                              ? 'bg-amber-600 text-white border-amber-600'
-                              : 'bg-white text-gray-700 border-gray-300 hover:border-amber-400')}>
+                          style={{ ...btnCatEdit(item.servicos.includes(sc.nome)), paddingRight: 24 }}>
                           {sc.nome}
                         </button>
                         <button type="button"
                           onClick={e => { e.stopPropagation(); deletarServicoCustom(sc.id, sc.nome) }}
-                          className="absolute right-0.5 top-1/2 -translate-y-1/2 p-0.5 rounded text-red-400 hover:text-red-600 opacity-0 group-hover:opacity-100 transition-opacity"
-                          title="Excluir">
+                          className="absolute right-0.5 top-1/2 -translate-y-1/2 p-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity"
+                          style={{ color: '#EF4444' }}>
                           <Trash2 size={10} />
                         </button>
                       </div>
                     ))}
-                    {/* Serviços orfãos */}
                     {custom.filter(s => !servicosCustomDB.some(sc => sc.nome === s)).map(s => (
                       <button key={s} type="button" onClick={() => toggleServicoEdit(idx, s)}
-                        className="px-2.5 py-1.5 rounded-lg font-semibold text-xs border-2 bg-amber-600 text-white border-amber-600 flex items-center gap-1">
+                        className="flex items-center gap-1"
+                        style={{ padding: '6px 10px', borderRadius: 8, fontWeight: 600, fontSize: 12, backgroundColor: '#3E1F12', color: 'white', border: '1px solid #3E1F12' }}>
                         {s} <X size={12} />
                       </button>
                     ))}
@@ -968,13 +951,11 @@ export default function DetalhesOS() {
                           placeholder="Serviço personalizado" value={servicoCustomTexto}
                           onChange={e => setServicoCustomTexto(e.target.value)}
                           onKeyDown={e => {
-                            if (e.key === 'Enter') {
-                              e.preventDefault()
-                              adicionarServicoCustom(idx)
-                            }
+                            if (e.key === 'Enter') { e.preventDefault(); adicionarServicoCustom(idx) }
                           }}
                         />
-                        <button type="button" className="bg-amber-600 text-white p-1.5 rounded-lg"
+                        <button type="button" className="text-white p-1.5 rounded-lg"
+                          style={{ backgroundColor: '#3E1F12' }}
                           onClick={() => adicionarServicoCustom(idx)}>
                           <Check size={16} />
                         </button>
@@ -985,18 +966,20 @@ export default function DetalhesOS() {
                       </div>
                     ) : (
                       <button type="button" onClick={() => setServicoCustomModo(idx)}
-                        className="px-2.5 py-1.5 rounded-lg font-semibold text-xs border-2 border-dashed border-amber-400 text-amber-700 hover:bg-amber-50 flex items-center gap-1">
+                        className="flex items-center gap-1 font-semibold text-xs"
+                        style={{ padding: '6px 10px', borderRadius: 8, border: '1px dashed #A0522D', color: '#A0522D', backgroundColor: 'transparent' }}>
                         <Plus size={12} /> Adicionar serviço
                       </button>
                     )}
                   </div>
                   {item.servicos.includes('Trocar roda') && (
                     <div className="mt-2">
-                      <label className="block text-xs font-semibold text-gray-600 mb-1">Qtd. de rodas (1–8)</label>
+                      <label className="block text-xs font-semibold mb-1" style={{ color: '#4B5563' }}>Qtd. de rodas (1–8)</label>
                       <div className="flex items-center gap-1.5">
                         <button type="button"
                           onClick={() => setItemEdit(idx, 'qtd_rodas', Math.max(1, (item.qtd_rodas || 2) - 1))}
-                          className="w-8 h-9 rounded-lg border-2 border-gray-300 bg-white font-bold text-base text-gray-600 hover:border-amber-400 hover:bg-amber-50 flex items-center justify-center shrink-0 transition-colors">
+                          className="w-8 h-9 rounded-lg font-bold text-base flex items-center justify-center shrink-0 transition-colors"
+                          style={{ border: '1px solid #E8D5B0', backgroundColor: 'white', color: '#374151' }}>
                           −
                         </button>
                         <input className="input-field text-sm py-2 text-center font-bold flex-1"
@@ -1009,16 +992,16 @@ export default function DetalhesOS() {
                         />
                         <button type="button"
                           onClick={() => setItemEdit(idx, 'qtd_rodas', Math.min(8, (item.qtd_rodas || 2) + 1))}
-                          className="w-8 h-9 rounded-lg border-2 border-gray-300 bg-white font-bold text-base text-gray-600 hover:border-amber-400 hover:bg-amber-50 flex items-center justify-center shrink-0 transition-colors">
+                          className="w-8 h-9 rounded-lg font-bold text-base flex items-center justify-center shrink-0 transition-colors"
+                          style={{ border: '1px solid #E8D5B0', backgroundColor: 'white', color: '#374151' }}>
                           +
                         </button>
                       </div>
                     </div>
                   )}
 
-                  {/* Observação do serviço */}
                   <div className="mt-2">
-                    <label className="block font-bold text-gray-700 text-xs mb-1">Observação do serviço</label>
+                    <label className="block font-bold text-xs mb-1" style={{ color: '#1A1A1A' }}>Observação do serviço</label>
                     <textarea className="input-field text-sm" rows={2}
                       placeholder="Descreva o que deve ser feito..."
                       value={item.observacao_servico}
@@ -1036,19 +1019,21 @@ export default function DetalhesOS() {
                         setItemEdit(idx, 'revisao', e.target.checked)
                         if (e.target.checked) setItemEdit(idx, 'valor', '0')
                       }}
-                      className="w-4 h-4 accent-blue-600 cursor-pointer"
+                      className="w-4 h-4 cursor-pointer"
+                      style={{ accentColor: '#3E1F12' }}
                     />
-                    <span className="font-bold text-gray-700 text-xs">Revisão / Garantia (sem cobrança)</span>
+                    <span className="font-bold text-xs" style={{ color: '#1A1A1A' }}>Revisão / Garantia (sem cobrança)</span>
                   </label>
                 </div>
 
-                {/* Quantidade com +/- */}
+                {/* Quantidade */}
                 <div>
-                  <label className="block text-xs font-bold text-gray-600 mb-1">Quantidade</label>
+                  <label className="block text-xs font-bold mb-1" style={{ color: '#4B5563' }}>Quantidade</label>
                   <div className="flex items-center gap-1.5">
                     <button type="button"
                       onClick={() => setItemEdit(idx, 'quantidade', Math.max(1, (item.quantidade || 1) - 1))}
-                      className="w-8 h-9 rounded-lg border-2 border-gray-300 bg-white font-bold text-base text-gray-600 hover:border-amber-400 hover:bg-amber-50 flex items-center justify-center shrink-0 transition-colors">
+                      className="w-8 h-9 rounded-lg font-bold text-base flex items-center justify-center shrink-0 transition-colors"
+                      style={{ border: '1px solid #E8D5B0', backgroundColor: 'white', color: '#374151' }}>
                       −
                     </button>
                     <input
@@ -1062,7 +1047,8 @@ export default function DetalhesOS() {
                     />
                     <button type="button"
                       onClick={() => setItemEdit(idx, 'quantidade', (item.quantidade || 1) + 1)}
-                      className="w-8 h-9 rounded-lg border-2 border-gray-300 bg-white font-bold text-base text-gray-600 hover:border-amber-400 hover:bg-amber-50 flex items-center justify-center shrink-0 transition-colors">
+                      className="w-8 h-9 rounded-lg font-bold text-base flex items-center justify-center shrink-0 transition-colors"
+                      style={{ border: '1px solid #E8D5B0', backgroundColor: 'white', color: '#374151' }}>
                       +
                     </button>
                   </div>
@@ -1082,60 +1068,60 @@ export default function DetalhesOS() {
 
           <button type="button"
             onClick={() => setItensEdit(p => [...p, itemVazio()])}
-            className="w-full border-2 border-dashed border-amber-400 text-amber-700 font-bold py-2 rounded-xl hover:bg-amber-50 flex items-center justify-center gap-2 text-sm">
+            className="w-full font-bold py-2 rounded-xl flex items-center justify-center gap-2 text-sm transition-colors"
+            style={{ border: '1px dashed #A0522D', color: '#A0522D', backgroundColor: 'transparent' }}>
             <Plus size={16} /> Adicionar item
           </button>
 
           {/* Prazo */}
           <div>
-            <label className="block font-bold text-gray-700 mb-2 text-sm">Prazo de entrega</label>
+            <label className="block font-bold mb-2 text-sm" style={{ color: '#1A1A1A' }}>Prazo de entrega</label>
             <SeletorPrazo value={prazoEdit} onChange={setPrazoEdit} />
           </div>
 
           {/* Total */}
-          <div className="flex items-center justify-between bg-amber-50 rounded-xl px-3 py-2.5">
+          <div className="flex items-center justify-between rounded-xl px-3 py-2.5"
+            style={{ backgroundColor: '#F5ECD7' }}>
             <div>
-              <p className="text-gray-500 text-xs font-semibold">Total</p>
+              <p className="text-xs font-semibold" style={{ color: '#999999' }}>Total</p>
               {descontoEditNum > 0 && (
-                <p className="text-gray-400 text-xs">Subtotal {formatarValor(totalEdit)} − desc. {formatarValor(descontoEditNum)}</p>
+                <p className="text-xs" style={{ color: '#999999' }}>Subtotal {formatarValor(totalEdit)} − desc. {formatarValor(descontoEditNum)}</p>
               )}
             </div>
-            <p className="font-extrabold text-amber-700">{formatarValor(totalEditLiquido)}</p>
+            <p className="font-extrabold" style={{ color: '#3E1F12' }}>{formatarValor(totalEditLiquido)}</p>
           </div>
 
-          {/* Valor pago */}
           <div>
-            <label className="block font-bold text-gray-700 mb-1 text-sm">Valor pago (R$)</label>
-            <input className={`input-field text-xl font-bold ` + (entradaEditInvalida ? 'border-red-400' : '')}
+            <label className="block font-bold mb-1 text-sm" style={{ color: '#1A1A1A' }}>Valor pago (R$)</label>
+            <input className="input-field text-xl font-bold"
+              style={entradaEditInvalida ? { borderColor: '#EF4444' } : {}}
               inputMode="decimal" placeholder="0,00"
               value={entradaEdit} onChange={e => setEntradaEdit(e.target.value)} />
           </div>
 
-          {/* Desconto */}
           <div>
-            <label className="block font-bold text-gray-700 mb-1 text-sm">Desconto (R$)</label>
+            <label className="block font-bold mb-1 text-sm" style={{ color: '#1A1A1A' }}>Desconto (R$)</label>
             <input className="input-field" inputMode="decimal" placeholder="0,00"
               value={descontoEdit} onChange={e => setDescontoEdit(e.target.value)} />
           </div>
 
-          {/* Aviso de entrada inválida */}
           {entradaEditInvalida && (
-            <p className="text-red-600 text-sm font-semibold flex items-center gap-1">
+            <p className="text-sm font-semibold flex items-center gap-1" style={{ color: '#EF4444' }}>
               ⚠ O valor pago não pode ser maior que o valor total
             </p>
           )}
 
-          {/* Resta */}
-          <div className="flex items-center justify-between bg-orange-50 rounded-xl px-3 py-2.5">
-            <p className="text-gray-500 text-xs font-semibold">Resta</p>
-            <p className="font-extrabold text-orange-600">{formatarValor(restaEdit)}</p>
+          <div className="flex items-center justify-between rounded-xl px-3 py-2.5"
+            style={{ backgroundColor: '#FFF7ED' }}>
+            <p className="text-xs font-semibold" style={{ color: '#999999' }}>Resta</p>
+            <p className="font-extrabold" style={{ color: '#F59E0B' }}>{formatarValor(restaEdit)}</p>
           </div>
 
           <button onClick={salvarEdicao} disabled={salvando || entradaEditInvalida}
-            className={`w-full flex items-center justify-center gap-2 font-bold py-3 rounded-xl transition-colors ` +
-              (entradaEditInvalida
-                ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                : 'btn-primary')}>
+            className="w-full flex items-center justify-center gap-2 font-bold py-3 rounded-xl transition-colors"
+            style={entradaEditInvalida
+              ? { backgroundColor: '#E5E7EB', color: '#9CA3AF', cursor: 'not-allowed' }
+              : { backgroundColor: '#3E1F12', color: 'white', cursor: 'pointer' }}>
             <Check size={20} />
             {salvando ? 'Salvando...' : entradaEditInvalida ? 'Entrada maior que o total' : 'Salvar alterações'}
           </button>
@@ -1144,15 +1130,15 @@ export default function DetalhesOS() {
 
       {/* ── Status da OS ── */}
       <div className="card no-print">
-        <h3 className="text-lg font-bold text-gray-700 mb-3">Status da OS</h3>
+        <h3 className="text-lg font-bold mb-3" style={{ color: '#1A1A1A' }}>Status da OS</h3>
         <div className="space-y-2">
           {STATUS_LISTA.map(s => (
             <button key={s} onClick={() => atualizarStatus(s)}
               disabled={salvando || os.status === s}
-              className={`w-full py-3 px-4 rounded-xl font-bold text-left text-lg border-2 transition-all ` +
-                (os.status === s
-                  ? 'bg-amber-600 text-white border-amber-600'
-                  : 'bg-white text-gray-700 border-gray-200 hover:border-amber-400 hover:bg-amber-50')}>
+              className="w-full py-3 px-4 rounded-xl font-bold text-left text-lg transition-all"
+              style={os.status === s
+                ? { backgroundColor: '#3E1F12', color: 'white', border: '1px solid #3E1F12' }
+                : { backgroundColor: 'white', color: '#374151', border: '1px solid #F0F0F0' }}>
               {os.status === s ? `✓ ${s}` : s}
             </button>
           ))}
@@ -1162,19 +1148,23 @@ export default function DetalhesOS() {
       {/* ── Ações ── */}
       <div className="grid grid-cols-2 gap-3 no-print">
         <button onClick={abrirWhatsApp}
-          className="flex items-center justify-center gap-2 bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-3 rounded-xl">
+          className="flex items-center justify-center gap-2 text-white font-bold py-3 px-3 rounded-xl"
+          style={{ backgroundColor: '#22c55e' }}>
           <MessageCircle size={18} /> <span className="text-sm">Nota WhatsApp</span>
         </button>
         <button onClick={enviarStatusWhatsApp}
-          className="flex items-center justify-center gap-2 bg-teal-500 hover:bg-teal-600 text-white font-bold py-3 px-3 rounded-xl">
+          className="flex items-center justify-center gap-2 text-white font-bold py-3 px-3 rounded-xl"
+          style={{ backgroundColor: '#14b8a6' }}>
           <Send size={18} /> <span className="text-sm">Status WhatsApp</span>
         </button>
         <button onClick={gerarPDF}
-          className="flex items-center justify-center gap-2 bg-red-500 hover:bg-red-600 text-white font-bold py-3 px-3 rounded-xl">
+          className="flex items-center justify-center gap-2 text-white font-bold py-3 px-3 rounded-xl"
+          style={{ backgroundColor: '#EF4444' }}>
           <FileText size={18} /> <span className="text-sm">Gerar PDF</span>
         </button>
         <button onClick={enviarPDFWhatsApp}
-          className="flex items-center justify-center gap-2 bg-amber-600 hover:bg-amber-700 text-white font-bold py-3 px-3 rounded-xl">
+          className="flex items-center justify-center gap-2 text-white font-bold py-3 px-3 rounded-xl"
+          style={{ backgroundColor: '#A0522D' }}>
           <FileText size={18} /> <span className="text-sm">Enviar PDF</span>
         </button>
       </div>
