@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import api from '../api.js'
-import logo from '../assets/logo.png'
+const _logoFiles = import.meta.glob('../assets/logo.png', { eager: true, import: 'default' })
+const logo = Object.values(_logoFiles)[0] || null
 
 export default function Login() {
   const [form, setForm] = useState({ username: '', password: '' })
@@ -58,18 +59,17 @@ export default function Login() {
       <div className="bg-white w-full max-w-sm" style={{ borderRadius: 20, boxShadow: '0 4px 32px rgba(0,0,0,0.10)', padding: 32 }}>
         <div className="text-center mb-8">
           <div className="flex justify-center mb-4">
-            <img
-              src={logo}
-              alt="Chico Sapateiro"
-              style={{ height: 72, width: 'auto', objectFit: 'contain' }}
-              onError={e => {
-                e.target.style.display = 'none'
-                e.target.nextElementSibling.style.display = 'flex'
-              }}
-            />
-            <div style={{ display: 'none', backgroundColor: '#3E1F12', borderRadius: 16, width: 72, height: 72, alignItems: 'center', justifyContent: 'center', fontSize: 36 }}>
-              👟
-            </div>
+            {logo ? (
+              <img
+                src={logo}
+                alt="Chico Sapateiro"
+                style={{ height: 72, width: 'auto', objectFit: 'contain' }}
+              />
+            ) : (
+              <div style={{ backgroundColor: '#3E1F12', borderRadius: 16, width: 72, height: 72, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 36 }}>
+                👟
+              </div>
+            )}
           </div>
           <h1 className="text-2xl font-bold" style={{ color: '#1A1A1A' }}>
             Chico <span style={{ color: '#A0522D' }}>Sapateiro</span>

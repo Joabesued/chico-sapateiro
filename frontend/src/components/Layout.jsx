@@ -1,6 +1,7 @@
 import { Outlet, NavLink, useNavigate } from 'react-router-dom'
 import { ClipboardList, Users, ShieldCheck, LogOut, Plus, Archive } from 'lucide-react'
-import logo from '../assets/logo.png'
+const _logoFiles = import.meta.glob('../assets/logo.png', { eager: true, import: 'default' })
+const logo = Object.values(_logoFiles)[0] || null
 
 export default function Layout() {
   const navigate = useNavigate()
@@ -21,20 +22,17 @@ export default function Layout() {
       {/* Header */}
       <header className="bg-white px-4 py-3 flex items-center justify-between no-print" style={{ borderBottom: '1px solid #F0F0F0' }}>
         <div className="flex items-center gap-3">
-          <img
-            src={logo}
-            alt="Chico Sapateiro"
-            style={{ height: 40, width: 'auto', objectFit: 'contain' }}
-            onError={e => {
-              e.target.style.display = 'none'
-              e.target.nextElementSibling.style.display = 'flex'
-            }}
-          />
-          <div
-            style={{ display: 'none', backgroundColor: '#3E1F12', borderRadius: 12, width: 40, height: 40, alignItems: 'center', justifyContent: 'center', fontSize: 22 }}
-          >
-            👟
-          </div>
+          {logo ? (
+            <img
+              src={logo}
+              alt="Chico Sapateiro"
+              style={{ height: 40, width: 'auto', objectFit: 'contain' }}
+            />
+          ) : (
+            <div style={{ backgroundColor: '#3E1F12', borderRadius: 12, width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22 }}>
+              👟
+            </div>
+          )}
           <div>
             <span className="text-base font-bold" style={{ color: '#1A1A1A' }}>Chico</span>
             <span className="text-sm ml-1" style={{ color: '#999999' }}>Sapateiro · Gestão</span>
