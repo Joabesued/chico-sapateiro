@@ -41,11 +41,13 @@ class ClienteComOS(ClienteResponse):
 # --- Categoria ---
 class CategoriaCreate(BaseModel):
     nome: str
+    tipo: str = "diverso"  # 'calcado' | 'diverso'
 
 
 class CategoriaResponse(BaseModel):
     id: int
     nome: str
+    tipo: str = "diverso"
 
     model_config = {"from_attributes": True}
 

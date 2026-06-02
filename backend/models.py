@@ -102,6 +102,7 @@ class Categoria(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     nome = Column(String, nullable=False, unique=True, index=True)
+    tipo = Column(String, nullable=False, default="diverso")  # 'calcado' | 'diverso'
 
 
 class ServicoCustom(Base):

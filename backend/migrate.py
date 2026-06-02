@@ -13,6 +13,10 @@ CATEGORIAS_PADRAO = [
     "Mala", "Cinto", "Bolsa", "Capa de prancha", "Carteira",
 ]
 
+CALCADOS_PADRAO = [
+    "Sapato social", "Tênis", "Sapatênis", "Mocassins", "Sandália",
+]
+
 # Categorias antigas que devem ser removidas se ninguém estiver usando.
 CATEGORIAS_LEGADAS = [
     "Par", "Pé esquerdo", "Pé direito",
@@ -184,11 +188,24 @@ def run_migration():
         c.execute("""
             CREATE TABLE IF NOT EXISTS categorias (
                 id   INTEGER PRIMARY KEY AUTOINCREMENT,
-                nome TEXT    NOT NULL UNIQUE
+                nome TEXT    NOT NULL UNIQUE,
+                tipo TEXT    NOT NULL DEFAULT 'diverso'
             )
         """)
 
-        # ── 3.1 Tabela servicos_custom ───────────────────────────────────────────
+        # ── 3.1 Coluna 'tipo' em categorias existentes ──────────────────────────
+        cols_cat = _colunas(c, "categorias")
+        if "tipo" not in cols_cat:
+            c.execute("ALTER TABLE categorias ADD COLUMN tipo TEXT NOT NULL DEFAULT 'diverso'")
+            for nome_calcado in CALCADOS_PADRAO:
+                c.execute("UPDATE categorias SET tipo = 'calcado' WHERE nome = ?", (nome_calcado,))
+            print("[migrate] Coluna tipo adicionada; calcados base marcados.")
+
+        # Garantir que calcados base sempre tenham tipo correto
+        for nome_calcado in CALCADOS_PADRAO:
+            c.execute("UPDATE categorias SET tipo = 'calcado' WHERE nome = ?", (nome_calcado,))
+
+        # ── 3.2 Tabela servicos_custom ───────────────────────────────────────────
         c.execute("""
             CREATE TABLE IF NOT EXISTS servicos_custom (
                 id   INTEGER PRIMARY KEY AUTOINCREMENT,

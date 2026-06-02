@@ -36,7 +36,8 @@ def criar_categoria(
     ).first()
     if existente:
         raise HTTPException(status_code=409, detail="Categoria já existe.")
-    cat = models.Categoria(nome=nome)
+    tipo = dados.tipo if dados.tipo in ("calcado", "diverso") else "diverso"
+    cat = models.Categoria(nome=nome, tipo=tipo)
     db.add(cat)
     db.commit()
     db.refresh(cat)

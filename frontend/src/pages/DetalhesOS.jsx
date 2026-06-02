@@ -16,6 +16,14 @@ const SERVICOS = [
   'Alça', 'Cabeçote', 'Ziper', 'Puxador',
 ]
 
+const CALCADOS_BASE = ['Sapato social', 'Tênis', 'Sapatênis', 'Mocassins', 'Sandália']
+
+const EMOJI_CATEGORIA = {
+  'Sapato social': '👞', 'Tênis': '👟', 'Sapatênis': '👟', 'Mocassins': '👞',
+  'Sandália': '👡', 'Bolsa': '👜', 'Mala': '🧳', 'Carteira': '👛',
+  'Cinto': '🔗', 'Capa de prancha': '🏄',
+}
+
 const CALCADOS = ['Sapato social', 'Tênis', 'Sapatênis', 'Mocassins', 'Sandália']
 const LADOS = ['Par', 'Pé esquerdo', 'Pé direito']
 const SUBCATEGORIAS_SANDALIA = ['Rasteira', 'Com salto']
@@ -221,11 +229,13 @@ export default function DetalhesOS() {
   async function salvarEdicao() {
     for (let i = 0; i < itensEdit.length; i++) {
       const it = itensEdit[i]
+      const isCalcado = CALCADOS.includes(it.categoria) ||
+        categorias.some(c => c.nome === it.categoria && c.tipo === 'calcado')
       if (!it.categoria) { toast.error(`Item ${i + 1}: selecione a categoria`); return }
       if (it.categoria === 'Sandália' && !it.subcategoria) {
         toast.error(`Item ${i + 1}: escolha "Rasteira" ou "Com salto"`); return
       }
-      if (ehCalcado(it.categoria) && !it.lado) {
+      if (isCalcado && !it.lado) {
         toast.error(`Item ${i + 1}: selecione Par, Pé esquerdo ou Pé direito`); return
       }
       if (!it.servicos.length) { toast.error(`Item ${i + 1}: selecione pelo menos um serviço`); return }
@@ -343,38 +353,49 @@ export default function DetalhesOS() {
     if (!os.cliente.telefone) { toast.error('Cliente sem telefone cadastrado'); return }
     const tel = os.cliente.telefone.replace(/\D/g, '')
 
-    const linhasItens = os.itens.map(item => {
-      const servs = formatarServicosTexto(item)
+    const linhasItens = os.itens.map((item, idx) => {
+      const isCalcado = CALCADOS_BASE.includes(item.categoria) ||
+        categorias.some(c => c.nome === item.categoria && c.tipo === 'calcado')
+      const tipoLabel = isCalcado ? 'Calçado' : 'Diversos'
+      const emoji = EMOJI_CATEGORIA[item.categoria] || '📦'
       const qtd = item.quantidade || 1
-      const partes = [qtd > 1 ? `${qtd}× ${descricaoItem(item)}` : descricaoItem(item)]
-      if (item.cor) partes.push(`Cor: ${item.cor}`)
-      if (servs) partes.push(servs)
-      if (item.observacao_servico) partes.push(`Obs: ${item.observacao_servico}`)
-      if (item.descricao) partes.push(item.descricao)
+      const servs = formatarServicosTexto(item)
+
+      let linhaCategoria = `${emoji} ${item.categoria}`
+      if (item.lado) linhaCategoria += ` · ${item.lado}`
+      if (item.subcategoria) linhaCategoria += ` · ${item.subcategoria}`
+
+      const linhas = [
+        `*Item ${idx + 1} — ${tipoLabel}*`,
+        linhaCategoria,
+      ]
+      if (item.cor) linhas.push(`🎨 Cor: ${item.cor}`)
+      if (servs) linhas.push(`🔧 ${servs}`)
       if (item.revisao) {
-        partes.push('Revisão (sem cobrança)')
+        linhas.push(`💰 Sem cobrança (revisão)`)
       } else if (qtd > 1) {
-        partes.push(`${formatarValor(item.valor)} cada — Total: ${formatarValor(item.valor * qtd)}`)
+        linhas.push(`💰 ${qtd}× ${formatarValor(item.valor)} = ${formatarValor(item.valor * qtd)}`)
       } else {
-        partes.push(formatarValor(item.valor))
+        linhas.push(`💰 ${formatarValor(item.valor)}`)
       }
-      return `▪ ${partes.join(' — ')}`
-    }).join('\n')
+      const obs = [item.observacao_servico, item.descricao].filter(Boolean).join(' | ')
+      if (obs) linhas.push(`📝 ${obs}`)
+      return linhas.join('\n')
+    }).join('\n\n')
 
     const desconto = os.desconto || 0
-    const linhaDesconto = desconto > 0 ? `🏷️ Desconto: - ${formatarValor(desconto)}\n` : ''
-
     const msg = encodeURIComponent(
       `🥿 *CHICO SAPATEIRO*\n` +
       `📋 Nota #${String(os.numero).padStart(3, '0')} — ${os.cliente.nome}\n\n` +
-      `${linhasItens}\n\n` +
-      (desconto > 0 ? `💰 Subtotal: ${formatarValor(os.subtotal)}\n` : '') +
-      `${linhaDesconto}` +
+      linhasItens + `\n\n` +
+      `─────────────────\n` +
+      (desconto > 0 ? `💰 Subtotal: ${formatarValor(os.subtotal)}\n🏷️ Desconto: -${formatarValor(desconto)}\n` : '') +
       `💰 Total: ${formatarValor(os.total)}\n` +
       `✅ Valor pago: ${formatarValor(os.entrada)}\n` +
       `⏳ Resta: ${formatarValor(os.resta)}\n` +
       (os.prazo_entrega ? `📅 Prazo: ${formatarData(os.prazo_entrega)}\n` : '') +
-      `📌 Status: ${os.status}`
+      `📌 ${os.status}\n\n` +
+      `_Chico Sapateiro · (71) 3264-5659_`
     )
     window.open(`https://wa.me/55${tel}?text=${msg}`, '_blank')
   }
@@ -447,15 +468,15 @@ export default function DetalhesOS() {
       y += 4
     }
 
-    // Cabeçalho
+    // Cabecalho
     linha('CHICO SAPATEIRO', { size: 20, bold: true, align: 'center', spaceAfter: 2 })
-    linha('Ordem de Serviço', { size: 12, align: 'center', spaceAfter: 4 })
+    linha('Ordem de Servico', { size: 12, align: 'center', spaceAfter: 4 })
     separador()
 
     // Dados da OS
-    linha(`Nota Nº: #${String(os.numero).padStart(3, '0')}`, { size: 12, bold: true, spaceAfter: 2 })
+    linha(`Nota N.: #${String(os.numero).padStart(3, '0')}`, { size: 12, bold: true, spaceAfter: 2 })
     linha(`Data: ${formatarData(os.criado_em)}`, { size: 11, spaceAfter: 2 })
-    if (os.prazo_entrega) linha(`Prazo de entrega: ${formatarData(os.prazo_entrega)}`, { size: 11, spaceAfter: 2 })
+    if (os.prazo_entrega) linha(`Prazo: ${formatarData(os.prazo_entrega)}`, { size: 11, spaceAfter: 2 })
     linha(`Status: ${os.status}`, { size: 11, spaceAfter: 4 })
 
     // Cliente
@@ -470,22 +491,39 @@ export default function DetalhesOS() {
     linha('ITENS', { size: 12, bold: true, spaceAfter: 3 })
     os.itens.forEach((item, idx) => {
       const qtd = item.quantidade || 1
-      const tituloItem = qtd > 1
-        ? `${idx + 1}. ${qtd}× ${descricaoItem(item)}`
-        : `${idx + 1}. ${descricaoItem(item)}`
-      linha(tituloItem, { size: 11, bold: true, spaceAfter: 1 })
-      const servs = formatarServicosTexto(item)
-      if (servs) linha(`Serviços: ${servs}`, { size: 10, indent: 4, spaceAfter: 1 })
+      const isCalcado = CALCADOS_BASE.includes(item.categoria) ||
+        categorias.some(c => c.nome === item.categoria && c.tipo === 'calcado')
+      const tipoLabel = isCalcado ? 'Calcado' : 'Diversos'
+
+      // Titulo do item
+      linha(`Item ${idx + 1} — ${tipoLabel}`, { size: 11, bold: true, spaceAfter: 1 })
+
+      // Categoria + lado + subcategoria
+      const partesCat = [item.categoria]
+      if (item.lado) partesCat.push(item.lado)
+      if (item.subcategoria) partesCat.push(item.subcategoria)
+      linha(partesCat.join(' | '), { size: 11, indent: 4, spaceAfter: 1 })
+
+      // Cor
       if (item.cor) linha(`Cor: ${item.cor}`, { size: 10, indent: 4, spaceAfter: 1 })
-      if (item.observacao_servico) linha(`Observação do serviço: ${item.observacao_servico}`, { size: 10, indent: 4, spaceAfter: 1 })
-      if (item.descricao) linha(`Observação: ${item.descricao}`, { size: 10, indent: 4, spaceAfter: 1 })
+
+      // Servicos
+      const servs = formatarServicosTexto(item)
+      if (servs) linha(`Servicos: ${servs}`, { size: 10, indent: 4, spaceAfter: 1 })
+
+      // Valor
       if (item.revisao) {
-        linha('Revisão (sem cobrança)', { size: 10, indent: 4, bold: true, spaceAfter: 4 })
+        linha('Sem cobranca (revisao)', { size: 10, indent: 4, bold: true, spaceAfter: 1 })
       } else if (qtd > 1) {
-        linha(`Valor unit.: ${formatarValor(item.valor)}  ×  ${qtd}  =  ${formatarValor(item.valor * qtd)}`, { size: 10, indent: 4, bold: true, spaceAfter: 4 })
+        linha(`${qtd}x ${formatarValor(item.valor)} = ${formatarValor(item.valor * qtd)}`, { size: 10, indent: 4, bold: true, spaceAfter: 1 })
       } else {
-        linha(`Valor: ${formatarValor(item.valor)}`, { size: 10, indent: 4, bold: true, spaceAfter: 4 })
+        linha(`Valor: ${formatarValor(item.valor)}`, { size: 10, indent: 4, bold: true, spaceAfter: 1 })
       }
+
+      // Observacoes
+      if (item.observacao_servico) linha(`Obs. servico: ${item.observacao_servico}`, { size: 10, indent: 4, spaceAfter: 1 })
+      if (item.descricao) linha(`Obs.: ${item.descricao}`, { size: 10, indent: 4, spaceAfter: 4 })
+      else y += 3
     })
 
     separador()
@@ -495,18 +533,18 @@ export default function DetalhesOS() {
     const desconto = os.desconto || 0
     if (desconto > 0) {
       linha(`Subtotal: ${formatarValor(os.subtotal)}`, { size: 11, spaceAfter: 1 })
-      linha(`Desconto: - ${formatarValor(desconto)}`, { size: 11, spaceAfter: 1 })
+      linha(`Desconto: -${formatarValor(desconto)}`, { size: 11, spaceAfter: 1 })
     }
-    linha(`Total: ${formatarValor(os.total)}`, { size: 11, spaceAfter: 1 })
+    linha(`Total: ${formatarValor(os.total)}`, { size: 11, bold: true, spaceAfter: 1 })
     linha(`Valor pago: ${formatarValor(os.entrada)}`, { size: 11, spaceAfter: 1 })
     linha(`Resta: ${formatarValor(os.resta)}`, { size: 11, bold: true, spaceAfter: 1 })
-    linha(`Situação: ${os.status_pagamento}`, { size: 11, spaceAfter: 4 })
+    if (os.prazo_entrega) linha(`Prazo: ${formatarData(os.prazo_entrega)}`, { size: 11, spaceAfter: 1 })
+    linha(`Situacao: ${os.status_pagamento}`, { size: 11, spaceAfter: 4 })
 
-    // Rodapé
-    const rodape = 'Chico Sapateiro — Obrigado pela preferência!'
+    // Rodape
     doc.setFontSize(11)
     doc.setFont('helvetica', 'italic')
-    doc.text(rodape, pageWidth / 2, pageHeight - 12, { align: 'center' })
+    doc.text('Chico Sapateiro — Obrigado pela preferencia!', pageWidth / 2, pageHeight - 12, { align: 'center' })
 
     doc.save(`OS-${String(os.numero).padStart(3, '0')}-${os.cliente.nome.replace(/\s+/g, '_')}.pdf`)
   }
@@ -723,7 +761,8 @@ export default function DetalhesOS() {
           </div>
 
           {itensEdit.map((item, idx) => {
-            const calcado = ehCalcado(item.categoria)
+            const calcado = ehCalcado(item.categoria) ||
+              categorias.some(c => c.nome === item.categoria && c.tipo === 'calcado')
             const sandalia = item.categoria === 'Sandália'
             const custom = item.servicos.filter(s => !SERVICOS.includes(s))
             return (
@@ -952,15 +991,28 @@ export default function DetalhesOS() {
                     )}
                   </div>
                   {item.servicos.includes('Trocar roda') && (
-                    <div className="flex items-center gap-2 mt-2">
-                      <span className="text-xs font-semibold text-gray-600">Qtd rodas:</span>
-                      {[1, 2, 3, 4].map(n => (
-                        <button key={n} type="button" onClick={() => setItemEdit(idx, 'qtd_rodas', n)}
-                          className={`w-8 h-8 rounded-lg font-bold text-sm border-2 transition-colors ` +
-                            (item.qtd_rodas === n ? 'bg-amber-600 text-white border-amber-600' : 'bg-white text-gray-700 border-gray-300 hover:border-amber-400')}>
-                          {n}
+                    <div className="mt-2">
+                      <label className="block text-xs font-semibold text-gray-600 mb-1">Qtd. de rodas (1–8)</label>
+                      <div className="flex items-center gap-1.5">
+                        <button type="button"
+                          onClick={() => setItemEdit(idx, 'qtd_rodas', Math.max(1, (item.qtd_rodas || 2) - 1))}
+                          className="w-8 h-9 rounded-lg border-2 border-gray-300 bg-white font-bold text-base text-gray-600 hover:border-amber-400 hover:bg-amber-50 flex items-center justify-center shrink-0 transition-colors">
+                          −
                         </button>
-                      ))}
+                        <input className="input-field text-sm py-2 text-center font-bold flex-1"
+                          type="number" inputMode="numeric" min="1" max="8"
+                          value={item.qtd_rodas || 2}
+                          onChange={e => {
+                            const v = parseInt(e.target.value)
+                            if (!isNaN(v)) setItemEdit(idx, 'qtd_rodas', Math.min(8, Math.max(1, v)))
+                          }}
+                        />
+                        <button type="button"
+                          onClick={() => setItemEdit(idx, 'qtd_rodas', Math.min(8, (item.qtd_rodas || 2) + 1))}
+                          className="w-8 h-9 rounded-lg border-2 border-gray-300 bg-white font-bold text-base text-gray-600 hover:border-amber-400 hover:bg-amber-50 flex items-center justify-center shrink-0 transition-colors">
+                          +
+                        </button>
+                      </div>
                     </div>
                   )}
 
