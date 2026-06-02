@@ -113,7 +113,7 @@ export default function DetalhesOS() {
   const [servicoCustomModo, setServicoCustomModo] = useState(null) // idx do item
   const [servicoCustomTexto, setServicoCustomTexto] = useState('')
 
-  useEffect(() => { carregarOS() }, [id])
+  useEffect(() => { carregarOS(); carregarCategorias() }, [id])
 
   async function carregarOS() {
     try {
