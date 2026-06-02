@@ -14,6 +14,10 @@ CATEGORIAS_PADRAO = [
     "Mala", "Cinto", "Bolsa", "Capa de prancha", "Carteira",
 ]
 
+CALCADOS_PADRAO = {
+    "Sapato social", "Tênis", "Sapatênis", "Mocassins", "Sandália",
+}
+
 
 def _migrate_postgres():
     """Adiciona colunas novas ao PostgreSQL do Railway.
@@ -28,7 +32,11 @@ def _migrate_postgres():
         insp = inspect(engine)
         cols_it = {c["name"] for c in insp.get_columns("itens_os")}
         cols_os = {c["name"] for c in insp.get_columns("ordens_servico")}
+        cols_cat = {c["name"] for c in insp.get_columns("categorias")}
+
         novos = []
+
+        # itens_os
         if "subcategoria" not in cols_it:
             novos.append("ALTER TABLE itens_os ADD COLUMN IF NOT EXISTS subcategoria TEXT DEFAULT ''")
         if "lado" not in cols_it:
@@ -45,17 +53,32 @@ def _migrate_postgres():
             novos.append("ALTER TABLE itens_os ADD COLUMN IF NOT EXISTS revisao BOOLEAN NOT NULL DEFAULT false")
         if "entregue" not in cols_it:
             novos.append("ALTER TABLE itens_os ADD COLUMN IF NOT EXISTS entregue BOOLEAN NOT NULL DEFAULT false")
+
+        # ordens_servico
         if "desconto" not in cols_os:
             novos.append("ALTER TABLE ordens_servico ADD COLUMN IF NOT EXISTS desconto FLOAT DEFAULT 0.0")
+
+        # categorias — coluna tipo (causa dos erros de CORS no Railway)
+        if "tipo" not in cols_cat:
+            novos.append("ALTER TABLE categorias ADD COLUMN IF NOT EXISTS tipo TEXT NOT NULL DEFAULT 'diverso'")
 
         if novos:
             with engine.connect() as conn:
                 for sql in novos:
                     conn.execute(text(sql))
                 conn.commit()
-            print(f"[migrate_postgres] {len(novos)} coluna(s) adicionada(s) em itens_os.")
-        else:
-            print("[migrate_postgres] Nenhuma coluna nova necessária.")
+            print(f"[migrate_postgres] {len(novos)} coluna(s) adicionada(s).")
+
+        # Garantir tipo correto dos calçados base (idempotente)
+        calcados_list = list(CALCADOS_PADRAO)
+        placeholders = ", ".join(f"'{n}'" for n in calcados_list)
+        with engine.connect() as conn:
+            conn.execute(text(
+                f"UPDATE categorias SET tipo = 'calcado' WHERE nome IN ({placeholders})"
+            ))
+            conn.commit()
+        print("[migrate_postgres] tipos de categorias sincronizados.")
+
     except Exception as e:
         print(f"[migrate_postgres] ERRO: {e}")
 
@@ -65,9 +88,12 @@ def _seed_categorias():
     db = SessionLocal()
     try:
         for nome in CATEGORIAS_PADRAO:
+            tipo = "calcado" if nome in CALCADOS_PADRAO else "diverso"
             existe = db.query(models.Categoria).filter(models.Categoria.nome == nome).first()
             if not existe:
-                db.add(models.Categoria(nome=nome))
+                db.add(models.Categoria(nome=nome, tipo=tipo))
+            elif existe.tipo != tipo:
+                existe.tipo = tipo
         db.commit()
         print("[seed_categorias] Categorias verificadas.")
     except Exception as e:
@@ -116,3 +142,8 @@ app.include_router(servicos.router)
 @app.get("/")
 def root():
     return {"status": "ok", "app": "Chico Sapateiro"}
+
+
+@app.get("/api/cors-test")
+def cors_test():
+    return {"cors": "ok"}
