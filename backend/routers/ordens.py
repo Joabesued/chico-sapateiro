@@ -58,7 +58,6 @@ def _item_para_model(item: schemas.ItemOSCreate, ordem_id: int) -> models.ItemOS
         servicos_concluidos=json.dumps(concluidos, ensure_ascii=False),
         observacao_servico=item.observacao_servico or "",
         cor=item.cor or "",
-        descricao=item.descricao or "",
         qtd_rodas=item.qtd_rodas,
         valor=0.0 if revisao else item.valor,
         foto_url=item.foto_url or "",

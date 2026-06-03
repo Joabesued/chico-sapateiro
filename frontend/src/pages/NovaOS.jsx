@@ -44,7 +44,7 @@ function formatarValor(v) {
 function itemVazio() {
   return {
     categoria: '', subcategoria: '', lado: '', servicos: [], qtd_rodas: 2,
-    cor: '', descricao: '', observacao_servico: '', valor: '',
+    cor: '', observacao_servico: '', valor: '',
     foto_url: '', quantidade: 1, revisao: false,
   }
 }
@@ -611,17 +611,6 @@ function ItemEditorStepper({
       {etapa === 3 && (
         <div className="space-y-4">
           <div>
-            <label className="block font-bold mb-1" style={{ color: '#1A1A1A' }}>
-              Observações <span className="font-normal text-sm" style={{ color: '#999999' }}>(opcional)</span>
-            </label>
-            <textarea className="input-field" rows={4}
-              placeholder="Anotações gerais sobre o item..."
-              value={item.descricao}
-              onChange={e => onSet('descricao', e.target.value)}
-            />
-          </div>
-
-          <div>
             <label className="block font-bold mb-2" style={{ color: '#1A1A1A' }}>
               Foto do item <span className="font-normal text-sm" style={{ color: '#999999' }}>(JPG/PNG máx. 5MB)</span>
             </label>
@@ -900,7 +889,6 @@ export default function NovaOS() {
           observacao_servico: (it.observacao_servico || '').trim(),
           qtd_rodas: it.servicos.includes('Trocar roda') ? it.qtd_rodas : null,
           cor: (it.cor || '').trim(),
-          descricao: (it.descricao || '').trim(),
           valor: it.revisao ? 0 : parseMoeda(it.valor),
           foto_url: it.foto_url || '',
           quantidade: it.quantidade || 1,

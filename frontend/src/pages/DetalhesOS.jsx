@@ -70,7 +70,7 @@ function itemVazio() {
   return {
     categoria: '', subcategoria: '', lado: '',
     servicos: [], qtd_rodas: 2,
-    cor: '', descricao: '', observacao_servico: '',
+    cor: '', observacao_servico: '',
     valor: '',
     quantidade: 1,
     revisao: false,
@@ -144,7 +144,6 @@ export default function DetalhesOS() {
       servicos: [...(i.servicos || [])],
       qtd_rodas: i.qtd_rodas || 2,
       cor: i.cor || '',
-      descricao: i.descricao || '',
       observacao_servico: i.observacao_servico || '',
       valor: String(i.valor),
       quantidade: i.quantidade || 1,
@@ -262,7 +261,6 @@ export default function DetalhesOS() {
             observacao_servico: it.observacao_servico,
             qtd_rodas: it.servicos.includes('Trocar roda') ? it.qtd_rodas : null,
             cor: it.cor,
-            descricao: it.descricao,
             valor: revisao ? 0 : parseMoeda(it.valor),
             quantidade: it.quantidade || 1,
             revisao,
@@ -375,8 +373,7 @@ export default function DetalhesOS() {
       } else {
         linhas.push(`💰 ${formatarValor(item.valor)}`)
       }
-      const obs = [item.observacao_servico, item.descricao].filter(Boolean).join(' | ')
-      if (obs) linhas.push(`📝 ${obs}`)
+      if (item.observacao_servico) linhas.push(`📝 ${item.observacao_servico}`)
       return linhas.join('\n')
     }).join('\n\n')
 
@@ -508,8 +505,7 @@ export default function DetalhesOS() {
         linha(`Valor: ${formatarValor(item.valor)}`, { size: 10, indent: 4, bold: true, spaceAfter: 1 })
       }
 
-      if (item.observacao_servico) linha(`Obs. servico: ${item.observacao_servico}`, { size: 10, indent: 4, spaceAfter: 1 })
-      if (item.descricao) linha(`Obs.: ${item.descricao}`, { size: 10, indent: 4, spaceAfter: 4 })
+      if (item.observacao_servico) linha(`Obs. servico: ${item.observacao_servico}`, { size: 10, indent: 4, spaceAfter: 4 })
       else y += 3
     })
 
@@ -676,7 +672,6 @@ export default function DetalhesOS() {
                         <span className="font-semibold">Obs. serviço:</span> {item.observacao_servico}
                       </p>
                     )}
-                    {item.descricao && <p className="text-sm italic mt-1" style={{ color: '#999999' }}>{item.descricao}</p>}
 
                     <div className="flex items-center gap-3 mt-2 flex-wrap">
                       {servicos.length > 0 && !item.entregue && (
@@ -1060,8 +1055,6 @@ export default function DetalhesOS() {
                     disabled={item.revisao}
                     value={item.valor} onChange={e => setItemEdit(idx, 'valor', e.target.value)} />
                 </div>
-                <input className="input-field text-sm py-2" placeholder="Observação geral do item (opcional)"
-                  value={item.descricao} onChange={e => setItemEdit(idx, 'descricao', e.target.value)} />
               </div>
             )
           })}

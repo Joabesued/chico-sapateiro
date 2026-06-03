@@ -61,7 +61,6 @@ class ItemOSCreate(BaseModel):
     servicos_concluidos: Optional[List[str]] = []
     observacao_servico: Optional[str] = ""
     cor: Optional[str] = ""
-    descricao: Optional[str] = ""
     qtd_rodas: Optional[int] = None
     valor: float = 0.0
     foto_url: Optional[str] = ""
@@ -79,7 +78,6 @@ class ItemOSResponse(BaseModel):
     servicos_concluidos: List[str] = []
     observacao_servico: Optional[str] = ""
     cor: Optional[str] = ""
-    descricao: Optional[str] = ""
     qtd_rodas: Optional[int] = None
     valor: float
     foto_url: Optional[str] = ""
