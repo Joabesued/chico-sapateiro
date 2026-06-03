@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
-import { Plus, Trash2, Check, X, UserCheck, Mic, MicOff, Camera, Edit2, Search } from 'lucide-react'
+import { Plus, Trash2, Check, X, UserCheck, Mic, MicOff, Edit2, Search } from 'lucide-react'
 import api from '../api.js'
 import SeletorPrazo from '../components/SeletorPrazo.jsx'
 
@@ -49,28 +49,6 @@ function itemVazio() {
   }
 }
 
-async function uploadFotoSupabase(file) {
-  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
-  const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY
-  if (!supabaseUrl || !supabaseKey) {
-    toast.error('Configure VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY no .env para upload de fotos.')
-    return null
-  }
-  const ext = file.name.split('.').pop()
-  const fileName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
-  const res = await fetch(`${supabaseUrl}/storage/v1/object/os-fotos/${fileName}`, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${supabaseKey}`,
-      'Content-Type': file.type,
-      'x-upsert': 'true',
-    },
-    body: file,
-  })
-  if (!res.ok) throw new Error(await res.text())
-  return `${supabaseUrl}/storage/v1/object/public/os-fotos/${fileName}`
-}
-
 // ─── Stepper de criação de item ─────────────────────────────────────────────────
 
 function ItemEditorStepper({
@@ -85,9 +63,10 @@ function ItemEditorStepper({
   const [servicoCustomModo, setServicoCustomModo] = useState(false)
   const [servicoCustomTexto, setServicoCustomTexto] = useState('')
   const [gravando, setGravando] = useState(false)
-  const [uploadandoFoto, setUploadandoFoto] = useState(false)
+  const [mostrarObs, setMostrarObs] = useState(!!(item.observacao_servico))
   const recognitionRef = useRef(null)
-  const fotoInputRef = useRef(null)
+
+  const NOMES_ETAPAS = ['Categoria', 'Serviço']
 
   const categoriasCalcados = categorias.filter(c => c.tipo === 'calcado')
   const categoriasDiversos = categorias.filter(c => c.tipo === 'diverso')
@@ -121,7 +100,7 @@ function ItemEditorStepper({
     return true
   }
 
-  function podeAvancar2() {
+  function podeConfirmar() {
     return item.servicos.length > 0
   }
 
@@ -177,21 +156,6 @@ function ItemEditorStepper({
 
   function pararVoz() { recognitionRef.current?.stop(); setGravando(false) }
 
-  async function handleFotoChange(e) {
-    const file = e.target.files[0]
-    if (!file) return
-    if (file.size > 5 * 1024 * 1024) { toast.error('Foto maior que 5MB. Escolha uma menor.'); return }
-    if (!['image/jpeg', 'image/png'].includes(file.type)) { toast.error('Use JPG ou PNG.'); return }
-    setUploadandoFoto(true)
-    try {
-      const url = await uploadFotoSupabase(file)
-      if (url) { onSet('foto_url', url); toast.success('Foto adicionada!') }
-    } catch { toast.error('Erro ao fazer upload da foto.') }
-    finally { setUploadandoFoto(false); e.target.value = '' }
-  }
-
-  const NOMES_ETAPAS = ['Categoria', 'Serviços', 'Observações']
-
   const btnCat = (ativa) => ({
     padding: '10px 16px',
     borderRadius: 10,
@@ -226,6 +190,21 @@ function ItemEditorStepper({
     )
   }
 
+  function ResumoCategoria() {
+    const partes = [item.categoria]
+    if (item.subcategoria) partes.push(item.subcategoria)
+    if (item.lado) partes.push(item.lado)
+    return (
+      <div className="rounded-xl px-3 py-2 flex items-center gap-2"
+        style={{ backgroundColor: '#D1FAE5', border: '1px solid #A7F3D0' }}>
+        <Check size={14} style={{ color: '#10B981', flexShrink: 0 }} />
+        <span className="font-semibold text-sm" style={{ color: '#065F46' }}>
+          {partes.join(' · ')}
+        </span>
+      </div>
+    )
+  }
+
   return (
     <div className="rounded-2xl p-4 space-y-5" style={{ border: '1px solid #E8D5B0', backgroundColor: '#F5ECD7' }}>
 
@@ -233,7 +212,7 @@ function ItemEditorStepper({
         {modoEdicao ? 'Editando item' : 'Novo item'}
       </span>
 
-      {/* Barra de progresso */}
+      {/* Barra de progresso — 2 etapas */}
       <div className="flex items-start">
         {NOMES_ETAPAS.map((nome, i) => {
           const n = i + 1
@@ -255,7 +234,7 @@ function ItemEditorStepper({
                   {nome}
                 </span>
               </div>
-              {i < 2 && (
+              {i < 1 && (
                 <div className="flex-1 h-0.5 mb-5 mx-2 transition-colors"
                   style={{ backgroundColor: etapa > n ? '#10B981' : '#E8D5B0' }} />
               )}
@@ -380,6 +359,8 @@ function ItemEditorStepper({
             </div>
           )}
 
+          {podeAvancar1() && <ResumoCategoria />}
+
           <div className="flex gap-2 pt-2">
             <button type="button" onClick={onCancel}
               className="px-4 py-3 rounded-xl font-bold hover:bg-gray-50 flex items-center gap-1"
@@ -398,94 +379,101 @@ function ItemEditorStepper({
         </div>
       )}
 
-      {/* ── Etapa 2: Serviços ── */}
+      {/* ── Etapa 2: Serviço ── */}
       {etapa === 2 && (
         <div className="space-y-4">
+
+          {/* 1. Cor */}
           <div>
             <label className="block font-bold mb-1" style={{ color: '#1A1A1A' }}>Cor do material</label>
             <input className="input-field" type="text" placeholder="Ex: Preto, Marrom..."
               value={item.cor} onChange={e => onSet('cor', e.target.value)} />
           </div>
 
-          <div className="relative">
-            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: '#999999' }} />
-            <input className="input-field pl-9 text-sm" type="search"
-              placeholder="Buscar serviço..." value={buscaServico}
-              onChange={e => setBuscaServico(e.target.value)} />
-          </div>
+          {/* 2. Serviços */}
+          <div>
+            <label className="block font-bold mb-2" style={{ color: '#1A1A1A' }}>Serviços *</label>
+            <div className="relative mb-2">
+              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: '#999999' }} />
+              <input className="input-field pl-9 text-sm" type="search"
+                placeholder="Buscar serviço..." value={buscaServico}
+                onChange={e => setBuscaServico(e.target.value)} />
+            </div>
 
-          <div className="grid grid-cols-3 gap-2">
-            {orfaosFiltrados.map(s => (
-              <button key={s} type="button" onClick={() => toggleServico(s)}
-                className="flex flex-col items-center justify-center p-2 rounded-xl font-semibold text-xs gap-1 min-h-[72px]"
-                style={{ backgroundColor: '#3E1F12', color: 'white', border: '1px solid #3E1F12' }}>
-                <span className="text-xl">🔧</span>
-                <span className="text-center leading-tight break-words w-full">{s}</span>
-              </button>
-            ))}
+            <div className="grid grid-cols-3 gap-2">
+              {orfaosFiltrados.map(s => (
+                <button key={s} type="button" onClick={() => toggleServico(s)}
+                  className="flex flex-col items-center justify-center p-2 rounded-xl font-semibold text-xs gap-1 min-h-[72px]"
+                  style={{ backgroundColor: '#3E1F12', color: 'white', border: '1px solid #3E1F12' }}>
+                  <span className="text-xl">🔧</span>
+                  <span className="text-center leading-tight break-words w-full">{s}</span>
+                </button>
+              ))}
 
-            {servicosFiltrados.filter(s => SERVICOS.includes(s)).map(s => (
-              <button key={s} type="button" onClick={() => toggleServico(s)}
-                className="flex flex-col items-center justify-center p-2 rounded-xl font-semibold text-xs gap-1 transition-colors min-h-[72px]"
-                style={item.servicos.includes(s)
-                  ? { backgroundColor: '#3E1F12', color: 'white', border: '1px solid #3E1F12' }
-                  : { backgroundColor: 'white', color: '#374151', border: '1px solid #E8D5B0' }}>
-                <span className="text-xl">{SERVICO_ICONES[s] || '🔧'}</span>
-                <span className="text-center leading-tight break-words w-full">{s}</span>
-              </button>
-            ))}
-
-            {customFiltrados.map(sc => (
-              <div key={sc.id} className="relative">
-                <button type="button" onClick={() => toggleServico(sc.nome)}
-                  className="w-full flex flex-col items-center justify-center p-2 rounded-xl font-semibold text-xs gap-1 transition-colors min-h-[72px]"
-                  style={item.servicos.includes(sc.nome)
+              {servicosFiltrados.filter(s => SERVICOS.includes(s)).map(s => (
+                <button key={s} type="button" onClick={() => toggleServico(s)}
+                  className="flex flex-col items-center justify-center p-2 rounded-xl font-semibold text-xs gap-1 transition-colors min-h-[72px]"
+                  style={item.servicos.includes(s)
                     ? { backgroundColor: '#3E1F12', color: 'white', border: '1px solid #3E1F12' }
                     : { backgroundColor: 'white', color: '#374151', border: '1px solid #E8D5B0' }}>
-                  <span className="text-xl">⭐</span>
-                  <span className="text-center leading-tight break-words w-full">{sc.nome}</span>
+                  <span className="text-xl">{SERVICO_ICONES[s] || '🔧'}</span>
+                  <span className="text-center leading-tight break-words w-full">{s}</span>
                 </button>
-                <button type="button"
-                  onClick={e => { e.stopPropagation(); onDeleteServicoCustom(sc.id, sc.nome) }}
-                  className="absolute -top-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center z-10"
-                  style={{ backgroundColor: '#FEE2E2', color: '#EF4444', border: '1px solid #FECACA' }}>
-                  <X size={10} />
+              ))}
+
+              {customFiltrados.map(sc => (
+                <div key={sc.id} className="relative">
+                  <button type="button" onClick={() => toggleServico(sc.nome)}
+                    className="w-full flex flex-col items-center justify-center p-2 rounded-xl font-semibold text-xs gap-1 transition-colors min-h-[72px]"
+                    style={item.servicos.includes(sc.nome)
+                      ? { backgroundColor: '#3E1F12', color: 'white', border: '1px solid #3E1F12' }
+                      : { backgroundColor: 'white', color: '#374151', border: '1px solid #E8D5B0' }}>
+                    <span className="text-xl">⭐</span>
+                    <span className="text-center leading-tight break-words w-full">{sc.nome}</span>
+                  </button>
+                  <button type="button"
+                    onClick={e => { e.stopPropagation(); onDeleteServicoCustom(sc.id, sc.nome) }}
+                    className="absolute -top-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center z-10"
+                    style={{ backgroundColor: '#FEE2E2', color: '#EF4444', border: '1px solid #FECACA' }}>
+                    <X size={10} />
+                  </button>
+                </div>
+              ))}
+
+              {!servicoCustomModo && (
+                <button type="button" onClick={() => setServicoCustomModo(true)}
+                  className="flex flex-col items-center justify-center p-2 rounded-xl font-semibold text-xs gap-1 min-h-[72px] transition-colors"
+                  style={{ border: '1px dashed #A0522D', color: '#A0522D', backgroundColor: 'transparent' }}>
+                  <Plus size={20} /><span>Adicionar</span>
+                </button>
+              )}
+            </div>
+
+            {servicoCustomModo && (
+              <div className="flex items-center gap-1 mt-2">
+                <input autoFocus className="input-field flex-1 py-2 text-sm"
+                  placeholder="Nome do serviço personalizado"
+                  value={servicoCustomTexto}
+                  onChange={e => setServicoCustomTexto(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); adicionarServicoCustom() } }}
+                />
+                <button type="button" onClick={adicionarServicoCustom}
+                  className="text-white p-2 rounded-xl" style={{ backgroundColor: '#3E1F12' }}>
+                  <Check size={18} />
+                </button>
+                <button type="button" onClick={() => { setServicoCustomModo(false); setServicoCustomTexto('') }}
+                  className="bg-gray-100 text-gray-600 p-2 rounded-xl hover:bg-gray-200">
+                  <X size={18} />
                 </button>
               </div>
-            ))}
+            )}
 
-            {!servicoCustomModo && (
-              <button type="button" onClick={() => setServicoCustomModo(true)}
-                className="flex flex-col items-center justify-center p-2 rounded-xl font-semibold text-xs gap-1 min-h-[72px] transition-colors"
-                style={{ border: '1px dashed #A0522D', color: '#A0522D', backgroundColor: 'transparent' }}>
-                <Plus size={20} /><span>Adicionar</span>
-              </button>
+            {buscaServico.trim() && servicosFiltrados.length === 0 && orfaosFiltrados.length === 0 && customFiltrados.length === 0 && (
+              <p className="text-center text-sm py-2" style={{ color: '#999999' }}>Nenhum serviço encontrado</p>
             )}
           </div>
 
-          {servicoCustomModo && (
-            <div className="flex items-center gap-1">
-              <input autoFocus className="input-field flex-1 py-2 text-sm"
-                placeholder="Nome do serviço personalizado"
-                value={servicoCustomTexto}
-                onChange={e => setServicoCustomTexto(e.target.value)}
-                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); adicionarServicoCustom() } }}
-              />
-              <button type="button" onClick={adicionarServicoCustom}
-                className="text-white p-2 rounded-xl" style={{ backgroundColor: '#3E1F12' }}>
-                <Check size={18} />
-              </button>
-              <button type="button" onClick={() => { setServicoCustomModo(false); setServicoCustomTexto('') }}
-                className="bg-gray-100 text-gray-600 p-2 rounded-xl hover:bg-gray-200">
-                <X size={18} />
-              </button>
-            </div>
-          )}
-
-          {buscaServico.trim() && servicosFiltrados.length === 0 && orfaosFiltrados.length === 0 && customFiltrados.length === 0 && (
-            <p className="text-center text-sm py-2" style={{ color: '#999999' }}>Nenhum serviço encontrado</p>
-          )}
-
+          {/* Trocar roda — contador aparece só quando selecionado */}
           {temTrocarRoda && (
             <div>
               <label className="block font-bold mb-1" style={{ color: '#1A1A1A' }}>Quantidade de rodas</label>
@@ -515,43 +503,7 @@ function ItemEditorStepper({
             </div>
           )}
 
-          <div>
-            <label className="block font-bold mb-1 text-sm" style={{ color: '#1A1A1A' }}>
-              Observação do serviço <span className="font-normal" style={{ color: '#999999' }}>(opcional)</span>
-            </label>
-            <div className="relative">
-              <textarea className="input-field text-sm pr-12" rows={2}
-                placeholder="Descreva o que deve ser feito..."
-                value={item.observacao_servico}
-                onChange={e => onSet('observacao_servico', e.target.value)}
-              />
-              {VOZ_SUPORTADA && (
-                <button type="button" onClick={gravando ? pararVoz : iniciarVoz}
-                  title={gravando ? 'Parar gravação' : 'Ditado por voz (pt-BR)'}
-                  className="absolute right-2 top-2 p-2 rounded-xl transition-colors"
-                  style={gravando
-                    ? { backgroundColor: '#EF4444', color: 'white' }
-                    : { backgroundColor: '#F3F4F6', color: '#4B5563' }}>
-                  {gravando ? <MicOff size={18} /> : <Mic size={18} />}
-                </button>
-              )}
-            </div>
-            {gravando && <p className="text-xs font-semibold mt-1 animate-pulse" style={{ color: '#EF4444' }}>Gravando... fale agora</p>}
-          </div>
-
-          <div>
-            <label className="flex items-center gap-3 cursor-pointer select-none">
-              <input type="checkbox" checked={item.revisao}
-                onChange={e => { onSet('revisao', e.target.checked); if (e.target.checked) onSet('valor', '0') }}
-                className="w-5 h-5 cursor-pointer" style={{ accentColor: '#3E1F12' }}
-              />
-              <span className="font-bold" style={{ color: '#1A1A1A' }}>Marcar como revisão / garantia</span>
-            </label>
-            {item.revisao && (
-              <p className="text-xs font-semibold mt-1" style={{ color: '#3E1F12' }}>Item sem cobrança — valor zerado automaticamente</p>
-            )}
-          </div>
-
+          {/* 3. Quantidade */}
           <div>
             <label className="block font-bold mb-1" style={{ color: '#1A1A1A' }}>Quantidade</label>
             <div className="flex items-center gap-2">
@@ -574,7 +526,55 @@ function ItemEditorStepper({
             </div>
           </div>
 
+          {/* 4. Observação — checkbox + campo condicional */}
           <div>
+            <label className="flex items-center gap-3 cursor-pointer select-none">
+              <input type="checkbox" checked={mostrarObs}
+                onChange={e => {
+                  setMostrarObs(e.target.checked)
+                  if (!e.target.checked) onSet('observacao_servico', '')
+                }}
+                className="w-5 h-5 cursor-pointer" style={{ accentColor: '#3E1F12' }}
+              />
+              <span className="font-bold" style={{ color: '#1A1A1A' }}>
+                Adicionar observação?{' '}
+                <span className="font-normal text-sm" style={{ color: '#999999' }}>(opcional)</span>
+              </span>
+            </label>
+            {mostrarObs && (
+              <div className="relative mt-2">
+                <textarea className="input-field text-sm pr-12" rows={2}
+                  placeholder="Descreva o que deve ser feito..."
+                  value={item.observacao_servico}
+                  onChange={e => onSet('observacao_servico', e.target.value)}
+                />
+                {VOZ_SUPORTADA && (
+                  <button type="button" onClick={gravando ? pararVoz : iniciarVoz}
+                    title={gravando ? 'Parar gravação' : 'Ditado por voz (pt-BR)'}
+                    className="absolute right-2 top-2 p-2 rounded-xl transition-colors"
+                    style={gravando
+                      ? { backgroundColor: '#EF4444', color: 'white' }
+                      : { backgroundColor: '#F3F4F6', color: '#4B5563' }}>
+                    {gravando ? <MicOff size={18} /> : <Mic size={18} />}
+                  </button>
+                )}
+                {gravando && <p className="text-xs font-semibold mt-1 animate-pulse" style={{ color: '#EF4444' }}>Gravando... fale agora</p>}
+              </div>
+            )}
+          </div>
+
+          {/* 5. Valor + revisão */}
+          <div>
+            <label className="flex items-center gap-3 cursor-pointer select-none mb-2">
+              <input type="checkbox" checked={item.revisao}
+                onChange={e => { onSet('revisao', e.target.checked); if (e.target.checked) onSet('valor', '0') }}
+                className="w-5 h-5 cursor-pointer" style={{ accentColor: '#3E1F12' }}
+              />
+              <span className="font-bold" style={{ color: '#1A1A1A' }}>Marcar como revisão / garantia</span>
+            </label>
+            {item.revisao && (
+              <p className="text-xs font-semibold mb-2" style={{ color: '#3E1F12' }}>Item sem cobrança — valor zerado automaticamente</p>
+            )}
             <label className="block font-bold mb-1" style={{ color: '#1A1A1A' }}>Valor unit. (R$) *</label>
             <input className="input-field font-bold text-xl"
               type="text" inputMode="decimal" placeholder="0,00"
@@ -584,7 +584,7 @@ function ItemEditorStepper({
             />
             {!item.revisao && valorUnit > 0 && qtd > 1 && (
               <p className="text-sm font-semibold mt-1" style={{ color: '#A0522D' }}>
-                Total: {formatarValor(totalItem)} ({qtd}× {formatarValor(valorUnit)})
+                × {qtd} = {formatarValor(totalItem)}
               </p>
             )}
           </div>
@@ -595,59 +595,12 @@ function ItemEditorStepper({
               style={{ border: '1px solid #E8D5B0', color: '#4B5563' }}>
               ← Voltar
             </button>
-            <button type="button" onClick={() => setEtapa(3)}
-              disabled={!podeAvancar2()}
-              className="flex-1 py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-colors"
-              style={podeAvancar2()
-                ? { backgroundColor: '#3E1F12', color: 'white' }
-                : { backgroundColor: '#E5E7EB', color: '#9CA3AF', cursor: 'not-allowed' }}>
-              Próximo →
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* ── Etapa 3: Observações ── */}
-      {etapa === 3 && (
-        <div className="space-y-4">
-          <div>
-            <label className="block font-bold mb-2" style={{ color: '#1A1A1A' }}>
-              Foto do item <span className="font-normal text-sm" style={{ color: '#999999' }}>(JPG/PNG máx. 5MB)</span>
-            </label>
-            <input ref={fotoInputRef} type="file" accept="image/jpeg,image/png"
-              capture="environment" className="hidden" onChange={handleFotoChange} />
-            {item.foto_url ? (
-              <div className="flex items-center gap-3">
-                <img src={item.foto_url} alt="Foto do item"
-                  className="w-20 h-20 object-cover rounded-xl"
-                  style={{ border: '1px solid #E8D5B0' }} />
-                <div className="flex flex-col gap-2">
-                  <button type="button" onClick={() => fotoInputRef.current?.click()}
-                    className="text-sm font-semibold" style={{ color: '#A0522D' }}>Trocar foto</button>
-                  <button type="button" onClick={() => onSet('foto_url', '')}
-                    className="text-sm font-semibold" style={{ color: '#EF4444' }}>Remover foto</button>
-                </div>
-              </div>
-            ) : (
-              <button type="button" onClick={() => fotoInputRef.current?.click()}
-                disabled={uploadandoFoto}
-                className="flex items-center gap-2 px-4 py-2 rounded-xl font-semibold text-sm transition-colors"
-                style={{ border: '1px dashed #E8D5B0', color: '#999999' }}>
-                <Camera size={18} />
-                {uploadandoFoto ? 'Enviando...' : 'Adicionar foto'}
-              </button>
-            )}
-          </div>
-
-          <div className="flex gap-2 pt-2">
-            <button type="button" onClick={() => setEtapa(2)}
-              className="px-4 py-3 rounded-xl font-bold hover:bg-gray-50 flex items-center gap-1"
-              style={{ border: '1px solid #E8D5B0', color: '#4B5563' }}>
-              ← Voltar
-            </button>
             <button type="button" onClick={onConfirm}
-              className="flex-1 text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2 text-base"
-              style={{ backgroundColor: '#10B981' }}>
+              disabled={!podeConfirmar()}
+              className="flex-1 text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2 text-base transition-colors"
+              style={podeConfirmar()
+                ? { backgroundColor: '#10B981' }
+                : { backgroundColor: '#E5E7EB', color: '#9CA3AF', cursor: 'not-allowed' }}>
               <Check size={20} /> {modoEdicao ? 'Atualizar item' : 'Confirmar item ✓'}
             </button>
           </div>
