@@ -1,5 +1,5 @@
 import { Outlet, NavLink, useNavigate } from 'react-router-dom'
-import { ClipboardList, Users, ShieldCheck, LogOut, Plus, Archive } from 'lucide-react'
+import { ClipboardList, Users, ShieldCheck, LogOut, Plus, Archive, Package } from 'lucide-react'
 const _logoFiles = import.meta.glob('../assets/logo.png', { eager: true, import: 'default' })
 const logo = Object.values(_logoFiles)[0] || null
 
@@ -14,7 +14,7 @@ export default function Layout() {
   }
 
   const navClass = ({ isActive }) =>
-    `flex flex-col items-center gap-0.5 py-2 px-3 rounded-xl font-semibold text-xs transition-colors ` +
+    `flex flex-col items-center gap-0.5 py-2 px-2 rounded-xl font-semibold text-xs transition-colors ` +
     (isActive ? 'text-[#3E1F12]' : 'text-[#999999] hover:text-[#3E1F12]')
 
   return (
@@ -85,6 +85,11 @@ export default function Layout() {
               </span>
             </>
           )}
+        </NavLink>
+
+        <NavLink to="/produtos" className={navClass}>
+          <Package size={22} />
+          <span>Produtos</span>
         </NavLink>
 
         <NavLink to="/clientes" className={navClass}>

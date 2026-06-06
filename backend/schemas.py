@@ -289,3 +289,84 @@ class PrevisaoDia(BaseModel):
 class PrevisaoResumo(BaseModel):
     dias: List[PrevisaoDia]
     ranking_servicos: List[ServicoPrevisao]
+
+
+# --- Produto ---
+class ProdutoCreate(BaseModel):
+    nome: str
+    descricao: Optional[str] = ""
+    quantidade_estoque: int = 0
+    quantidade_minima: int = 1
+    preco_custo: float = 0.0
+    preco_venda: float = 0.0
+
+
+class ProdutoUpdate(BaseModel):
+    nome: Optional[str] = None
+    descricao: Optional[str] = None
+    quantidade_estoque: Optional[int] = None
+    quantidade_minima: Optional[int] = None
+    preco_custo: Optional[float] = None
+    preco_venda: Optional[float] = None
+
+
+class ProdutoResponse(BaseModel):
+    id: int
+    nome: str
+    descricao: Optional[str] = ""
+    quantidade_estoque: int
+    quantidade_minima: int
+    preco_custo: float
+    preco_venda: float
+    criado_em: Optional[datetime] = None
+    atualizado_em: Optional[datetime] = None
+
+    @computed_field
+    @property
+    def estoque_baixo(self) -> bool:
+        return self.quantidade_estoque <= self.quantidade_minima
+
+    @computed_field
+    @property
+    def margem(self) -> float:
+        if self.preco_venda <= 0:
+            return 0.0
+        return round(((self.preco_venda - self.preco_custo) / self.preco_venda) * 100, 1)
+
+    model_config = {"from_attributes": True}
+
+
+class VendaProdutoCreate(BaseModel):
+    quantidade: int = 1
+    os_id: Optional[int] = None
+
+
+class VendaProdutoResponse(BaseModel):
+    id: int
+    produto_id: int
+    produto_nome: str
+    quantidade: int
+    preco_unitario: float
+    total: float
+    os_id: Optional[int] = None
+    criado_em: Optional[datetime] = None
+
+    model_config = {"from_attributes": True}
+
+
+class RelatorioProdutosItem(BaseModel):
+    produto_id: int
+    produto_nome: str
+    quantidade_vendida: int
+    receita_bruta: float
+    receita_liquida: float
+
+
+class RelatorioProdutos(BaseModel):
+    total_vendido_mes: int
+    receita_bruta_mes: float
+    receita_liquida_mes: float
+    margem_media: float
+    produto_mais_vendido: Optional[str] = None
+    alertas_estoque: List[ProdutoResponse]
+    top_produtos: List[RelatorioProdutosItem]

@@ -60,6 +60,7 @@ class OrdemServico(Base):
 
     cliente = relationship("Cliente", back_populates="ordens")
     itens = relationship("ItemOS", back_populates="ordem", cascade="all, delete-orphan")
+    vendas_produtos = relationship("VendaProduto", back_populates="ordem")
 
 
 class ItemOS(Base):
@@ -110,3 +111,34 @@ class ServicoCustom(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     nome = Column(String, nullable=False, unique=True, index=True)
+
+
+class Produto(Base):
+    __tablename__ = "produtos"
+
+    id = Column(Integer, primary_key=True, index=True)
+    nome = Column(String, nullable=False, index=True)
+    descricao = Column(String, nullable=True, default="")
+    quantidade_estoque = Column(Integer, nullable=False, default=0)
+    quantidade_minima = Column(Integer, nullable=False, default=1)
+    preco_custo = Column(Float, nullable=False, default=0.0)
+    preco_venda = Column(Float, nullable=False, default=0.0)
+    criado_em = Column(DateTime(timezone=True), default=_agora, server_default=func.now())
+    atualizado_em = Column(DateTime(timezone=True), onupdate=func.now())
+
+    vendas = relationship("VendaProduto", back_populates="produto")
+
+
+class VendaProduto(Base):
+    __tablename__ = "vendas_produtos"
+
+    id = Column(Integer, primary_key=True, index=True)
+    produto_id = Column(Integer, ForeignKey("produtos.id"), nullable=False)
+    quantidade = Column(Integer, nullable=False, default=1)
+    preco_unitario = Column(Float, nullable=False, default=0.0)
+    total = Column(Float, nullable=False, default=0.0)
+    os_id = Column(Integer, ForeignKey("ordens_servico.id"), nullable=True)
+    criado_em = Column(DateTime(timezone=True), default=_agora, server_default=func.now())
+
+    produto = relationship("Produto", back_populates="vendas")
+    ordem = relationship("OrdemServico", back_populates="vendas_produtos")

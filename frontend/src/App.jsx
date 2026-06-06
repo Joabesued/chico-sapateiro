@@ -9,6 +9,7 @@ import Clientes from './pages/Clientes.jsx'
 import ClienteDetalhe from './pages/ClienteDetalhe.jsx'
 import Relatorio from './pages/Relatorio.jsx'
 import Admin from './pages/Admin.jsx'
+import Produtos from './pages/Produtos.jsx'
 
 function RotaProtegida({ children }) {
   const token = localStorage.getItem('token')
@@ -34,6 +35,7 @@ export default function App() {
         <Route path="clientes/:id" element={<ClienteDetalhe />} />
         <Route path="relatorio" element={<Relatorio />} />
         <Route path="admin" element={<Admin />} />
+        <Route path="produtos" element={<Produtos />} />
       </Route>
     </Routes>
   )

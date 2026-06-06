@@ -482,6 +482,73 @@ def produtividade(
     )
 
 
+@router.get("/produtos", response_model=schemas.RelatorioProdutos)
+def relatorio_produtos(
+    mes: Optional[int] = Query(None, ge=1, le=12),
+    ano: Optional[int] = Query(None),
+    db: Session = Depends(get_db),
+    usuario=Depends(auth_utils.get_usuario_atual),
+):
+    hoje = datetime.now(timezone.utc)
+    mes_real = mes or hoje.month
+    ano_real = ano or hoje.year
+
+    _, ultimo_dia = calendar.monthrange(ano_real, mes_real)
+    inicio = datetime(ano_real, mes_real, 1, 0, 0, 0, tzinfo=timezone.utc)
+    fim = datetime(ano_real, mes_real, ultimo_dia, 23, 59, 59, 999999, tzinfo=timezone.utc)
+
+    vendas = db.query(models.VendaProduto).options(
+        joinedload(models.VendaProduto.produto)
+    ).filter(
+        models.VendaProduto.criado_em.between(inicio, fim)
+    ).all()
+
+    total_vendido = sum(v.quantidade for v in vendas)
+    receita_bruta = sum(v.total for v in vendas)
+    receita_liquida = sum(
+        v.total - (v.produto.preco_custo * v.quantidade)
+        for v in vendas
+    )
+    margem_media = round((receita_liquida / receita_bruta) * 100, 1) if receita_bruta > 0 else 0.0
+
+    produtos_dict: dict = {}
+    for v in vendas:
+        pid = v.produto_id
+        if pid not in produtos_dict:
+            produtos_dict[pid] = {
+                "produto_id": pid,
+                "produto_nome": v.produto.nome,
+                "quantidade_vendida": 0,
+                "receita_bruta": 0.0,
+                "receita_liquida": 0.0,
+            }
+        produtos_dict[pid]["quantidade_vendida"] += v.quantidade
+        produtos_dict[pid]["receita_bruta"] += v.total
+        produtos_dict[pid]["receita_liquida"] += v.total - (v.produto.preco_custo * v.quantidade)
+
+    top_produtos = sorted(
+        [schemas.RelatorioProdutosItem(**v) for v in produtos_dict.values()],
+        key=lambda x: x.quantidade_vendida,
+        reverse=True,
+    )[:10]
+
+    produto_mais_vendido = top_produtos[0].produto_nome if top_produtos else None
+
+    alertas = db.query(models.Produto).filter(
+        models.Produto.quantidade_estoque <= models.Produto.quantidade_minima
+    ).order_by(models.Produto.nome).all()
+
+    return schemas.RelatorioProdutos(
+        total_vendido_mes=total_vendido,
+        receita_bruta_mes=round(receita_bruta, 2),
+        receita_liquida_mes=round(receita_liquida, 2),
+        margem_media=margem_media,
+        produto_mais_vendido=produto_mais_vendido,
+        alertas_estoque=alertas,
+        top_produtos=top_produtos,
+    )
+
+
 @router.get("/previsao", response_model=schemas.PrevisaoResumo)
 def previsao_servicos(
     dias: int = Query(7, ge=1, le=30),

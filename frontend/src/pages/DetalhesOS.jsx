@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
-import { ArrowLeft, MessageCircle, Printer, Trash2, Pencil, Plus, X, Check, FileText, AlertTriangle, Send } from 'lucide-react'
+import { ArrowLeft, MessageCircle, Printer, Trash2, Pencil, Plus, X, Check, FileText, AlertTriangle, Send, ShoppingCart } from 'lucide-react'
 import api from '../api.js'
 import { StatusBadge, PagamentoBadge } from '../components/StatusBadge.jsx'
 import SeletorPrazo from '../components/SeletorPrazo.jsx'
@@ -112,17 +112,75 @@ export default function DetalhesOS() {
   const [servicoCustomModo, setServicoCustomModo] = useState(null)
   const [servicoCustomTexto, setServicoCustomTexto] = useState('')
 
+  const [vendasProdutos, setVendasProdutos] = useState([])
+  const [modalAdicionarProduto, setModalAdicionarProduto] = useState(false)
+  const [produtosDisponiveis, setProdutosDisponiveis] = useState([])
+  const [produtoSelecionadoId, setProdutoSelecionadoId] = useState('')
+  const [qtdVendaOS, setQtdVendaOS] = useState(1)
+  const [salvandoVenda, setSalvandoVenda] = useState(false)
+
   useEffect(() => { carregarOS(); carregarCategorias() }, [id])
 
   async function carregarOS() {
     try {
       const { data } = await api.get(`/ordens/${id}`)
       setOs(data)
+      carregarVendasProdutos()
     } catch {
       toast.error('OS não encontrada')
       navigate('/painel')
     } finally {
       setLoading(false)
+    }
+  }
+
+  async function carregarVendasProdutos() {
+    try {
+      const { data } = await api.get('/produtos/vendas', { params: { os_id: id } })
+      setVendasProdutos(data)
+    } catch {
+      setVendasProdutos([])
+    }
+  }
+
+  async function abrirModalAdicionarProduto() {
+    try {
+      const { data } = await api.get('/produtos/')
+      setProdutosDisponiveis(data.filter(p => p.quantidade_estoque > 0))
+      setProdutoSelecionadoId('')
+      setQtdVendaOS(1)
+      setModalAdicionarProduto(true)
+    } catch {
+      toast.error('Erro ao carregar produtos')
+    }
+  }
+
+  async function confirmarVendaOS() {
+    if (!produtoSelecionadoId) { toast.error('Selecione um produto'); return }
+    setSalvandoVenda(true)
+    try {
+      await api.post(`/produtos/${produtoSelecionadoId}/venda`, {
+        quantidade: qtdVendaOS,
+        os_id: parseInt(id),
+      })
+      toast.success('Produto adicionado!')
+      setModalAdicionarProduto(false)
+      carregarVendasProdutos()
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Erro ao registrar venda')
+    } finally {
+      setSalvandoVenda(false)
+    }
+  }
+
+  async function cancelarVendaOS(vendaId) {
+    if (!confirm('Remover este produto da OS? O estoque será devolvido.')) return
+    try {
+      await api.delete(`/produtos/vendas/${vendaId}`)
+      toast.success('Produto removido')
+      carregarVendasProdutos()
+    } catch {
+      toast.error('Erro ao remover produto')
     }
   }
 
@@ -1118,6 +1176,143 @@ export default function DetalhesOS() {
             <Check size={20} />
             {salvando ? 'Salvando...' : entradaEditInvalida ? 'Entrada maior que o total' : 'Salvar alterações'}
           </button>
+        </div>
+      )}
+
+      {/* ── Produtos vendidos nesta OS ── */}
+      {!editando && (
+        <div className="card space-y-3">
+          <div className="flex items-center justify-between pb-2" style={{ borderBottom: '1px solid #F0F0F0' }}>
+            <h3 className="text-lg font-bold" style={{ color: '#1A1A1A' }}>Produtos vendidos</h3>
+            <button
+              onClick={abrirModalAdicionarProduto}
+              className="flex items-center gap-1 font-semibold text-sm no-print"
+              style={{ color: '#A0522D' }}
+            >
+              <Plus size={16} /> Adicionar produto
+            </button>
+          </div>
+
+          {vendasProdutos.length === 0 ? (
+            <p className="text-sm text-center py-2" style={{ color: '#999999' }}>
+              Nenhum produto vinculado a esta OS
+            </p>
+          ) : (
+            <>
+              {vendasProdutos.map(v => (
+                <div key={v.id} className="flex items-center justify-between py-1.5"
+                  style={{ borderBottom: '1px solid #F0F0F0' }}>
+                  <div className="flex-1">
+                    <p className="font-bold text-sm" style={{ color: '#1A1A1A' }}>{v.produto_nome}</p>
+                    <p className="text-xs" style={{ color: '#999999' }}>
+                      {v.quantidade} × {formatarValor(v.preco_unitario)}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-3 shrink-0">
+                    <p className="font-extrabold" style={{ color: '#10B981' }}>{formatarValor(v.total)}</p>
+                    <button onClick={() => cancelarVendaOS(v.id)} className="no-print"
+                      style={{ color: '#EF4444' }}>
+                      <X size={18} />
+                    </button>
+                  </div>
+                </div>
+              ))}
+              <div className="flex items-center justify-between rounded-xl px-4 py-2"
+                style={{ backgroundColor: '#D1FAE5' }}>
+                <p className="text-sm font-semibold" style={{ color: '#065F46' }}>Subtotal de produtos</p>
+                <p className="font-extrabold" style={{ color: '#065F46' }}>
+                  {formatarValor(vendasProdutos.reduce((s, v) => s + v.total, 0))}
+                </p>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* Modal adicionar produto na OS */}
+      {modalAdicionarProduto && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center" style={{ backgroundColor: 'rgba(0,0,0,0.4)' }}>
+          <div className="bg-white w-full max-w-lg rounded-t-3xl p-6 max-h-[85vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-xl font-extrabold" style={{ color: '#1A1A1A' }}>Adicionar produto</h3>
+              <button onClick={() => setModalAdicionarProduto(false)} style={{ color: '#999999' }}>
+                <X size={24} />
+              </button>
+            </div>
+
+            {produtosDisponiveis.length === 0 ? (
+              <p className="text-center py-6 text-gray-400">Nenhum produto com estoque disponível</p>
+            ) : (
+              <>
+                <div className="space-y-2 mb-4 max-h-60 overflow-y-auto">
+                  {produtosDisponiveis.map(p => (
+                    <button
+                      key={p.id}
+                      onClick={() => { setProdutoSelecionadoId(String(p.id)); setQtdVendaOS(1) }}
+                      className="w-full text-left rounded-xl p-3 transition-colors"
+                      style={String(p.id) === produtoSelecionadoId
+                        ? { backgroundColor: '#3E1F12', color: 'white', border: '1px solid #3E1F12' }
+                        : { backgroundColor: 'white', border: '1px solid #F0F0F0', color: '#1A1A1A' }}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-sm">{p.nome}</span>
+                        <span className="text-sm font-semibold">{formatarValor(p.preco_venda)}</span>
+                      </div>
+                      <p className="text-xs mt-0.5" style={{
+                        color: String(p.id) === produtoSelecionadoId ? 'rgba(255,255,255,0.7)' : '#999999'
+                      }}>
+                        Estoque: {p.quantidade_estoque} un.
+                      </p>
+                    </button>
+                  ))}
+                </div>
+
+                {produtoSelecionadoId && (() => {
+                  const p = produtosDisponiveis.find(x => String(x.id) === produtoSelecionadoId)
+                  return p ? (
+                    <>
+                      <div className="mb-3">
+                        <label className="block font-bold text-sm mb-2" style={{ color: '#1A1A1A' }}>Quantidade</label>
+                        <div className="flex items-center gap-2">
+                          <button onClick={() => setQtdVendaOS(q => Math.max(1, q - 1))}
+                            className="w-12 h-12 rounded-xl font-bold text-xl flex items-center justify-center"
+                            style={{ border: '1px solid #E8D5B0', backgroundColor: 'white', color: '#374151' }}>
+                            −
+                          </button>
+                          <input className="input-field text-center font-bold text-xl flex-1"
+                            type="number" inputMode="numeric" min="1" max={p.quantidade_estoque}
+                            value={qtdVendaOS}
+                            onChange={e => setQtdVendaOS(Math.max(1, Math.min(p.quantidade_estoque, parseInt(e.target.value) || 1)))}
+                          />
+                          <button onClick={() => setQtdVendaOS(q => Math.min(p.quantidade_estoque, q + 1))}
+                            className="w-12 h-12 rounded-xl font-bold text-xl flex items-center justify-center"
+                            style={{ border: '1px solid #E8D5B0', backgroundColor: 'white', color: '#374151' }}>
+                            +
+                          </button>
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between rounded-xl px-4 py-3 mb-4"
+                        style={{ backgroundColor: '#D1FAE5' }}>
+                        <span className="font-semibold text-gray-600">Total</span>
+                        <span className="font-extrabold text-xl" style={{ color: '#065F46' }}>
+                          {formatarValor(p.preco_venda * qtdVendaOS)}
+                        </span>
+                      </div>
+                    </>
+                  ) : null
+                })()}
+
+                <button onClick={confirmarVendaOS} disabled={salvandoVenda || !produtoSelecionadoId}
+                  className="w-full flex items-center justify-center gap-2 text-white font-bold py-3 rounded-xl"
+                  style={!produtoSelecionadoId
+                    ? { backgroundColor: '#E5E7EB', color: '#9CA3AF', cursor: 'not-allowed' }
+                    : { backgroundColor: '#10B981' }}>
+                  <ShoppingCart size={20} />
+                  {salvandoVenda ? 'Adicionando...' : 'Adicionar à OS'}
+                </button>
+              </>
+            )}
+          </div>
         </div>
       )}
 

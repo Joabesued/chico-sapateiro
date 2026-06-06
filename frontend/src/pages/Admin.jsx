@@ -913,6 +913,124 @@ function TabPrevisao() {
   )
 }
 
+// ─── Tab: Relatório de Produtos ──────────────────────────────────────────────────
+
+function TabProdutos() {
+  const hoje = new Date()
+  const [mes, setMes] = useState(hoje.getMonth() + 1)
+  const [ano, setAno] = useState(hoje.getFullYear())
+  const [dados, setDados] = useState(null)
+  const [loading, setLoading] = useState(false)
+  const anos = Array.from({ length: 5 }, (_, i) => hoje.getFullYear() - i)
+
+  useEffect(() => { buscar() }, [mes, ano])
+
+  async function buscar() {
+    setLoading(true)
+    try {
+      const { data } = await api.get('/relatorios/produtos', { params: { mes, ano } })
+      setDados(data)
+    } catch {
+      setDados(null)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="card">
+        <div className="flex gap-3">
+          <select className="input-field flex-1" value={mes} onChange={e => setMes(Number(e.target.value))}>
+            {MESES_COMPLETOS.map((m, i) => <option key={i + 1} value={i + 1}>{m}</option>)}
+          </select>
+          <select className="input-field w-28" value={ano} onChange={e => setAno(Number(e.target.value))}>
+            {anos.map(a => <option key={a} value={a}>{a}</option>)}
+          </select>
+        </div>
+      </div>
+
+      {loading ? (
+        <p className="text-center py-10 text-gray-500">Carregando...</p>
+      ) : dados ? (
+        <>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="card text-center" style={{ borderLeft: '3px solid #A0522D' }}>
+              <p className="text-gray-500 font-semibold text-sm">Vendidos no mês</p>
+              <p className="text-5xl font-black mt-1" style={{ color: '#3E1F12' }}>{dados.total_vendido_mes}</p>
+              <p className="text-xs text-gray-400 mt-0.5">itens</p>
+            </div>
+            <div className="card text-center" style={{ borderLeft: '3px solid #10B981' }}>
+              <p className="text-gray-500 font-semibold text-sm">Margem média</p>
+              <p className="text-4xl font-black mt-1 text-green-600">{dados.margem_media}%</p>
+            </div>
+            <div className="card text-center" style={{ borderLeft: '3px solid #3E1F12' }}>
+              <p className="text-gray-500 font-semibold text-sm">Receita bruta</p>
+              <p className="text-xl font-extrabold mt-1" style={{ color: '#3E1F12' }}>{formatarValor(dados.receita_bruta_mes)}</p>
+            </div>
+            <div className="card text-center" style={{ borderLeft: '3px solid #10B981' }}>
+              <p className="text-gray-500 font-semibold text-sm">Receita líquida</p>
+              <p className="text-xl font-extrabold text-green-600 mt-1">{formatarValor(dados.receita_liquida_mes)}</p>
+            </div>
+          </div>
+
+          {dados.produto_mais_vendido && (
+            <div className="card text-center" style={{ backgroundColor: '#F5ECD7', border: '1px solid #E8D5B0' }}>
+              <p className="text-gray-500 font-semibold text-sm">Produto mais vendido</p>
+              <p className="text-xl font-black mt-1" style={{ color: '#3E1F12' }}>🏆 {dados.produto_mais_vendido}</p>
+            </div>
+          )}
+
+          {dados.top_produtos.length > 0 && (
+            <div className="card">
+              <h3 className="font-bold text-gray-700 text-lg mb-3">Top produtos do mês</h3>
+              <div className="space-y-2">
+                {dados.top_produtos.map((p, i) => (
+                  <div key={p.produto_id} className="py-2" style={{ borderBottom: '1px solid #F0F0F0' }}>
+                    <div className="flex items-center justify-between">
+                      <span className="font-semibold text-gray-800 text-sm">{medalha(i)} {p.produto_nome}</span>
+                      <span className="font-black text-green-700 text-sm">{formatarValor(p.receita_bruta)}</span>
+                    </div>
+                    <div className="flex gap-3 text-xs text-gray-500 mt-0.5">
+                      <span>{p.quantidade_vendida} un. vendidas</span>
+                      <span>Líquido: {formatarValor(p.receita_liquida)}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {dados.alertas_estoque.length > 0 && (
+            <div className="card" style={{ border: '1px solid #FECACA' }}>
+              <h3 className="font-bold mb-3 flex items-center gap-2" style={{ color: '#991B1B' }}>
+                <span>⚠️</span> Estoque baixo ({dados.alertas_estoque.length})
+              </h3>
+              <div className="space-y-2">
+                {dados.alertas_estoque.map(p => (
+                  <div key={p.id} className="flex items-center justify-between py-1.5"
+                    style={{ borderBottom: '1px solid #FEE2E2' }}>
+                    <span className="font-semibold text-sm" style={{ color: '#1A1A1A' }}>{p.nome}</span>
+                    <span className="text-sm font-bold text-red-600">
+                      {p.quantidade_estoque} / {p.quantidade_minima} un.
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {dados.total_vendido_mes === 0 && (
+            <div className="card text-center py-8">
+              <p className="text-gray-400">Nenhuma venda de produtos neste período.</p>
+            </div>
+          )}
+        </>
+      ) : null}
+    </div>
+  )
+}
+
 // ─── Componente principal ────────────────────────────────────────────────────────
 
 export default function Admin() {
@@ -927,6 +1045,7 @@ export default function Admin() {
     { id: 'previsao', label: 'Previsão' },
     { id: 'estatisticas', label: 'Estatísticas' },
     { id: 'diario', label: 'Dia' },
+    { id: 'produtos', label: 'Produtos' },
   ]
 
   return (
@@ -956,6 +1075,7 @@ export default function Admin() {
       {aba === 'previsao' && <TabPrevisao />}
       {aba === 'estatisticas' && <TabEstatisticas />}
       {aba === 'diario' && <TabRelatorioDia />}
+      {aba === 'produtos' && <TabProdutos />}
     </div>
   )
 }
