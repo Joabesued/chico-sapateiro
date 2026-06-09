@@ -156,6 +156,8 @@ def run_migration():
             c.execute("ALTER TABLE ordens_servico ADD COLUMN status_pagamento TEXT NOT NULL DEFAULT 'Não pago'")
         if "desconto" not in cols_os:
             c.execute("ALTER TABLE ordens_servico ADD COLUMN desconto REAL NOT NULL DEFAULT 0.0")
+        if "urgente" not in cols_os:
+            c.execute("ALTER TABLE ordens_servico ADD COLUMN urgente INTEGER NOT NULL DEFAULT 0")
 
         # ── 2.1 Garantir colunas novas em itens_os ──────────────────────────────
         cols_it = _colunas(c, "itens_os")
@@ -175,6 +177,8 @@ def run_migration():
             c.execute("ALTER TABLE itens_os ADD COLUMN revisao INTEGER NOT NULL DEFAULT 0")
         if "entregue" not in cols_it:
             c.execute("ALTER TABLE itens_os ADD COLUMN entregue INTEGER NOT NULL DEFAULT 0")
+        if "urgente" not in cols_it:
+            c.execute("ALTER TABLE itens_os ADD COLUMN urgente INTEGER NOT NULL DEFAULT 0")
 
         # Migrar itens antigos com categoria "Par"/"Pé esquerdo"/"Pé direito" para
         # usar o campo "lado" (mantém categoria como vazia para o usuário re-editar).
@@ -183,6 +187,45 @@ def run_migration():
                 "UPDATE itens_os SET lado = ? WHERE categoria = ? AND (lado IS NULL OR lado = '')",
                 (lado, legado),
             )
+
+        # ── 2.2 Tabela mensagens_prontas ─────────────────────────────────────────
+        c.execute("""
+            CREATE TABLE IF NOT EXISTS mensagens_prontas (
+                id            INTEGER  PRIMARY KEY AUTOINCREMENT,
+                nome          TEXT     NOT NULL,
+                corpo         TEXT     NOT NULL,
+                criado_em     DATETIME,
+                atualizado_em DATETIME
+            )
+        """)
+        qtd = c.execute("SELECT COUNT(*) FROM mensagens_prontas").fetchone()[0]
+        if qtd == 0:
+            msgs = [
+                ("Serviço atrasado",
+                 "Olá [nome]! 😊 Pedimos desculpas pelo atraso no seu serviço.\n"
+                 "Seu pedido (#[numero]) está sendo finalizado com todo o cuidado.\n"
+                 "Previsão de entrega: [novo_prazo].\n"
+                 "Qualquer dúvida, estamos à disposição! 🥿 Chico Sapateiro"),
+                ("Serviço em andamento",
+                 "Olá [nome]! Seu serviço (#[numero]) está em fase de conclusão hoje.\n"
+                 "Em breve ficará pronto e disponível para retirada.\n"
+                 "Assim que finalizar, entraremos em contato! 😊\n"
+                 "Para mais informações, nos envie uma mensagem. 🥿 Chico Sapateiro"),
+                ("Serviço pronto para retirada",
+                 "Olá [nome]! 🎉 Seu serviço (#[numero]) está pronto para retirada!\n"
+                 "Estamos aguardando você na loja.\n"
+                 "Rua Afonso Celso, 225 — Loja 7, Barra.\n"
+                 "Horário: seg a sáb. 🥿 Chico Sapateiro"),
+                ("Lembrete de retirada",
+                 "Olá [nome]! Passando para lembrar que seu serviço (#[numero])\n"
+                 "já está pronto há alguns dias e aguarda sua retirada. 😊\n"
+                 "Rua Afonso Celso, 225 — Loja 7, Barra. 🥿 Chico Sapateiro"),
+            ]
+            for nome, corpo in msgs:
+                c.execute(
+                    "INSERT INTO mensagens_prontas (nome, corpo, criado_em) VALUES (?, ?, datetime('now'))",
+                    (nome, corpo),
+                )
 
         # ── 3. Tabela categorias ─────────────────────────────────────────────────
         c.execute("""

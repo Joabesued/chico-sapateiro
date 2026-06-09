@@ -1031,6 +1031,194 @@ function TabProdutos() {
   )
 }
 
+// ─── Tab: Mensagens Prontas ──────────────────────────────────────────────────────
+
+function TabMensagens() {
+  const [mensagens, setMensagens] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [editandoId, setEditandoId] = useState(null)
+  const [editNome, setEditNome] = useState('')
+  const [editCorpo, setEditCorpo] = useState('')
+  const [salvando, setSalvando] = useState(false)
+  const [novoModo, setNovoModo] = useState(false)
+  const [novoNome, setNovoNome] = useState('')
+  const [novoCorpo, setNovoCorpo] = useState('')
+
+  useEffect(() => { carregar() }, [])
+
+  async function carregar() {
+    setLoading(true)
+    try {
+      const { data } = await api.get('/mensagens/')
+      setMensagens(data)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  function iniciarEdicao(m) {
+    setEditandoId(m.id)
+    setEditNome(m.nome)
+    setEditCorpo(m.corpo)
+  }
+
+  async function salvarEdicao(id) {
+    setSalvando(true)
+    try {
+      await api.patch(`/mensagens/${id}`, { nome: editNome.trim(), corpo: editCorpo.trim() })
+      setEditandoId(null)
+      await carregar()
+    } catch {
+      alert('Erro ao salvar mensagem.')
+    } finally {
+      setSalvando(false)
+    }
+  }
+
+  async function deletar(id) {
+    if (!confirm('Excluir esta mensagem?')) return
+    try {
+      await api.delete(`/mensagens/${id}`)
+      await carregar()
+    } catch {
+      alert('Erro ao excluir mensagem.')
+    }
+  }
+
+  async function criarMensagem() {
+    if (!novoNome.trim() || !novoCorpo.trim()) return
+    setSalvando(true)
+    try {
+      await api.post('/mensagens/', { nome: novoNome.trim(), corpo: novoCorpo.trim() })
+      setNovoModo(false)
+      setNovoNome('')
+      setNovoCorpo('')
+      await carregar()
+    } catch {
+      alert('Erro ao criar mensagem.')
+    } finally {
+      setSalvando(false)
+    }
+  }
+
+  if (loading) return <p className="text-center py-10 text-gray-500">Carregando...</p>
+
+  return (
+    <div className="space-y-4">
+      <div className="card" style={{ border: '1px solid #E8D5B0', backgroundColor: '#FFFBF5' }}>
+        <p className="text-sm font-semibold" style={{ color: '#92400E' }}>
+          💡 Variáveis disponíveis: <code>[nome]</code>, <code>[numero]</code>, <code>[novo_prazo]</code> — substituídas automaticamente ao enviar.
+        </p>
+      </div>
+
+      {mensagens.map(m => (
+        <div key={m.id} className="card space-y-2">
+          {editandoId === m.id ? (
+            <>
+              <input
+                className="input-field font-bold"
+                value={editNome}
+                onChange={e => setEditNome(e.target.value)}
+                placeholder="Nome da mensagem"
+              />
+              <textarea
+                className="input-field text-sm"
+                rows={6}
+                value={editCorpo}
+                onChange={e => setEditCorpo(e.target.value)}
+                placeholder="Texto da mensagem..."
+              />
+              <div className="flex gap-2">
+                <button
+                  onClick={() => salvarEdicao(m.id)}
+                  disabled={salvando}
+                  className="flex-1 py-2 rounded-xl font-bold text-sm text-white"
+                  style={{ backgroundColor: '#3E1F12' }}
+                >
+                  {salvando ? 'Salvando...' : 'Salvar'}
+                </button>
+                <button
+                  onClick={() => setEditandoId(null)}
+                  className="px-4 py-2 rounded-xl font-bold text-sm bg-gray-100 text-gray-600"
+                >
+                  Cancelar
+                </button>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="flex items-center justify-between">
+                <p className="font-bold" style={{ color: '#1A1A1A' }}>{m.nome}</p>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => iniciarEdicao(m)}
+                    className="text-xs font-bold px-3 py-1.5 rounded-lg"
+                    style={{ backgroundColor: '#F5ECD7', color: '#92400E' }}
+                  >
+                    Editar
+                  </button>
+                  <button
+                    onClick={() => deletar(m.id)}
+                    className="text-xs font-bold px-3 py-1.5 rounded-lg"
+                    style={{ backgroundColor: '#FEE2E2', color: '#991B1B' }}
+                  >
+                    Excluir
+                  </button>
+                </div>
+              </div>
+              <p className="text-sm whitespace-pre-wrap" style={{ color: '#374151', lineHeight: 1.6 }}>{m.corpo}</p>
+            </>
+          )}
+        </div>
+      ))}
+
+      {novoModo ? (
+        <div className="card space-y-2" style={{ border: '1px dashed #A0522D' }}>
+          <h3 className="font-bold text-sm" style={{ color: '#A0522D' }}>Nova mensagem</h3>
+          <input
+            className="input-field font-bold"
+            value={novoNome}
+            onChange={e => setNovoNome(e.target.value)}
+            placeholder="Nome da mensagem"
+            autoFocus
+          />
+          <textarea
+            className="input-field text-sm"
+            rows={6}
+            value={novoCorpo}
+            onChange={e => setNovoCorpo(e.target.value)}
+            placeholder="Texto da mensagem... Use [nome], [numero], [novo_prazo]"
+          />
+          <div className="flex gap-2">
+            <button
+              onClick={criarMensagem}
+              disabled={salvando || !novoNome.trim() || !novoCorpo.trim()}
+              className="flex-1 py-2 rounded-xl font-bold text-sm text-white"
+              style={{ backgroundColor: '#3E1F12' }}
+            >
+              {salvando ? 'Salvando...' : 'Criar mensagem'}
+            </button>
+            <button
+              onClick={() => { setNovoModo(false); setNovoNome(''); setNovoCorpo('') }}
+              className="px-4 py-2 rounded-xl font-bold text-sm bg-gray-100 text-gray-600"
+            >
+              Cancelar
+            </button>
+          </div>
+        </div>
+      ) : (
+        <button
+          onClick={() => setNovoModo(true)}
+          className="w-full py-3 rounded-xl font-bold text-sm"
+          style={{ border: '1px dashed #A0522D', color: '#A0522D', backgroundColor: 'transparent' }}
+        >
+          + Nova mensagem
+        </button>
+      )}
+    </div>
+  )
+}
+
 // ─── Componente principal ────────────────────────────────────────────────────────
 
 export default function Admin() {
@@ -1046,6 +1234,7 @@ export default function Admin() {
     { id: 'estatisticas', label: 'Estatísticas' },
     { id: 'diario', label: 'Dia' },
     { id: 'produtos', label: 'Produtos' },
+    { id: 'mensagens', label: 'Mensagens' },
   ]
 
   return (
@@ -1076,6 +1265,7 @@ export default function Admin() {
       {aba === 'estatisticas' && <TabEstatisticas />}
       {aba === 'diario' && <TabRelatorioDia />}
       {aba === 'produtos' && <TabProdutos />}
+      {aba === 'mensagens' && <TabMensagens />}
     </div>
   )
 }

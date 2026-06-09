@@ -67,6 +67,7 @@ class ItemOSCreate(BaseModel):
     quantidade: int = 1
     revisao: bool = False
     entregue: bool = False
+    urgente: bool = False
 
 
 class ItemOSResponse(BaseModel):
@@ -84,6 +85,7 @@ class ItemOSResponse(BaseModel):
     quantidade: int = 1
     revisao: bool = False
     entregue: bool = False
+    urgente: bool = False
 
     @field_validator("servicos", "servicos_concluidos", mode="before")
     @classmethod
@@ -113,6 +115,7 @@ class OSUpdate(BaseModel):
     entrada: Optional[float] = None
     desconto: Optional[float] = None
     status: Optional[str] = None
+    urgente: Optional[bool] = None
     itens: Optional[List[ItemOSCreate]] = None
 
 
@@ -132,6 +135,7 @@ class OSResponse(BaseModel):
     prazo_entrega: Optional[str] = None
     entrada: float
     desconto: float = 0.0
+    urgente: bool = False
     cliente_id: int
     cliente: ClienteResponse
     itens: List[ItemOSResponse]
@@ -289,6 +293,27 @@ class PrevisaoDia(BaseModel):
 class PrevisaoResumo(BaseModel):
     dias: List[PrevisaoDia]
     ranking_servicos: List[ServicoPrevisao]
+
+
+# --- Mensagem Pronta ---
+class MensagemProntaCreate(BaseModel):
+    nome: str
+    corpo: str
+
+
+class MensagemProntaUpdate(BaseModel):
+    nome: Optional[str] = None
+    corpo: Optional[str] = None
+
+
+class MensagemProntaResponse(BaseModel):
+    id: int
+    nome: str
+    corpo: str
+    criado_em: Optional[datetime] = None
+    atualizado_em: Optional[datetime] = None
+
+    model_config = {"from_attributes": True}
 
 
 # --- Produto ---

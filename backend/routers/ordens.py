@@ -64,6 +64,7 @@ def _item_para_model(item: schemas.ItemOSCreate, ordem_id: int) -> models.ItemOS
         quantidade=max(1, item.quantidade or 1),
         revisao=revisao,
         entregue=item.entregue or False,
+        urgente=item.urgente or False,
     )
 
 
@@ -150,6 +151,8 @@ def atualizar_ordem(
         ordem.entrada = dados.entrada
     if dados.desconto is not None:
         ordem.desconto = dados.desconto
+    if dados.urgente is not None:
+        ordem.urgente = dados.urgente
 
     if dados.itens is not None:
         if not dados.itens:

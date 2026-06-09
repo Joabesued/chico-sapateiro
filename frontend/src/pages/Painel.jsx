@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { AlertTriangle, Clock, Calendar } from 'lucide-react'
+import { AlertTriangle, Clock, Calendar, Zap } from 'lucide-react'
 import api from '../api.js'
 import { StatusBadge, STATUS_BAR_COLOR } from '../components/StatusBadge.jsx'
 
@@ -91,18 +91,32 @@ function OSCard({ os, barColor }) {
   )
 }
 
-function CardAtraso({ os }) {
+function abrirWhatsAppAtraso(os, mensagens) {
+  if (!os.cliente.telefone) return
+  const tel = os.cliente.telefone.replace(/\D/g, '')
+  const modelo = mensagens.find(m => m.nome === 'Serviço atrasado')
+  const numero = String(os.numero).padStart(3, '0')
+  const corpo = modelo
+    ? modelo.corpo
+        .replace(/\[nome\]/g, os.cliente.nome)
+        .replace(/\[numero\]/g, '#' + numero)
+        .replace(/\[novo_prazo\]/g, os.prazo_entrega ? os.prazo_entrega.split('T')[0].split('-').reverse().join('/') : 'a confirmar')
+    : `Olá ${os.cliente.nome}! Pedimos desculpas pelo atraso no serviço #${numero}. Entraremos em contato em breve. 🥿 Chico Sapateiro`
+  window.open(`https://wa.me/55${tel}?text=${encodeURIComponent(corpo)}`, '_blank')
+}
+
+function CardAtraso({ os, mensagens }) {
   const navigate = useNavigate()
   const dias = diasAtraso(os)
+  const temTel = !!os.cliente.telefone
   return (
-    <button
-      onClick={() => navigate(`/os/${os.id}`)}
-      className="w-full text-left hover:shadow-md active:scale-[0.99] transition-all overflow-hidden"
+    <div
+      className="w-full text-left hover:shadow-md transition-all overflow-hidden"
       style={{ background: 'white', borderRadius: 14, boxShadow: '0 1px 6px rgba(0,0,0,0.06)', border: '1px solid #F0F0F0', display: 'flex' }}
     >
       <div style={{ width: 3, backgroundColor: '#EF4444', borderRadius: '14px 0 0 14px', flexShrink: 0 }} />
       <div className="flex-1 p-4 flex items-start justify-between gap-3">
-        <div className="flex-1 min-w-0">
+        <button className="flex-1 min-w-0 text-left" onClick={() => navigate(`/os/${os.id}`)}>
           <div className="flex items-center gap-2 mb-1 flex-wrap">
             <span className="font-black text-sm" style={{ color: '#A0522D' }}>#{String(os.numero).padStart(3, '0')}</span>
             <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold" style={{ backgroundColor: '#FEE2E2', color: '#991B1B' }}>
@@ -114,12 +128,21 @@ function CardAtraso({ os }) {
           <p className="text-sm font-semibold mt-0.5" style={{ color: '#EF4444' }}>
             {dias} dia{dias !== 1 ? 's' : ''} em atraso
           </p>
-        </div>
-        <div className="text-right shrink-0">
+          {temTel && (
+            <button
+              onClick={e => { e.stopPropagation(); abrirWhatsAppAtraso(os, mensagens) }}
+              className="mt-2 inline-flex items-center gap-1.5 text-xs font-bold rounded-lg px-2.5 py-1"
+              style={{ backgroundColor: '#22c55e', color: 'white' }}
+            >
+              📨 Avisar cliente
+            </button>
+          )}
+        </button>
+        <button className="text-right shrink-0" onClick={() => navigate(`/os/${os.id}`)}>
           <p className="text-lg font-extrabold" style={{ color: '#A0522D' }}>{formatarValor(os.total)}</p>
-        </div>
+        </button>
       </div>
-    </button>
+    </div>
   )
 }
 
@@ -142,12 +165,20 @@ function Secao({ titulo, count, corBadge, corTitulo, icon, children }) {
 
 export default function Painel() {
   const [ordens, setOrdens] = useState([])
+  const [mensagens, setMensagens] = useState([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    api.get('/ordens/').then(r => setOrdens(r.data)).finally(() => setLoading(false))
+    Promise.all([
+      api.get('/ordens/').then(r => r.data),
+      api.get('/mensagens/').then(r => r.data).catch(() => []),
+    ]).then(([ords, msgs]) => {
+      setOrdens(ords)
+      setMensagens(msgs)
+    }).finally(() => setLoading(false))
   }, [])
 
+  const urgentes = ordens.filter(o => o.urgente && o.status !== 'Entregue')
   const emAtraso = ordens.filter(o => estaEmAtraso(o))
   const notasHoje = ordens.filter(o => foiCriadaHoje(o))
   const prazoHoje = ordens.filter(o => temPrazoHoje(o) && !foiCriadaHoje(o))
@@ -157,7 +188,7 @@ export default function Painel() {
 
   if (loading) return <p className="text-center py-10 text-lg" style={{ color: '#999999' }}>Carregando...</p>
 
-  const semNada = emAtraso.length === 0 && notasHoje.length === 0 && prazoHoje.length === 0
+  const semNada = urgentes.length === 0 && emAtraso.length === 0 && notasHoje.length === 0 && prazoHoje.length === 0
 
   return (
     <div className="space-y-5">
@@ -190,6 +221,18 @@ export default function Painel() {
         </div>
       )}
 
+      {urgentes.length > 0 && (
+        <Secao
+          titulo="Urgentes"
+          count={urgentes.length}
+          corBadge="#DC2626"
+          corTitulo="#DC2626"
+          icon={<Zap size={16} color="#DC2626" />}
+        >
+          {urgentes.map(os => <OSCard key={os.id} os={os} barColor="#DC2626" />)}
+        </Secao>
+      )}
+
       {emAtraso.length > 0 && (
         <Secao
           titulo="Em atraso"
@@ -198,7 +241,7 @@ export default function Painel() {
           corTitulo="#EF4444"
           icon={<AlertTriangle size={16} color="#EF4444" />}
         >
-          {emAtraso.map(os => <CardAtraso key={os.id} os={os} />)}
+          {emAtraso.map(os => <CardAtraso key={os.id} os={os} mensagens={mensagens} />)}
         </Secao>
       )}
 

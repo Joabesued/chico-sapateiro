@@ -81,11 +81,14 @@ def remover_cliente(
     ).first()
     if not cliente:
         raise HTTPException(status_code=404, detail="Cliente não encontrado")
-    tem_os = db.query(models.OrdemServico).filter(
+    qtd_os = db.query(func.count(models.OrdemServico.id)).filter(
         models.OrdemServico.cliente_id == cliente_id
-    ).first()
-    if tem_os:
-        raise HTTPException(status_code=409, detail="Não é possível remover cliente com ordens de serviço vinculadas.")
+    ).scalar()
+    if qtd_os:
+        raise HTTPException(
+            status_code=409,
+            detail=f"Não é possível remover este cliente. Ele possui {qtd_os} ordem{'s' if qtd_os != 1 else ''} de serviço vinculada{'s' if qtd_os != 1 else ''}."
+        )
     db.delete(cliente)
     db.commit()
 

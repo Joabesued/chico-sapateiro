@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import inspect, text
 from database import engine, SessionLocal
 import models
-from routers import auth, ordens, clientes, relatorios, categorias, servicos, produtos
+from routers import auth, ordens, clientes, relatorios, categorias, servicos, produtos, mensagens
 from migrate import run_migration
 
 CATEGORIAS_PADRAO = [
@@ -61,6 +61,23 @@ def _migrate_postgres():
         # categorias — coluna tipo (causa dos erros de CORS no Railway)
         if "tipo" not in cols_cat:
             novos.append("ALTER TABLE categorias ADD COLUMN IF NOT EXISTS tipo TEXT NOT NULL DEFAULT 'diverso'")
+
+        # urgente em ordens_servico e itens_os
+        if "urgente" not in cols_os:
+            novos.append("ALTER TABLE ordens_servico ADD COLUMN IF NOT EXISTS urgente BOOLEAN NOT NULL DEFAULT false")
+        if "urgente" not in cols_it:
+            novos.append("ALTER TABLE itens_os ADD COLUMN IF NOT EXISTS urgente BOOLEAN NOT NULL DEFAULT false")
+
+        # tabela mensagens_prontas (PostgreSQL)
+        novos.append("""
+            CREATE TABLE IF NOT EXISTS mensagens_prontas (
+                id            SERIAL PRIMARY KEY,
+                nome          TEXT NOT NULL,
+                corpo         TEXT NOT NULL,
+                criado_em     TIMESTAMPTZ DEFAULT NOW(),
+                atualizado_em TIMESTAMPTZ
+            )
+        """)
 
         if novos:
             with engine.connect() as conn:
@@ -138,6 +155,7 @@ app.include_router(relatorios.router)
 app.include_router(categorias.router)
 app.include_router(servicos.router)
 app.include_router(produtos.router)
+app.include_router(mensagens.router)
 
 
 @app.get("/")

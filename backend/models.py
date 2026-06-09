@@ -55,6 +55,7 @@ class OrdemServico(Base):
     desconto = Column(Float, nullable=False, default=0.0)
     status_pagamento = Column(String, nullable=False, default=StatusPagamento.nao_pago)
     status = Column(String, nullable=False, default=StatusOS.em_andamento)
+    urgente = Column(Boolean, nullable=False, default=False)
     criado_em = Column(DateTime(timezone=True), default=_agora, server_default=func.now())
     atualizado_em = Column(DateTime(timezone=True), onupdate=func.now())
 
@@ -94,6 +95,7 @@ class ItemOS(Base):
     quantidade = Column(Integer, nullable=False, default=1)
     revisao = Column(Boolean, nullable=False, default=False)
     entregue = Column(Boolean, nullable=False, default=False)
+    urgente = Column(Boolean, nullable=False, default=False)
 
     ordem = relationship("OrdemServico", back_populates="itens")
 
@@ -127,6 +129,16 @@ class Produto(Base):
     atualizado_em = Column(DateTime(timezone=True), onupdate=func.now())
 
     vendas = relationship("VendaProduto", back_populates="produto")
+
+
+class MensagemPronta(Base):
+    __tablename__ = "mensagens_prontas"
+
+    id = Column(Integer, primary_key=True, index=True)
+    nome = Column(String, nullable=False)
+    corpo = Column(String, nullable=False)
+    criado_em = Column(DateTime(timezone=True), default=_agora, server_default=func.now())
+    atualizado_em = Column(DateTime(timezone=True), onupdate=func.now())
 
 
 class VendaProduto(Base):

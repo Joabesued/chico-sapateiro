@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
-import { ArrowLeft, MessageCircle, Printer, Trash2, Pencil, Plus, X, Check, FileText, AlertTriangle, Send, ShoppingCart } from 'lucide-react'
+import { ArrowLeft, MessageCircle, Printer, Trash2, Pencil, Plus, X, Check, FileText, AlertTriangle, Send, ShoppingCart, Zap } from 'lucide-react'
 import api from '../api.js'
 import { StatusBadge, PagamentoBadge } from '../components/StatusBadge.jsx'
 import SeletorPrazo from '../components/SeletorPrazo.jsx'
@@ -118,8 +118,9 @@ export default function DetalhesOS() {
   const [produtoSelecionadoId, setProdutoSelecionadoId] = useState('')
   const [qtdVendaOS, setQtdVendaOS] = useState(1)
   const [salvandoVenda, setSalvandoVenda] = useState(false)
+  const [mensagensProntas, setMensagensProntas] = useState([])
 
-  useEffect(() => { carregarOS(); carregarCategorias() }, [id])
+  useEffect(() => { carregarOS(); carregarCategorias(); carregarMensagens() }, [id])
 
   async function carregarOS() {
     try {
@@ -181,6 +182,15 @@ export default function DetalhesOS() {
       carregarVendasProdutos()
     } catch {
       toast.error('Erro ao remover produto')
+    }
+  }
+
+  async function carregarMensagens() {
+    try {
+      const { data } = await api.get('/mensagens/')
+      setMensagensProntas(data)
+    } catch {
+      setMensagensProntas([])
     }
   }
 
@@ -391,6 +401,65 @@ export default function DetalhesOS() {
     }
   }
 
+  async function toggleUrgente() {
+    setSalvando(true)
+    try {
+      const { data } = await api.patch(`/ordens/${id}`, { urgente: !os.urgente })
+      setOs(data)
+      toast.success(data.urgente ? 'OS marcada como urgente!' : 'Urgência removida')
+    } catch {
+      toast.error('Erro ao atualizar urgência')
+    } finally {
+      setSalvando(false)
+    }
+  }
+
+  async function toggleItemUrgente(itemId) {
+    const item = os.itens.find(i => i.id === itemId)
+    if (!item) return
+    try {
+      const itensAtualizados = os.itens.map(it => ({
+        categoria: it.categoria,
+        subcategoria: it.subcategoria || '',
+        lado: it.lado || '',
+        servicos: it.servicos || [],
+        servicos_concluidos: it.servicos_concluidos || [],
+        observacao_servico: it.observacao_servico || '',
+        cor: it.cor || '',
+        qtd_rodas: it.qtd_rodas,
+        valor: it.valor,
+        foto_url: it.foto_url || '',
+        quantidade: it.quantidade || 1,
+        revisao: it.revisao || false,
+        entregue: it.entregue || false,
+        urgente: it.id === itemId ? !it.urgente : (it.urgente || false),
+      }))
+      const { data } = await api.patch(`/ordens/${id}`, { itens: itensAtualizados })
+      setOs(data)
+      const novoUrgente = !item.urgente
+      toast.success(novoUrgente ? 'Item marcado como urgente!' : 'Urgência do item removida')
+    } catch {
+      toast.error('Erro ao atualizar urgência do item')
+    }
+  }
+
+  function abrirWhatsAppModelo(nomeModelo, extras = {}) {
+    if (!os.cliente.telefone) { toast.error('Cliente sem telefone cadastrado'); return }
+    const tel = os.cliente.telefone.replace(/\D/g, '')
+    const modelo = mensagensProntas.find(m => m.nome === nomeModelo)
+    const numero = String(os.numero).padStart(3, '0')
+    const prazoFormatado = extras.prazo
+      ? extras.prazo.split('T')[0].split('-').reverse().join('/')
+      : (os.prazo_entrega ? os.prazo_entrega.split('T')[0].split('-').reverse().join('/') : 'a confirmar')
+    const corpo = modelo
+      ? modelo.corpo
+          .replace(/\[nome\]/g, os.cliente.nome)
+          .replace(/\[numero\]/g, '#' + numero)
+          .replace(/\[novo_prazo\]/g, prazoFormatado)
+      : `Olá ${os.cliente.nome}! Ref. serviço #${numero}. 🥿 Chico Sapateiro`
+    window.open(`https://wa.me/55${tel}?text=${encodeURIComponent(corpo)}`, '_blank')
+  }
+
   async function deletarOS() {
     if (!confirm('Deseja realmente excluir esta OS?')) return
     try {
@@ -419,7 +488,9 @@ export default function DetalhesOS() {
       if (item.subcategoria) linhaCategoria += ` · ${item.subcategoria}`
 
       const linhas = [
-        `*Item ${idx + 1} — ${tipoLabel}*`,
+        item.urgente
+          ? `*⚡ URGENTE — Item ${idx + 1} — ${tipoLabel}*`
+          : `*Item ${idx + 1} — ${tipoLabel}*`,
         linhaCategoria,
       ]
       if (item.cor) linhas.push(`🎨 Cor: ${item.cor}`)
@@ -542,8 +613,9 @@ export default function DetalhesOS() {
       const isCalcado = CALCADOS_BASE.includes(item.categoria) ||
         categorias.some(c => c.nome === item.categoria && c.tipo === 'calcado')
       const tipoLabel = isCalcado ? 'Calcado' : 'Diversos'
+      const prefixoUrgente = item.urgente ? 'URGENTE — ' : ''
 
-      linha(`Item ${idx + 1} — ${tipoLabel}`, { size: 11, bold: true, spaceAfter: 1 })
+      linha(`${prefixoUrgente}Item ${idx + 1} — ${tipoLabel}`, { size: 11, bold: true, spaceAfter: 1 })
 
       const partesCat = [item.categoria]
       if (item.lado) partesCat.push(item.lado)
@@ -590,6 +662,19 @@ export default function DetalhesOS() {
 
   if (loading) return <p className="text-center py-10 text-lg" style={{ color: '#999999' }}>Carregando...</p>
   if (!os) return null
+
+  function temPrazoHoje() {
+    if (!os.prazo_entrega) return false
+    const hj = hojeISO()
+    return String(os.prazo_entrega).split('T')[0] === hj
+  }
+
+  function pronta3Dias() {
+    if (os.status !== 'Pronto para retirada') return false
+    if (!os.atualizado_em) return false
+    const diff = Date.now() - new Date(os.atualizado_em).getTime()
+    return diff > 3 * 24 * 60 * 60 * 1000
+  }
 
   const totalEdit = itensEdit.reduce(
     (s, it) => s + (it.revisao ? 0 : parseMoeda(it.valor) * (it.quantidade || 1)), 0
@@ -640,7 +725,14 @@ export default function DetalhesOS() {
         </div>
       </div>
 
-      {/* ── Alerta de atraso ── */}
+      {/* ── Alertas ── */}
+      {os.urgente && (
+        <div className="rounded-2xl p-3 flex items-center gap-2 font-bold"
+          style={{ backgroundColor: '#FEF2F2', border: '1px solid #FCA5A5', color: '#DC2626' }}>
+          <Zap size={22} />
+          <span>OS marcada como URGENTE</span>
+        </div>
+      )}
       {atraso && (
         <div className="rounded-2xl p-3 flex items-center gap-2 font-bold"
           style={{ backgroundColor: '#FEE2E2', border: '1px solid #FECACA', color: '#991B1B' }}>
@@ -653,7 +745,15 @@ export default function DetalhesOS() {
       <div className="card space-y-3">
         <div className="flex items-start justify-between">
           <div>
-            <p className="text-2xl font-extrabold" style={{ color: '#1A1A1A' }}>{os.cliente.nome}</p>
+            <div className="flex items-center gap-2 flex-wrap">
+              <p className="text-2xl font-extrabold" style={{ color: '#1A1A1A' }}>{os.cliente.nome}</p>
+              {os.urgente && (
+                <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-bold"
+                  style={{ backgroundColor: '#FEF2F2', color: '#DC2626', border: '1px solid #FCA5A5' }}>
+                  <Zap size={10} /> Urgente
+                </span>
+              )}
+            </div>
             {os.cliente.telefone && <p style={{ color: '#999999' }}>{os.cliente.telefone}</p>}
           </div>
           <StatusBadge status={os.status} />
@@ -706,6 +806,12 @@ export default function DetalhesOS() {
                         style={{ color: item.entregue ? '#999999' : '#1A1A1A' }}>
                         {descricaoItem(item)}
                       </p>
+                      {item.urgente && (
+                        <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-bold"
+                          style={{ backgroundColor: '#FEF2F2', color: '#DC2626', border: '1px solid #FCA5A5' }}>
+                          <Zap size={9} /> Urgente
+                        </span>
+                      )}
                       {item.revisao && (
                         <span className="rounded-full px-2 py-0.5 text-xs font-bold"
                           style={{ backgroundColor: '#DBEAFE', color: '#1d4ed8', border: '1px solid #93C5FD' }}>
@@ -764,6 +870,16 @@ export default function DetalhesOS() {
                           Desfazer entrega
                         </button>
                       )}
+                      <button
+                        onClick={() => toggleItemUrgente(item.id)}
+                        className="inline-flex items-center gap-1 text-xs font-bold rounded-lg px-2.5 py-1 transition-colors"
+                        style={item.urgente
+                          ? { backgroundColor: '#FEF2F2', color: '#DC2626', border: '1px solid #FCA5A5' }
+                          : { backgroundColor: '#F9FAFB', color: '#6B7280', border: '1px solid #E5E7EB' }}
+                      >
+                        <Zap size={11} />
+                        {item.urgente ? 'Urgente' : 'Marcar urgente'}
+                      </button>
                     </div>
                   </div>
                   <div className="text-right shrink-0">
@@ -1332,6 +1448,57 @@ export default function DetalhesOS() {
           ))}
         </div>
       </div>
+
+      {/* ── Urgência da OS ── */}
+      <div className="no-print">
+        <button onClick={toggleUrgente} disabled={salvando}
+          className="w-full flex items-center justify-center gap-2 font-bold py-3 px-3 rounded-xl transition-colors"
+          style={os.urgente
+            ? { backgroundColor: '#FEF2F2', color: '#DC2626', border: '2px solid #FCA5A5' }
+            : { backgroundColor: '#F9FAFB', color: '#6B7280', border: '1px solid #E5E7EB' }}>
+          <Zap size={18} />
+          <span className="text-sm">{os.urgente ? '🔴 Urgente (clique para remover)' : 'Marcar como urgente'}</span>
+        </button>
+      </div>
+
+      {/* ── Mensagens rápidas WhatsApp ── */}
+      {os.cliente.telefone && (
+        <div className="card space-y-2 no-print">
+          <h3 className="text-base font-bold pb-2" style={{ color: '#1A1A1A', borderBottom: '1px solid #F0F0F0' }}>
+            Mensagens rápidas
+          </h3>
+          <div className="flex flex-col gap-2">
+            {atraso && (
+              <button onClick={() => abrirWhatsAppModelo('Serviço atrasado')}
+                className="flex items-center gap-2 font-bold py-2.5 px-3 rounded-xl text-sm"
+                style={{ backgroundColor: '#FEE2E2', color: '#991B1B', border: '1px solid #FECACA' }}>
+                <AlertTriangle size={16} /> Avisar atraso
+              </button>
+            )}
+            {temPrazoHoje() && os.status === 'Em andamento' && (
+              <button onClick={() => abrirWhatsAppModelo('Serviço em andamento')}
+                className="flex items-center gap-2 font-bold py-2.5 px-3 rounded-xl text-sm"
+                style={{ backgroundColor: '#FFF7ED', color: '#92400E', border: '1px solid #FED7AA' }}>
+                <Send size={16} /> Serviço em andamento
+              </button>
+            )}
+            {os.status === 'Pronto para retirada' && !pronta3Dias() && (
+              <button onClick={() => abrirWhatsAppModelo('Serviço pronto para retirada')}
+                className="flex items-center gap-2 font-bold py-2.5 px-3 rounded-xl text-sm"
+                style={{ backgroundColor: '#D1FAE5', color: '#065F46', border: '1px solid #A7F3D0' }}>
+                <MessageCircle size={16} /> Avisar que está pronto
+              </button>
+            )}
+            {pronta3Dias() && (
+              <button onClick={() => abrirWhatsAppModelo('Lembrete de retirada')}
+                className="flex items-center gap-2 font-bold py-2.5 px-3 rounded-xl text-sm"
+                style={{ backgroundColor: '#F3F4F6', color: '#374151', border: '1px solid #E5E7EB' }}>
+                <MessageCircle size={16} /> Lembrete de retirada
+              </button>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* ── Ações ── */}
       <div className="grid grid-cols-2 gap-3 no-print">
