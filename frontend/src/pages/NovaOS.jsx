@@ -689,6 +689,7 @@ export default function NovaOS() {
   const [prazo, setPrazo] = useState('')
   const [entrada, setEntrada] = useState('')
   const [desconto, setDesconto] = useState('')
+  const [urgente, setUrgente] = useState(false)
 
   useEffect(() => {
     api.get('/categorias/').then(r => setCategorias(r.data)).catch(() => {})
@@ -833,6 +834,7 @@ export default function NovaOS() {
         prazo_entrega: prazo || null,
         entrada: entradaNum,
         desconto: descontoNum,
+        urgente,
         itens: itensConfirmados.map(it => ({
           categoria: it.categoria,
           subcategoria: it.subcategoria || '',
@@ -962,6 +964,36 @@ export default function NovaOS() {
             Prazo de entrega *
           </h3>
           <SeletorPrazo value={prazo} onChange={setPrazo} />
+        </div>
+
+        {/* ── Urgência ── */}
+        <div className="card transition-colors"
+          style={urgente
+            ? { border: '2px solid #FCA5A5', backgroundColor: '#FEF2F2' }
+            : { border: '1px solid #F0F0F0', backgroundColor: 'white' }}>
+          <label className="flex items-center gap-3 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={urgente}
+              onChange={e => setUrgente(e.target.checked)}
+              className="w-6 h-6 cursor-pointer shrink-0"
+              style={{ accentColor: '#DC2626' }}
+            />
+            <div>
+              <p className="font-extrabold text-base" style={{ color: urgente ? '#DC2626' : '#1A1A1A' }}>
+                🔴 Marcar como urgente
+              </p>
+              {urgente ? (
+                <p className="text-xs font-semibold mt-0.5" style={{ color: '#DC2626' }}>
+                  OS urgente — vai aparecer no topo do painel
+                </p>
+              ) : (
+                <p className="text-xs mt-0.5" style={{ color: '#999999' }}>
+                  OS urgentes sobem para o topo do painel
+                </p>
+              )}
+            </div>
+          </label>
         </div>
 
         {/* ── Pagamento ── */}

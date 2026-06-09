@@ -119,6 +119,7 @@ def criar_ordem(
         desconto=desconto,
         status_pagamento=status_pag,
         status=models.StatusOS.em_andamento,
+        urgente=dados.urgente or False,
     )
     db.add(ordem)
     db.flush()

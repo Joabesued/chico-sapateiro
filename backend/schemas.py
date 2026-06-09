@@ -107,6 +107,7 @@ class OSCreate(BaseModel):
     prazo_entrega: Optional[str] = None
     entrada: float = 0.0
     desconto: float = 0.0
+    urgente: bool = False
     itens: List[ItemOSCreate]
 
 

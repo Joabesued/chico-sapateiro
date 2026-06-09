@@ -1450,15 +1450,34 @@ export default function DetalhesOS() {
       </div>
 
       {/* ── Urgência da OS ── */}
-      <div className="no-print">
-        <button onClick={toggleUrgente} disabled={salvando}
-          className="w-full flex items-center justify-center gap-2 font-bold py-3 px-3 rounded-xl transition-colors"
-          style={os.urgente
-            ? { backgroundColor: '#FEF2F2', color: '#DC2626', border: '2px solid #FCA5A5' }
-            : { backgroundColor: '#F9FAFB', color: '#6B7280', border: '1px solid #E5E7EB' }}>
-          <Zap size={18} />
-          <span className="text-sm">{os.urgente ? '🔴 Urgente (clique para remover)' : 'Marcar como urgente'}</span>
-        </button>
+      <div className="card no-print transition-colors"
+        style={os.urgente
+          ? { border: '2px solid #FCA5A5', backgroundColor: '#FEF2F2' }
+          : { border: '1px solid #F0F0F0', backgroundColor: 'white' }}>
+        <label className="flex items-center gap-3 cursor-pointer select-none">
+          <input
+            type="checkbox"
+            checked={os.urgente || false}
+            onChange={toggleUrgente}
+            disabled={salvando}
+            className="w-6 h-6 cursor-pointer shrink-0"
+            style={{ accentColor: '#DC2626' }}
+          />
+          <div>
+            <p className="font-extrabold text-base" style={{ color: os.urgente ? '#DC2626' : '#1A1A1A' }}>
+              🔴 Marcar como urgente
+            </p>
+            {os.urgente ? (
+              <p className="text-xs font-semibold mt-0.5" style={{ color: '#DC2626' }}>
+                OS urgente — aparece no topo do painel
+              </p>
+            ) : (
+              <p className="text-xs mt-0.5" style={{ color: '#999999' }}>
+                OS urgentes sobem para o topo do painel
+              </p>
+            )}
+          </div>
+        </label>
       </div>
 
       {/* ── Mensagens rápidas WhatsApp ── */}

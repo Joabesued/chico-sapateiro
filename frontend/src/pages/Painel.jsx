@@ -76,6 +76,12 @@ function OSCard({ os, barColor }) {
           <div className="flex items-center gap-2 mb-1 flex-wrap">
             <span className="font-black text-sm" style={{ color: '#A0522D' }}>#{String(os.numero).padStart(3, '0')}</span>
             <StatusBadge status={os.status} />
+            {os.urgente && (
+              <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-bold"
+                style={{ backgroundColor: '#FEF2F2', color: '#DC2626', border: '1px solid #FCA5A5' }}>
+                🔴 Urgente
+              </span>
+            )}
           </div>
           <p className="text-lg font-bold truncate" style={{ color: '#1A1A1A' }}>{os.cliente.nome}</p>
           <p className="text-sm mt-0.5 truncate" style={{ color: '#999999' }}>{resumoItens(os)}</p>
