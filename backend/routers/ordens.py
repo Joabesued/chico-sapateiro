@@ -17,15 +17,29 @@ def _proximo_numero(db: Session) -> int:
 
 
 def _buscar_ou_criar_cliente(db: Session, nome: str, telefone: Optional[str]) -> models.Cliente:
-    cliente = db.query(models.Cliente).filter(
-        func.lower(models.Cliente.nome) == func.lower(nome)
-    ).first()
+    tel_digits = ''.join(c for c in (telefone or '') if c.isdigit())
+
+    if tel_digits:
+        # Match by name + phone (normalize to digits to handle formatting differences)
+        candidatos = db.query(models.Cliente).filter(
+            func.lower(models.Cliente.nome) == func.lower(nome)
+        ).all()
+        cliente = next(
+            (c for c in candidatos
+             if c.telefone and ''.join(d for d in c.telefone if d.isdigit()) == tel_digits),
+            None,
+        )
+    else:
+        # No phone provided — match by name only
+        cliente = db.query(models.Cliente).filter(
+            func.lower(models.Cliente.nome) == func.lower(nome)
+        ).first()
+
     if not cliente:
         cliente = models.Cliente(nome=nome, telefone=telefone)
         db.add(cliente)
         db.flush()
-    elif telefone and not cliente.telefone:
-        cliente.telefone = telefone
+
     return cliente
 
 
