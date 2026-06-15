@@ -1,8 +1,9 @@
 import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Mic, MicOff, ArrowLeft, RefreshCw, Check, Edit2, UserCheck } from 'lucide-react'
+import { Mic, MicOff, ArrowLeft, RefreshCw, Check, Edit2, UserCheck, Trash2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import api from '../api.js'
+import SeletorPrazo from '../components/SeletorPrazo.jsx'
 
 const TEM_SPEECH = ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window)
 
@@ -30,11 +31,12 @@ const inputStyle = {
 }
 
 const labelStyle = { fontSize: 12, fontWeight: 700, color: '#A0522D', marginBottom: 3 }
+const secaoLabel = { fontSize: 11, fontWeight: 700, color: '#A0522D', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 14 }
 
 export default function NovaOSVoz() {
   const navigate = useNavigate()
 
-  // ── Campos manuais do cliente
+  // ── Cliente
   const [clienteNome, setClienteNome] = useState('')
   const [clienteTelefone, setClienteTelefone] = useState('')
   const [clienteSelecionado, setClienteSelecionado] = useState(false)
@@ -42,13 +44,20 @@ export default function NovaOSVoz() {
   const [mostrarSugestoes, setMostrarSugestoes] = useState(false)
   const blurTimer = useRef(null)
 
+  // ── Prazo
+  const [prazo, setPrazo] = useState('')
+
+  // ── Lista de itens confirmados
+  const [itensConfirmados, setItensConfirmados] = useState([])
+  const [editandoIdx, setEditandoIdx] = useState(null)
+
   // ── Fluxo de voz
   const [fase, setFase] = useState('inicio') // inicio | gravando | transcricao | interpretando | confirmacao
   const [transcricao, setTranscricao] = useState('')
   const gotResultRef = useRef(false)
   const recognitionRef = useRef(null)
 
-  // ── Campos editáveis na confirmação (preenchidos pela IA)
+  // ── Campos do item atual (editáveis na confirmação)
   const [editCategoria, setEditCategoria] = useState('')
   const [editCor, setEditCor] = useState('')
   const [editLado, setEditLado] = useState('')
@@ -62,7 +71,7 @@ export default function NovaOSVoz() {
     api.get('/clientes/').then(r => setTodosClientes(r.data)).catch(() => {})
   }, [])
 
-  // ── Autocomplete de clientes
+  // ── Autocomplete
   const busca = clienteNome.trim().toLowerCase()
   const buscaDig = clienteNome.replace(/\D/g, '')
   const sugestoes = busca.length < 1 ? [] : todosClientes.filter(c => {
@@ -88,14 +97,12 @@ export default function NovaOSVoz() {
     r.interimResults = false
     gotResultRef.current = false
     recognitionRef.current = r
-
     r.onresult = (e) => {
       gotResultRef.current = true
-      const texto = Array.from(e.results).map(res => res[0].transcript).join(' ')
-      setTranscricao(texto)
+      setTranscricao(Array.from(e.results).map(res => res[0].transcript).join(' '))
       setFase('transcricao')
     }
-    r.onerror = (e) => { toast.error('Erro no reconhecimento de voz: ' + e.error); setFase('inicio') }
+    r.onerror = (e) => { toast.error('Erro no reconhecimento: ' + e.error); setFase('inicio') }
     r.onend = () => { if (!gotResultRef.current) setFase('inicio') }
     r.start()
     setFase('gravando')
@@ -103,7 +110,7 @@ export default function NovaOSVoz() {
 
   function pararGravacao() { recognitionRef.current?.stop() }
 
-  // ── Interpretação via Claude API
+  // ── Interpretação via Claude
   async function interpretar() {
     setFase('interpretando')
     try {
@@ -124,9 +131,7 @@ export default function NovaOSVoz() {
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
       const json = await resp.json()
       const texto = json.content[0].text.trim()
-      const jsonStr = texto.startsWith('```')
-        ? texto.replace(/```json?\n?/g, '').replace(/```/g, '').trim()
-        : texto
+      const jsonStr = texto.startsWith('```') ? texto.replace(/```json?\n?/g, '').replace(/```/g, '').trim() : texto
       const ex = JSON.parse(jsonStr)
       setEditCategoria(ex.categoria || '')
       setEditCor(ex.cor || '')
@@ -141,36 +146,76 @@ export default function NovaOSVoz() {
     }
   }
 
-  // ── Confirmar e criar OS
-  async function confirmarECriar() {
-    if (!editCategoria.trim()) { toast.error('Informe a categoria do item'); return }
-    const servicosArr = editServicos.split(',').map(s => s.trim()).filter(Boolean)
-    if (servicosArr.length === 0) { toast.error('Informe pelo menos um serviço'); return }
+  // ── Helpers de item
+  function construirItemAtual() {
+    return {
+      categoria: editCategoria.trim(),
+      subcategoria: '',
+      lado: editLado || '',
+      servicos: editServicos.split(',').map(s => s.trim()).filter(Boolean),
+      servicos_concluidos: [],
+      observacao_servico: editObs || '',
+      qtd_rodas: 2,
+      cor: editCor || '',
+      valor: editValor || '',
+      foto_url: '',
+      quantidade: 1,
+      revisao: false,
+    }
+  }
+
+  function validarItemAtual() {
+    if (!editCategoria.trim()) { toast.error('Informe a categoria do item'); return false }
+    if (editServicos.split(',').map(s => s.trim()).filter(Boolean).length === 0) {
+      toast.error('Informe pelo menos um serviço'); return false
+    }
+    return true
+  }
+
+  function limparCamposItem() {
+    setEditCategoria(''); setEditCor(''); setEditLado('')
+    setEditServicos(''); setEditValor(''); setEditObs('')
+  }
+
+  // ── Confirmar item → adiciona à lista → volta ao início
+  function confirmarItemEAdicionar() {
+    if (!validarItemAtual()) return
+    const item = construirItemAtual()
+    setItensConfirmados(prev => {
+      if (editandoIdx !== null) {
+        const copia = [...prev]
+        copia[editandoIdx] = item
+        return copia
+      }
+      return [...prev, item]
+    })
+    setEditandoIdx(null)
+    limparCamposItem()
+    setTranscricao('')
+    setFase('inicio')
+  }
+
+  // ── Finalizar e criar OS
+  async function finalizarECriar(incluirAtual) {
+    if (!prazo) { toast.error('Selecione o prazo de entrega'); return }
+
+    let itens = [...itensConfirmados]
+    if (incluirAtual) {
+      if (!validarItemAtual()) return
+      itens = [...itens, construirItemAtual()]
+    }
+    if (itens.length === 0) { toast.error('Adicione pelo menos um item'); return }
 
     setSalvando(true)
     try {
-      const item = {
-        categoria: editCategoria.trim(),
-        subcategoria: '',
-        lado: editLado || '',
-        servicos: servicosArr,
-        servicos_concluidos: [],
-        observacao_servico: editObs || '',
-        qtd_rodas: 2,
-        cor: editCor || '',
-        valor: editValor || '',
-        foto_url: '',
-        quantidade: 1,
-        revisao: false,
-      }
       await api.post('/ordens/', {
         cliente_nome: clienteNome,
         cliente_telefone: clienteTelefone,
-        prazo_entrega: null,
+        prazo_entrega: prazo,
         entrada: 0,
         desconto: 0,
         urgente: false,
-        itens: [item],
+        itens,
       })
       toast.success('OS criada com sucesso!')
       navigate('/painel')
@@ -181,8 +226,24 @@ export default function NovaOSVoz() {
     }
   }
 
+  // ── Editar item da lista
+  function editarItemDaLista(idx) {
+    const it = itensConfirmados[idx]
+    setEditCategoria(it.categoria)
+    setEditCor(it.cor)
+    setEditLado(it.lado)
+    setEditServicos(it.servicos.join(', '))
+    setEditValor(it.valor || '')
+    setEditObs(it.observacao_servico)
+    setEditandoIdx(idx)
+    setFase('confirmacao')
+  }
+
+  function removerItemDaLista(idx) {
+    setItensConfirmados(prev => prev.filter((_, i) => i !== idx))
+  }
+
   function editarAntesDeSalvar() {
-    const servicosArr = editServicos.split(',').map(s => s.trim()).filter(Boolean)
     navigate('/nova-os', {
       state: {
         prefill: {
@@ -192,7 +253,7 @@ export default function NovaOSVoz() {
             categoria: editCategoria,
             lado: editLado,
             cor: editCor,
-            servicos: servicosArr,
+            servicos: editServicos.split(',').map(s => s.trim()).filter(Boolean),
             observacao_servico: editObs,
             valor: editValor,
           },
@@ -201,23 +262,18 @@ export default function NovaOSVoz() {
     })
   }
 
-  function reiniciar() {
+  function reiniciarItemAtual() {
+    limparCamposItem()
     setTranscricao('')
-    setEditCategoria('')
-    setEditCor('')
-    setEditLado('')
-    setEditServicos('')
-    setEditValor('')
-    setEditObs('')
+    setEditandoIdx(null)
     setFase('inicio')
   }
 
-  // ── Estilos de botão
+  // ── Botões
   const btnPrimario = (disabled) => ({
-    backgroundColor: disabled ? '#C4956A' : '#3E1F12',
-    color: '#fff', border: 'none', borderRadius: 12,
-    padding: '13px 20px', fontWeight: 700, fontSize: 15,
-    cursor: disabled ? 'not-allowed' : 'pointer',
+    backgroundColor: disabled ? '#C4956A' : '#3E1F12', color: '#fff',
+    border: 'none', borderRadius: 12, padding: '13px 20px',
+    fontWeight: 700, fontSize: 15, cursor: disabled ? 'not-allowed' : 'pointer',
     display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'center', width: '100%',
   })
   const btnSecundario = {
@@ -226,8 +282,8 @@ export default function NovaOSVoz() {
     display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'center', width: '100%',
   }
   const btnTerciario = {
-    backgroundColor: '#F5ECD7', color: '#A0522D', border: '1.5px solid #E8D5B0', borderRadius: 12,
-    padding: '13px 20px', fontWeight: 700, fontSize: 15, cursor: 'pointer',
+    backgroundColor: '#F5ECD7', color: '#A0522D', border: '1.5px solid #E8D5B0',
+    borderRadius: 12, padding: '13px 20px', fontWeight: 700, fontSize: 15, cursor: 'pointer',
     display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'center', width: '100%',
   }
 
@@ -244,13 +300,10 @@ export default function NovaOSVoz() {
           <h2 style={{ fontWeight: 800, fontSize: 20, color: '#3E1F12', margin: 0 }}>Criar OS por Voz</h2>
         </div>
 
-        {/* ─── Campos manuais do cliente (sempre visíveis) ─── */}
-        <div style={{ marginBottom: 24, paddingBottom: 20, borderBottom: '1.5px solid #F0E8D8' }}>
-          <p style={{ fontSize: 11, fontWeight: 700, color: '#A0522D', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 14 }}>
-            Cliente
-          </p>
+        {/* ─── Cliente ─── */}
+        <div style={{ marginBottom: 20, paddingBottom: 20, borderBottom: '1.5px solid #F0E8D8' }}>
+          <p style={secaoLabel}>Cliente</p>
 
-          {/* Nome com autocomplete */}
           <div style={{ marginBottom: 12, position: 'relative' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 3 }}>
               <span style={labelStyle}>Nome</span>
@@ -297,7 +350,6 @@ export default function NovaOSVoz() {
             )}
           </div>
 
-          {/* Telefone */}
           <div>
             <span style={labelStyle}>Telefone / WhatsApp</span>
             <input
@@ -310,13 +362,72 @@ export default function NovaOSVoz() {
           </div>
         </div>
 
-        {/* ─── Seção de serviço por voz ─── */}
+        {/* ─── Prazo de entrega ─── */}
+        <div style={{ marginBottom: 20, paddingBottom: 20, borderBottom: '1.5px solid #F0E8D8' }}>
+          <p style={secaoLabel}>Prazo de entrega *</p>
+          <SeletorPrazo value={prazo} onChange={setPrazo} />
+        </div>
+
+        {/* ─── Itens confirmados ─── */}
+        {itensConfirmados.length > 0 && (
+          <div style={{ marginBottom: 20, paddingBottom: 20, borderBottom: '1.5px solid #F0E8D8' }}>
+            <p style={secaoLabel}>
+              Itens confirmados ({itensConfirmados.length})
+            </p>
+
+            {itensConfirmados.map((it, idx) => (
+              <div key={idx} style={{
+                backgroundColor: '#F5ECD7', borderRadius: 12, padding: '12px 14px',
+                display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 8,
+              }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontWeight: 700, fontSize: 14, color: '#3E1F12' }}>
+                    {it.categoria}
+                    {it.cor ? <span style={{ fontWeight: 400 }}> — {it.cor}</span> : null}
+                    {it.lado ? <span style={{ fontSize: 12, color: '#A0522D' }}> ({it.lado})</span> : null}
+                  </div>
+                  <div style={{ fontSize: 13, color: '#6B4226', marginTop: 2 }}>
+                    {it.servicos.join(', ')}
+                  </div>
+                  {it.valor ? (
+                    <div style={{ fontSize: 13, color: '#A0522D', fontWeight: 600, marginTop: 2 }}>
+                      R$ {parseFloat(it.valor).toFixed(2).replace('.', ',')}
+                    </div>
+                  ) : null}
+                </div>
+                <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                  <button type="button" onClick={() => editarItemDaLista(idx)} style={{
+                    background: '#fff', border: '1px solid #E8D5B0', borderRadius: 8,
+                    padding: '6px 8px', cursor: 'pointer', color: '#A0522D', display: 'flex',
+                  }}>
+                    <Edit2 size={14} />
+                  </button>
+                  <button type="button" onClick={() => removerItemDaLista(idx)} style={{
+                    background: '#FEE2E2', border: 'none', borderRadius: 8,
+                    padding: '6px 8px', cursor: 'pointer', color: '#EF4444', display: 'flex',
+                  }}>
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+              </div>
+            ))}
+
+            {/* Finalizar disponível assim que há 1+ item confirmado */}
+            {fase !== 'confirmacao' && (
+              <button style={btnPrimario(salvando)} onClick={() => finalizarECriar(false)} disabled={salvando}>
+                <Check size={18} /> {salvando ? 'Salvando...' : 'Finalizar e criar OS'}
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* ─── Seção de voz ─── */}
 
         {/* INÍCIO */}
         {fase === 'inicio' && (
           <div style={{ textAlign: 'center' }}>
-            <p style={{ fontSize: 11, fontWeight: 700, color: '#A0522D', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 14, textAlign: 'left' }}>
-              Serviço — descreva por voz
+            <p style={{ ...secaoLabel, textAlign: 'left' }}>
+              {itensConfirmados.length === 0 ? 'Serviço — descreva por voz' : 'Adicionar mais um item por voz'}
             </p>
             <p style={{ color: '#6B4226', fontSize: 15, marginBottom: 6 }}>
               Descreva o item e o serviço a realizar
@@ -390,10 +501,8 @@ export default function NovaOSVoz() {
         {fase === 'interpretando' && (
           <div style={{ textAlign: 'center', padding: '40px 0' }}>
             <div style={{
-              width: 52, height: 52,
-              border: '4px solid #E8D5B0', borderTopColor: '#A0522D',
-              borderRadius: '50%', margin: '0 auto 20px',
-              animation: 'spin 1s linear infinite',
+              width: 52, height: 52, border: '4px solid #E8D5B0', borderTopColor: '#A0522D',
+              borderRadius: '50%', margin: '0 auto 20px', animation: 'spin 1s linear infinite',
             }} />
             <p style={{ color: '#6B4226', fontWeight: 600, fontSize: 16 }}>Interpretando com IA...</p>
             <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
@@ -403,8 +512,10 @@ export default function NovaOSVoz() {
         {/* CONFIRMAÇÃO */}
         {fase === 'confirmacao' && (
           <div>
-            <p style={{ fontSize: 11, fontWeight: 700, color: '#A0522D', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 16 }}>
-              Serviço — confirme os dados:
+            <p style={{ ...secaoLabel, marginBottom: 16 }}>
+              {editandoIdx !== null
+                ? `Editando item ${editandoIdx + 1} — confirme os dados:`
+                : `Item ${itensConfirmados.length + 1} — confirme os dados:`}
             </p>
 
             <div style={{ marginBottom: 12 }}>
@@ -452,11 +563,10 @@ export default function NovaOSVoz() {
               </div>
               <input type="number" min="0" step="0.01" value={editValor}
                 onChange={e => setEditValor(e.target.value)}
-                placeholder="Ex: 80.00"
-                style={inputStyle} />
+                placeholder="Ex: 80.00" style={inputStyle} />
             </div>
 
-            <div style={{ marginBottom: 0 }}>
+            <div style={{ marginBottom: 20 }}>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginBottom: 3 }}>
                 <span style={labelStyle}>Observação</span>
                 <span style={{ fontSize: 11, color: '#B07850' }}>opcional</span>
@@ -466,14 +576,24 @@ export default function NovaOSVoz() {
                 style={{ ...inputStyle, resize: 'vertical' }} />
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 20 }}>
-              <button style={btnPrimario(salvando)} onClick={confirmarECriar} disabled={salvando}>
-                <Check size={18} /> {salvando ? 'Salvando...' : 'Confirmar e criar OS'}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {/* Adicionar outro item por voz */}
+              <button style={btnSecundario} onClick={confirmarItemEAdicionar}>
+                <Mic size={18} /> Adicionar outro item por voz
               </button>
-              <button style={btnSecundario} onClick={editarAntesDeSalvar}>
+
+              {/* Finalizar e criar OS (confirma item atual + todos anteriores) */}
+              <button style={btnPrimario(salvando)} onClick={() => finalizarECriar(true)} disabled={salvando}>
+                <Check size={18} /> {salvando ? 'Salvando...' : 'Finalizar e criar OS'}
+              </button>
+
+              {/* Editar na tela manual */}
+              <button style={btnTerciario} onClick={editarAntesDeSalvar}>
                 <Edit2 size={16} /> Editar antes de salvar
               </button>
-              <button style={btnTerciario} onClick={reiniciar}>
+
+              {/* Tentar novamente */}
+              <button style={{ ...btnTerciario, color: '#999' }} onClick={reiniciarItemAtual}>
                 <RefreshCw size={16} /> Tentar novamente
               </button>
             </div>
