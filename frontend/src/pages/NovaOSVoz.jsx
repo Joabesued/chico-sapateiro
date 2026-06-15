@@ -17,6 +17,14 @@ const PROMPT = `Você é um assistente de sapataria. Extraia informações do it
 
 Responda APENAS com o JSON puro, sem blocos de código, sem texto adicional.`
 
+function parseMoeda(v) {
+  return parseFloat(String(v ?? '').replace(',', '.')) || 0
+}
+
+function fmtBRL(n) {
+  return 'R$ ' + n.toFixed(2).replace('.', ',')
+}
+
 const inputStyle = {
   width: '100%',
   padding: '10px 12px',
@@ -47,6 +55,9 @@ export default function NovaOSVoz() {
   // ── Prazo
   const [prazo, setPrazo] = useState('')
 
+  // ── Pagamento
+  const [entrada, setEntrada] = useState('')
+
   // ── Lista de itens confirmados
   const [itensConfirmados, setItensConfirmados] = useState([])
   const [editandoIdx, setEditandoIdx] = useState(null)
@@ -57,7 +68,7 @@ export default function NovaOSVoz() {
   const gotResultRef = useRef(false)
   const recognitionRef = useRef(null)
 
-  // ── Campos do item atual (editáveis na confirmação)
+  // ── Campos do item atual
   const [editCategoria, setEditCategoria] = useState('')
   const [editCor, setEditCor] = useState('')
   const [editLado, setEditLado] = useState('')
@@ -70,6 +81,15 @@ export default function NovaOSVoz() {
   useEffect(() => {
     api.get('/clientes/').then(r => setTodosClientes(r.data)).catch(() => {})
   }, [])
+
+  // ── Cálculos de pagamento
+  const totalConfirmados = itensConfirmados.reduce((s, it) => s + parseMoeda(it.valor), 0)
+  const valorItemAtual = fase === 'confirmacao' ? parseMoeda(editValor) : 0
+  const totalGeral = totalConfirmados + valorItemAtual
+  const entradaNum = parseMoeda(entrada)
+  const resta = Math.max(0, totalGeral - entradaNum)
+  const entradaInvalida = totalGeral > 0 && entradaNum > totalGeral
+  const mostrarResumo = itensConfirmados.length > 0 || fase === 'confirmacao'
 
   // ── Autocomplete
   const busca = clienteNome.trim().toLowerCase()
@@ -195,9 +215,10 @@ export default function NovaOSVoz() {
     setFase('inicio')
   }
 
-  // ── Finalizar e criar OS
+  // ── Finalizar e criar OS → redireciona para /os/{id}
   async function finalizarECriar(incluirAtual) {
     if (!prazo) { toast.error('Selecione o prazo de entrega'); return }
+    if (entradaInvalida) { toast.error('O valor pago não pode ser maior que o total'); return }
 
     let itens = [...itensConfirmados]
     if (incluirAtual) {
@@ -208,17 +229,17 @@ export default function NovaOSVoz() {
 
     setSalvando(true)
     try {
-      await api.post('/ordens/', {
+      const { data } = await api.post('/ordens/', {
         cliente_nome: clienteNome,
         cliente_telefone: clienteTelefone,
         prazo_entrega: prazo,
-        entrada: 0,
+        entrada: entradaNum,
         desconto: 0,
         urgente: false,
         itens,
       })
-      toast.success('OS criada com sucesso!')
-      navigate('/painel')
+      toast.success(`Nota #${String(data.numero).padStart(3, '0')} criada!`)
+      navigate(`/os/${data.id}`)
     } catch (e) {
       toast.error('Erro ao criar OS: ' + (e.response?.data?.detail || e.message))
     } finally {
@@ -371,9 +392,7 @@ export default function NovaOSVoz() {
         {/* ─── Itens confirmados ─── */}
         {itensConfirmados.length > 0 && (
           <div style={{ marginBottom: 20, paddingBottom: 20, borderBottom: '1.5px solid #F0E8D8' }}>
-            <p style={secaoLabel}>
-              Itens confirmados ({itensConfirmados.length})
-            </p>
+            <p style={secaoLabel}>Itens confirmados ({itensConfirmados.length})</p>
 
             {itensConfirmados.map((it, idx) => (
               <div key={idx} style={{
@@ -391,7 +410,7 @@ export default function NovaOSVoz() {
                   </div>
                   {it.valor ? (
                     <div style={{ fontSize: 13, color: '#A0522D', fontWeight: 600, marginTop: 2 }}>
-                      R$ {parseFloat(it.valor).toFixed(2).replace('.', ',')}
+                      {fmtBRL(parseMoeda(it.valor))}
                     </div>
                   ) : null}
                 </div>
@@ -411,10 +430,59 @@ export default function NovaOSVoz() {
                 </div>
               </div>
             ))}
+          </div>
+        )}
 
-            {/* Finalizar disponível assim que há 1+ item confirmado */}
-            {fase !== 'confirmacao' && (
-              <button style={btnPrimario(salvando)} onClick={() => finalizarECriar(false)} disabled={salvando}>
+        {/* ─── Resumo e Pagamento ─── */}
+        {mostrarResumo && (
+          <div style={{ marginBottom: 20, paddingBottom: 20, borderBottom: '1.5px solid #F0E8D8' }}>
+            <p style={secaoLabel}>Pagamento</p>
+
+            {/* Total */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+              <span style={{ fontSize: 14, fontWeight: 600, color: '#6B4226' }}>Total dos itens</span>
+              <span style={{ fontSize: 18, fontWeight: 800, color: '#3E1F12' }}>{fmtBRL(totalGeral)}</span>
+            </div>
+
+            {/* Valor pago */}
+            <div style={{ marginBottom: 8 }}>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginBottom: 3 }}>
+                <span style={labelStyle}>Valor pago (R$)</span>
+                <span style={{ fontSize: 11, color: '#B07850' }}>opcional</span>
+              </div>
+              <input
+                type="text"
+                inputMode="decimal"
+                placeholder="0,00"
+                value={entrada}
+                onChange={e => setEntrada(e.target.value)}
+                style={{ ...inputStyle, ...(entradaInvalida ? { borderColor: '#EF4444' } : {}) }}
+              />
+            </div>
+
+            {/* Erro */}
+            {entradaInvalida && (
+              <p style={{ fontSize: 13, color: '#EF4444', fontWeight: 600, marginBottom: 8 }}>
+                ⚠ O valor pago não pode ser maior que o total
+              </p>
+            )}
+
+            {/* Resta */}
+            <div style={{
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+              backgroundColor: '#FFF7ED', borderRadius: 10, padding: '10px 14px', marginBottom: 16,
+            }}>
+              <span style={{ fontSize: 13, fontWeight: 600, color: '#6B4226' }}>Resta</span>
+              <span style={{ fontSize: 18, fontWeight: 800, color: '#F59E0B' }}>{fmtBRL(resta)}</span>
+            </div>
+
+            {/* Finalizar (apenas quando não está na fase de confirmação de item — para evitar botão duplo) */}
+            {fase !== 'confirmacao' && itensConfirmados.length > 0 && (
+              <button
+                style={btnPrimario(salvando || entradaInvalida)}
+                onClick={() => finalizarECriar(false)}
+                disabled={salvando || entradaInvalida}
+              >
                 <Check size={18} /> {salvando ? 'Salvando...' : 'Finalizar e criar OS'}
               </button>
             )}
@@ -509,7 +577,7 @@ export default function NovaOSVoz() {
           </div>
         )}
 
-        {/* CONFIRMAÇÃO */}
+        {/* CONFIRMAÇÃO DE ITEM */}
         {fase === 'confirmacao' && (
           <div>
             <p style={{ ...secaoLabel, marginBottom: 16 }}>
@@ -577,22 +645,22 @@ export default function NovaOSVoz() {
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {/* Adicionar outro item por voz */}
               <button style={btnSecundario} onClick={confirmarItemEAdicionar}>
                 <Mic size={18} /> Adicionar outro item por voz
               </button>
 
-              {/* Finalizar e criar OS (confirma item atual + todos anteriores) */}
-              <button style={btnPrimario(salvando)} onClick={() => finalizarECriar(true)} disabled={salvando}>
+              <button
+                style={btnPrimario(salvando || entradaInvalida)}
+                onClick={() => finalizarECriar(true)}
+                disabled={salvando || entradaInvalida}
+              >
                 <Check size={18} /> {salvando ? 'Salvando...' : 'Finalizar e criar OS'}
               </button>
 
-              {/* Editar na tela manual */}
               <button style={btnTerciario} onClick={editarAntesDeSalvar}>
                 <Edit2 size={16} /> Editar antes de salvar
               </button>
 
-              {/* Tentar novamente */}
               <button style={{ ...btnTerciario, color: '#999' }} onClick={reiniciarItemAtual}>
                 <RefreshCw size={16} /> Tentar novamente
               </button>
