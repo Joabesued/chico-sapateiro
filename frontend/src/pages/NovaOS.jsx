@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { Plus, Trash2, Check, X, UserCheck, Mic, MicOff, Edit2, Search } from 'lucide-react'
 import api from '../api.js'
@@ -670,19 +670,21 @@ function ItemConfirmadoCard({ item, idx, onEditar, onRemover }) {
 
 export default function NovaOS() {
   const navigate = useNavigate()
+  const location = useLocation()
+  const prefill = location.state?.prefill ?? null
   const [loading, setLoading] = useState(false)
   const [categorias, setCategorias] = useState([])
   const [servicosCustomDB, setServicosCustomDB] = useState([])
 
-  const [clienteNome, setClienteNome] = useState('')
-  const [clienteTelefone, setClienteTelefone] = useState('')
+  const [clienteNome, setClienteNome] = useState(prefill?.clienteNome ?? '')
+  const [clienteTelefone, setClienteTelefone] = useState(prefill?.clienteTelefone ?? '')
   const [clienteSelecionado, setClienteSelecionado] = useState(false)
   const [todosClientes, setTodosClientes] = useState([])
   const [mostrarSugestoes, setMostrarSugestoes] = useState(false)
   const blurTimer = useRef(null)
 
   const [itensConfirmados, setItensConfirmados] = useState([])
-  const [itemAtual, setItemAtual] = useState(itemVazio())
+  const [itemAtual, setItemAtual] = useState(prefill?.item ? { ...itemVazio(), ...prefill.item } : itemVazio())
   const [editandoIdx, setEditandoIdx] = useState(null)
   const [feedbackSucesso, setFeedbackSucesso] = useState(false)
 
@@ -862,7 +864,14 @@ export default function NovaOS() {
 
   return (
     <div className="space-y-4">
-      <h2 className="text-2xl font-extrabold" style={{ color: '#1A1A1A' }}>Nova Ordem de Serviço</h2>
+      <div className="flex items-center justify-between">
+        <h2 className="text-2xl font-extrabold" style={{ color: '#1A1A1A' }}>Nova Ordem de Serviço</h2>
+        <button type="button" onClick={() => navigate('/nova-os-voz')}
+          className="flex items-center gap-1.5 px-3 py-2 rounded-xl font-semibold text-sm"
+          style={{ backgroundColor: '#F5ECD7', color: '#A0522D', border: '1px solid #E8D5B0' }}>
+          <Mic size={15} /><span>Criar por voz</span>
+        </button>
+      </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
 

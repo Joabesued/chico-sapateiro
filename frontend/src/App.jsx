@@ -10,6 +10,7 @@ import ClienteDetalhe from './pages/ClienteDetalhe.jsx'
 import Relatorio from './pages/Relatorio.jsx'
 import Admin from './pages/Admin.jsx'
 import Produtos from './pages/Produtos.jsx'
+import NovaOSVoz from './pages/NovaOSVoz.jsx'
 
 function RotaProtegida({ children }) {
   const token = localStorage.getItem('token')
@@ -30,6 +31,7 @@ export default function App() {
         <Route path="painel" element={<Painel />} />
         <Route path="arquivo" element={<Arquivo />} />
         <Route path="nova-os" element={<NovaOS />} />
+        <Route path="nova-os-voz" element={<NovaOSVoz />} />
         <Route path="os/:id" element={<DetalhesOS />} />
         <Route path="clientes" element={<Clientes />} />
         <Route path="clientes/:id" element={<ClienteDetalhe />} />
