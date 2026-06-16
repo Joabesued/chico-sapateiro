@@ -59,15 +59,3 @@
   .no-print { display: none !important; }
   body { background: white; font-size: 14px; }
 }
-
-.etiqueta-print-only { display: none; }
-
-@media print {
-  .etiqueta-print-mode > *:not(.etiqueta-print-only) { display: none !important; }
-  .etiqueta-print-mode .etiqueta-print-only {
-    display: block;
-    white-space: pre-wrap;
-    font-family: 'Courier New', monospace;
-    font-size: 12pt;
-  }
-}

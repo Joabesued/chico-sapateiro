@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { ArrowLeft, MessageCircle, Printer, Trash2, Pencil, Plus, X, Check, FileText, AlertTriangle, Send, ShoppingCart, Zap, Tag } from 'lucide-react'
@@ -137,6 +137,13 @@ function gerarTextoEtiqueta(os) {
   return linhas.join('\n')
 }
 
+function escapeHtml(str) {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+}
+
 // ─── Componente principal ───────────────────────────────────────────────────────
 
 export default function DetalhesOS() {
@@ -165,26 +172,19 @@ export default function DetalhesOS() {
   const [qtdVendaOS, setQtdVendaOS] = useState(1)
   const [salvandoVenda, setSalvandoVenda] = useState(false)
   const [mensagensProntas, setMensagensProntas] = useState([])
-  const [etiquetaTexto, setEtiquetaTexto] = useState('')
-  const [imprimindoEtiqueta, setImprimindoEtiqueta] = useState(false)
+  const etiquetaIframeRef = useRef(null)
 
   useEffect(() => { carregarOS(); carregarCategorias(); carregarMensagens() }, [id])
 
+  // Limpa o iframe de impressão da etiqueta ao desmontar, evitando vazamento de nó no DOM.
   useEffect(() => {
-    function aoTerminarImpressao() { setImprimindoEtiqueta(false) }
-    window.addEventListener('afterprint', aoTerminarImpressao)
-    return () => window.removeEventListener('afterprint', aoTerminarImpressao)
+    return () => {
+      if (etiquetaIframeRef.current) {
+        etiquetaIframeRef.current.remove()
+        etiquetaIframeRef.current = null
+      }
+    }
   }, [])
-
-  // Só chama window.print() depois que o React confirma que o DOM já foi
-  // pintado em modo etiqueta — no mobile o print() não bloqueia como no
-  // desktop, então chamá-lo direto no onClick captura o conteúdo antigo (nota).
-  useEffect(() => {
-    if (!imprimindoEtiqueta) return
-    window.print()
-    const reverterFallback = setTimeout(() => setImprimindoEtiqueta(false), 3000)
-    return () => clearTimeout(reverterFallback)
-  }, [imprimindoEtiqueta])
 
   async function carregarOS() {
     try {
@@ -624,8 +624,31 @@ export default function DetalhesOS() {
   }
 
   function imprimirEtiqueta() {
-    setEtiquetaTexto(gerarTextoEtiqueta(os))
-    setImprimindoEtiqueta(true)
+    const texto = gerarTextoEtiqueta(os)
+    console.log('[Imprimir etiqueta] conteúdo enviado para impressão:', texto)
+
+    let iframe = etiquetaIframeRef.current
+    if (!iframe) {
+      iframe = document.createElement('iframe')
+      iframe.style.position = 'fixed'
+      iframe.style.width = '0'
+      iframe.style.height = '0'
+      iframe.style.border = '0'
+      document.body.appendChild(iframe)
+      etiquetaIframeRef.current = iframe
+    }
+
+    const doc = iframe.contentWindow.document
+    doc.open()
+    doc.write(
+      `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Etiqueta</title>` +
+      `<style>body{margin:0;padding:0;font-family:'Courier New',monospace;font-size:12pt;white-space:pre-wrap;}</style>` +
+      `</head><body>${escapeHtml(texto)}</body></html>`
+    )
+    doc.close()
+
+    iframe.contentWindow.focus()
+    iframe.contentWindow.print()
   }
 
   function gerarPDF() {
@@ -777,9 +800,7 @@ export default function DetalhesOS() {
   })
 
   return (
-    <div className={`space-y-4 ${imprimindoEtiqueta ? 'etiqueta-print-mode' : ''}`}>
-
-      <pre className="etiqueta-print-only">{etiquetaTexto}</pre>
+    <div className="space-y-4">
 
       {/* ── Header ── */}
       <div className="flex items-center gap-3 no-print">
@@ -1619,7 +1640,10 @@ export default function DetalhesOS() {
         <Tag size={18} /> <span className="text-sm">Imprimir etiqueta</span>
       </button>
 
-      <button onClick={() => window.print()}
+      <button onClick={() => {
+          console.log('[Imprimir nota] imprimindo a página inteira da OS via window.print()')
+          window.print()
+        }}
         className="flex items-center justify-center gap-2 btn-secondary py-3 px-3 w-full no-print">
         <Printer size={20} /> <span className="text-sm">Imprimir</span>
       </button>
