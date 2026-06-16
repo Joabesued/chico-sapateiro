@@ -130,7 +130,7 @@ function gerarTextoEtiquetaItem(os, item, indice) {
     '='.repeat(LARGURA_ETIQUETA),
   )
   if (pago) {
-    linhas.push('PG'.padStart(LARGURA_ETIQUETA))
+    linhas.push('PAGO')
   } else {
     linhas.push(`RESTANTE: ${formatarValor(os.resta).replace(/ /g, ' ')}`)
   }
@@ -651,7 +651,7 @@ export default function DetalhesOS() {
     doc.write(
       `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Etiqueta</title>` +
       `<style>` +
-      `body{margin:0;padding:0;font-family:'Courier New',monospace;font-size:12pt;font-weight:bold;white-space:pre-wrap;}` +
+      `body{margin:0;padding:0;font-family:'Courier New',monospace;font-size:14pt;font-weight:bold;white-space:pre-wrap;}` +
       `.etiqueta:not(:last-child){page-break-after:always;}` +
       `</style>` +
       `</head><body>${corpoHtml}</body></html>`
