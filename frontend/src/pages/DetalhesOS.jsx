@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
+import { flushSync } from 'react-dom'
 import { useParams, useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
-import { ArrowLeft, MessageCircle, Printer, Trash2, Pencil, Plus, X, Check, FileText, AlertTriangle, Send, ShoppingCart, Zap, Tag, Copy } from 'lucide-react'
+import { ArrowLeft, MessageCircle, Printer, Trash2, Pencil, Plus, X, Check, FileText, AlertTriangle, Send, ShoppingCart, Zap, Tag } from 'lucide-react'
 import api from '../api.js'
 import { StatusBadge, PagamentoBadge } from '../components/StatusBadge.jsx'
 import SeletorPrazo from '../components/SeletorPrazo.jsx'
@@ -165,10 +166,16 @@ export default function DetalhesOS() {
   const [qtdVendaOS, setQtdVendaOS] = useState(1)
   const [salvandoVenda, setSalvandoVenda] = useState(false)
   const [mensagensProntas, setMensagensProntas] = useState([])
-  const [modalEtiqueta, setModalEtiqueta] = useState(false)
   const [etiquetaTexto, setEtiquetaTexto] = useState('')
+  const [imprimindoEtiqueta, setImprimindoEtiqueta] = useState(false)
 
   useEffect(() => { carregarOS(); carregarCategorias(); carregarMensagens() }, [id])
+
+  useEffect(() => {
+    function aoTerminarImpressao() { setImprimindoEtiqueta(false) }
+    window.addEventListener('afterprint', aoTerminarImpressao)
+    return () => window.removeEventListener('afterprint', aoTerminarImpressao)
+  }, [])
 
   async function carregarOS() {
     try {
@@ -607,29 +614,12 @@ export default function DetalhesOS() {
     }, 800)
   }
 
-  async function imprimirEtiqueta() {
-    const texto = gerarTextoEtiqueta(os)
-    if (navigator.share) {
-      try {
-        await navigator.share({ text: texto })
-      } catch (err) {
-        if (err.name !== 'AbortError') {
-          toast.error('Erro ao compartilhar etiqueta')
-        }
-      }
-    } else {
-      setEtiquetaTexto(texto)
-      setModalEtiqueta(true)
-    }
-  }
-
-  async function copiarEtiqueta() {
-    try {
-      await navigator.clipboard.writeText(etiquetaTexto)
-      toast.success('Etiqueta copiada!')
-    } catch {
-      toast.error('Erro ao copiar')
-    }
+  function imprimirEtiqueta() {
+    flushSync(() => {
+      setEtiquetaTexto(gerarTextoEtiqueta(os))
+      setImprimindoEtiqueta(true)
+    })
+    window.print()
   }
 
   function gerarPDF() {
@@ -781,7 +771,9 @@ export default function DetalhesOS() {
   })
 
   return (
-    <div className="space-y-4">
+    <div className={`space-y-4 ${imprimindoEtiqueta ? 'etiqueta-print-mode' : ''}`}>
+
+      <pre className="etiqueta-print-only">{etiquetaTexto}</pre>
 
       {/* ── Header ── */}
       <div className="flex items-center gap-3 no-print">
@@ -1501,32 +1493,6 @@ export default function DetalhesOS() {
                 </button>
               </>
             )}
-          </div>
-        </div>
-      )}
-
-      {/* Modal de etiqueta (fallback sem Web Share API) */}
-      {modalEtiqueta && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center" style={{ backgroundColor: 'rgba(0,0,0,0.4)' }}>
-          <div className="bg-white w-full max-w-lg rounded-t-3xl p-6 max-h-[85vh] overflow-y-auto">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-xl font-extrabold" style={{ color: '#1A1A1A' }}>Etiqueta</h3>
-              <button onClick={() => setModalEtiqueta(false)} style={{ color: '#999999' }}>
-                <X size={24} />
-              </button>
-            </div>
-            <textarea
-              readOnly
-              className="input-field font-mono text-sm w-full"
-              rows={9}
-              value={etiquetaTexto}
-              onClick={e => e.target.select()}
-            />
-            <button onClick={copiarEtiqueta}
-              className="w-full flex items-center justify-center gap-2 text-white font-bold py-3 rounded-xl mt-4"
-              style={{ backgroundColor: '#3E1F12' }}>
-              <Copy size={18} /> Copiar texto
-            </button>
           </div>
         </div>
       )}
