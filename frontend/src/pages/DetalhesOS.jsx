@@ -126,11 +126,16 @@ function gerarTextoEtiqueta(os) {
     '='.repeat(LARGURA_ETIQUETA),
     `#${numero}`,
     nome,
+  ]
+  if (os.cliente.telefone) {
+    linhas.push(os.cliente.telefone)
+  }
+  linhas.push(
     '-'.repeat(LARGURA_ETIQUETA),
     `SERV: ${servicosTexto}`,
     `ENTREGA: ${dataEntrega}`,
     '='.repeat(LARGURA_ETIQUETA),
-  ]
+  )
   if (pago) {
     linhas.push('PG'.padStart(LARGURA_ETIQUETA))
   }
