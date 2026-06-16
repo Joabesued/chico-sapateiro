@@ -131,6 +131,8 @@ function gerarTextoEtiquetaItem(os, item, indice) {
   )
   if (pago) {
     linhas.push('PG'.padStart(LARGURA_ETIQUETA))
+  } else {
+    linhas.push(`RESTANTE: ${formatarValor(os.resta).replace(/ /g, ' ')}`)
   }
   return linhas.join('\n')
 }
