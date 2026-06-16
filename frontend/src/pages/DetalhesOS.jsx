@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react'
-import { flushSync } from 'react-dom'
 import { useParams, useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { ArrowLeft, MessageCircle, Printer, Trash2, Pencil, Plus, X, Check, FileText, AlertTriangle, Send, ShoppingCart, Zap, Tag } from 'lucide-react'
@@ -176,6 +175,16 @@ export default function DetalhesOS() {
     window.addEventListener('afterprint', aoTerminarImpressao)
     return () => window.removeEventListener('afterprint', aoTerminarImpressao)
   }, [])
+
+  // Só chama window.print() depois que o React confirma que o DOM já foi
+  // pintado em modo etiqueta — no mobile o print() não bloqueia como no
+  // desktop, então chamá-lo direto no onClick captura o conteúdo antigo (nota).
+  useEffect(() => {
+    if (!imprimindoEtiqueta) return
+    window.print()
+    const reverterFallback = setTimeout(() => setImprimindoEtiqueta(false), 3000)
+    return () => clearTimeout(reverterFallback)
+  }, [imprimindoEtiqueta])
 
   async function carregarOS() {
     try {
@@ -615,11 +624,8 @@ export default function DetalhesOS() {
   }
 
   function imprimirEtiqueta() {
-    flushSync(() => {
-      setEtiquetaTexto(gerarTextoEtiqueta(os))
-      setImprimindoEtiqueta(true)
-    })
-    window.print()
+    setEtiquetaTexto(gerarTextoEtiqueta(os))
+    setImprimindoEtiqueta(true)
   }
 
   function gerarPDF() {
