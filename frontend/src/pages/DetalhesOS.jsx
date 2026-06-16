@@ -647,7 +647,7 @@ export default function DetalhesOS() {
     doc.open()
     doc.write(
       `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Etiqueta</title>` +
-      `<style>body{margin:0;padding:0;font-family:'Courier New',monospace;font-size:12pt;white-space:pre-wrap;}</style>` +
+      `<style>body{margin:0;padding:0;font-family:'Courier New',monospace;font-size:12pt;font-weight:bold;white-space:pre-wrap;}</style>` +
       `</head><body>${escapeHtml(texto)}</body></html>`
     )
     doc.close()
