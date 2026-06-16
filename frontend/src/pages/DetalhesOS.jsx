@@ -104,17 +104,10 @@ function subtrairDia(dataISO) {
   return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`
 }
 
-function gerarTextoEtiqueta(os) {
+function gerarTextoEtiquetaItem(os, item, indice) {
   const numero = String(os.numero).padStart(3, '0')
   const nome = removerAcentos(os.cliente.nome).toUpperCase()
-
-  const servicos = []
-  os.itens.forEach(item => {
-    (item.servicos || []).forEach(s => {
-      if (!servicos.includes(s)) servicos.push(s)
-    })
-  })
-  const servicosTexto = removerAcentos(servicos.join(', ')).toUpperCase()
+  const servicosTexto = removerAcentos(formatarServicosTexto(item)).toUpperCase()
 
   const dataEntrega = os.prazo_entrega
     ? subtrairDia(String(os.prazo_entrega).split('T')[0])
@@ -124,7 +117,7 @@ function gerarTextoEtiqueta(os) {
 
   const linhas = [
     '='.repeat(LARGURA_ETIQUETA),
-    `#${numero}`,
+    `#${numero} | Item ${indice}`,
     nome,
   ]
   if (os.cliente.telefone) {
@@ -140,6 +133,10 @@ function gerarTextoEtiqueta(os) {
     linhas.push('PG'.padStart(LARGURA_ETIQUETA))
   }
   return linhas.join('\n')
+}
+
+function gerarEtiquetasOS(os) {
+  return os.itens.map((item, idx) => gerarTextoEtiquetaItem(os, item, idx + 1))
 }
 
 function escapeHtml(str) {
@@ -629,8 +626,8 @@ export default function DetalhesOS() {
   }
 
   function imprimirEtiqueta() {
-    const texto = gerarTextoEtiqueta(os)
-    console.log('[Imprimir etiqueta] conteúdo enviado para impressão:', texto)
+    const etiquetas = gerarEtiquetasOS(os)
+    console.log('[Imprimir etiqueta] conteúdo enviado para impressão:', etiquetas)
 
     let iframe = etiquetaIframeRef.current
     if (!iframe) {
@@ -643,12 +640,19 @@ export default function DetalhesOS() {
       etiquetaIframeRef.current = iframe
     }
 
+    const corpoHtml = etiquetas
+      .map(texto => `<div class="etiqueta">${escapeHtml(texto)}</div>`)
+      .join('')
+
     const doc = iframe.contentWindow.document
     doc.open()
     doc.write(
       `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Etiqueta</title>` +
-      `<style>body{margin:0;padding:0;font-family:'Courier New',monospace;font-size:12pt;font-weight:bold;white-space:pre-wrap;}</style>` +
-      `</head><body>${escapeHtml(texto)}</body></html>`
+      `<style>` +
+      `body{margin:0;padding:0;font-family:'Courier New',monospace;font-size:12pt;font-weight:bold;white-space:pre-wrap;}` +
+      `.etiqueta:not(:last-child){page-break-after:always;}` +
+      `</style>` +
+      `</head><body>${corpoHtml}</body></html>`
     )
     doc.close()
 
