@@ -184,7 +184,7 @@ export default function Painel() {
     }).finally(() => setLoading(false))
   }, [])
 
-  const urgentes = ordens.filter(o => o.urgente && o.status !== 'Entregue')
+  const urgentes = ordens.filter(o => o.urgente && o.status === 'Em andamento')
   const emAtraso = ordens.filter(o => estaEmAtraso(o))
   const notasHoje = ordens.filter(o => foiCriadaHoje(o))
   const prazoHoje = ordens.filter(o => temPrazoHoje(o) && !foiCriadaHoje(o))

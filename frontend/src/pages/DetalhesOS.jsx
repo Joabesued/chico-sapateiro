@@ -117,9 +117,14 @@ function gerarTextoEtiquetaItem(os, item, indice) {
 
   const linhas = [
     '='.repeat(LARGURA_ETIQUETA),
+  ]
+  if (item.urgente) {
+    linhas.push('** URGENTE **')
+  }
+  linhas.push(
     `#${numero} | Item ${indice}`,
     nome,
-  ]
+  )
   if (os.cliente.telefone) {
     linhas.push(os.cliente.telefone)
   }
@@ -127,12 +132,15 @@ function gerarTextoEtiquetaItem(os, item, indice) {
     '-'.repeat(LARGURA_ETIQUETA),
     `SERV: ${servicosTexto}`,
     `ENTREGA: ${dataEntrega}`,
-    '='.repeat(LARGURA_ETIQUETA),
   )
+  if (item.observacao_servico) {
+    linhas.push(`OBS: ${removerAcentos(item.observacao_servico)}`)
+  }
+  linhas.push('='.repeat(LARGURA_ETIQUETA))
   if (pago) {
     linhas.push('PAGO')
   } else {
-    linhas.push(`RESTANTE: ${formatarValor(os.resta).replace(/ /g, ' ')}`)
+    linhas.push(`RESTANTE: ${formatarValor(os.resta).replace(/ /g, ' ')}`)
   }
   return linhas.join('\n')
 }
@@ -157,6 +165,7 @@ export default function DetalhesOS() {
   const [loading, setLoading] = useState(true)
   const [salvando, setSalvando] = useState(false)
   const [editando, setEditando] = useState(false)
+  const [confirmarQuitacao, setConfirmarQuitacao] = useState(false)
 
   const [categorias, setCategorias] = useState([])
   const [servicosCustomDB, setServicosCustomDB] = useState([])
@@ -457,6 +466,10 @@ export default function DetalhesOS() {
   }
 
   async function atualizarStatus(novoStatus) {
+    if (novoStatus === 'Entregue' && (os.resta || 0) > 0) {
+      setConfirmarQuitacao(true)
+      return
+    }
     setSalvando(true)
     try {
       const { data } = await api.patch(`/ordens/${id}`, { status: novoStatus })
@@ -464,6 +477,34 @@ export default function DetalhesOS() {
       toast.success('Status atualizado!')
     } catch {
       toast.error('Erro ao atualizar status')
+    } finally {
+      setSalvando(false)
+    }
+  }
+
+  async function executarEntregaComPagamento() {
+    setConfirmarQuitacao(false)
+    setSalvando(true)
+    try {
+      const { data } = await api.patch(`/ordens/${id}`, { entrada: os.total, status: 'Entregue' })
+      setOs(data)
+      toast.success('Pagamento quitado e OS entregue!')
+    } catch {
+      toast.error('Erro ao registrar entrega')
+    } finally {
+      setSalvando(false)
+    }
+  }
+
+  async function executarEntregaSemPagamento() {
+    setConfirmarQuitacao(false)
+    setSalvando(true)
+    try {
+      const { data } = await api.patch(`/ordens/${id}`, { status: 'Entregue' })
+      setOs(data)
+      toast.success('OS marcada como entregue')
+    } catch {
+      toast.error('Erro ao registrar entrega')
     } finally {
       setSalvando(false)
     }
@@ -1663,6 +1704,43 @@ export default function DetalhesOS() {
         className="flex items-center justify-center gap-2 btn-danger w-full no-print">
         <Trash2 size={20} /> Excluir OS
       </button>
+
+      {/* ── Modal confirmar quitação ── */}
+      {confirmarQuitacao && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+          <div className="rounded-2xl p-6 space-y-4 w-full max-w-sm"
+            style={{ backgroundColor: 'white', boxShadow: '0 20px 60px rgba(0,0,0,0.3)' }}>
+            <p className="text-lg font-extrabold" style={{ color: '#1A1A1A' }}>
+              Confirmar entrega
+            </p>
+            <p className="font-semibold" style={{ color: '#374151' }}>
+              O cliente quitou o valor restante de{' '}
+              <span style={{ color: '#F59E0B', fontWeight: 800 }}>{formatarValor(os.resta)}</span>?
+            </p>
+            <div className="flex flex-col gap-2 pt-1">
+              <button
+                onClick={executarEntregaComPagamento}
+                className="w-full py-3 rounded-xl font-bold text-white"
+                style={{ backgroundColor: '#10B981' }}>
+                Sim, está pago
+              </button>
+              <button
+                onClick={executarEntregaSemPagamento}
+                className="w-full py-3 rounded-xl font-bold"
+                style={{ backgroundColor: '#F3F4F6', color: '#374151' }}>
+                Não, entregar assim
+              </button>
+              <button
+                onClick={() => setConfirmarQuitacao(false)}
+                className="w-full py-2 text-sm font-semibold"
+                style={{ color: '#9CA3AF' }}>
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
