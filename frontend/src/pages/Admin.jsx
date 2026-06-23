@@ -1284,24 +1284,24 @@ function TabAnaliseAtrasos() {
 
       {loading && <p className="text-center py-10 text-gray-500">Carregando...</p>}
 
-      {!loading && vg && vg.total_atrasadas === 0 && (
+      {!loading && vg && vg.total_itens_atrasados === 0 && (
         <div className="card text-center py-10">
           <p className="text-3xl">🎉</p>
           <p className="font-bold mt-3" style={{ color: '#3B6D11' }}>
             Nenhum atraso registrado neste período. Continue assim!
           </p>
-          <p className="text-sm text-gray-400 mt-1">({vg.total_os} OS analisadas)</p>
+          <p className="text-sm text-gray-400 mt-1">({vg.total_itens} itens analisados)</p>
         </div>
       )}
 
-      {!loading && vg && vg.total_atrasadas > 0 && (
+      {!loading && vg && vg.total_itens_atrasados > 0 && (
         <>
           {/* Cards de visão geral */}
           <div className="grid grid-cols-2 gap-3">
             <div className="card text-center" style={{ borderLeft: '3px solid #A32D2D' }}>
-              <p className="font-semibold text-sm" style={{ color: '#999999' }}>OS com atraso</p>
-              <p className="text-5xl font-black mt-1" style={{ color: '#A32D2D' }}>{vg.total_atrasadas}</p>
-              <p className="text-xs text-gray-400 mt-0.5">de {vg.total_os} OS</p>
+              <p className="font-semibold text-sm" style={{ color: '#999999' }}>Itens com atraso</p>
+              <p className="text-5xl font-black mt-1" style={{ color: '#A32D2D' }}>{vg.total_itens_atrasados}</p>
+              <p className="text-xs text-gray-400 mt-0.5">de {vg.total_itens} itens</p>
             </div>
 
             <div className="card text-center" style={{
@@ -1324,8 +1324,11 @@ function TabAnaliseAtrasos() {
             <div className="card text-center" style={{ borderLeft: '3px solid #A32D2D' }}>
               <p className="font-semibold text-sm" style={{ color: '#999999' }}>Pior atraso</p>
               <p className="text-4xl font-black mt-1" style={{ color: '#A32D2D' }}>{vg.pior_atraso_dias}d</p>
-              {vg.pior_atraso_servico && (
-                <p className="text-xs text-gray-500 mt-0.5 truncate px-1">{vg.pior_atraso_servico}</p>
+              {vg.pior_atraso_categoria && (
+                <p className="text-xs text-gray-500 mt-0.5 truncate px-1">{vg.pior_atraso_categoria}</p>
+              )}
+              {vg.pior_atraso_servico && vg.pior_atraso_servico !== vg.pior_atraso_categoria && (
+                <p className="text-xs text-gray-400 truncate px-1">{vg.pior_atraso_servico}</p>
               )}
             </div>
           </div>
@@ -1358,7 +1361,7 @@ function TabAnaliseAtrasos() {
                       />
                     </div>
                     <p className="text-xs text-gray-400 mt-0.5">
-                      {item.total_atrasadas} atrasadas de {item.total_os} OS
+                      {item.total_atrasados} atrasados de {item.total_itens} itens
                     </p>
                   </div>
                 ))}
