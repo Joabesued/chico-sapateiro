@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import inspect, text
 from database import engine, SessionLocal
 import models
-from routers import auth, ordens, clientes, relatorios, categorias, servicos, produtos, mensagens
+from routers import auth, ordens, clientes, relatorios, categorias, servicos, produtos, mensagens, admin
 from migrate import run_migration
 
 CATEGORIAS_PADRAO = [
@@ -199,6 +199,7 @@ app.include_router(categorias.router)
 app.include_router(servicos.router)
 app.include_router(produtos.router)
 app.include_router(mensagens.router)
+app.include_router(admin.router)
 
 
 @app.get("/")

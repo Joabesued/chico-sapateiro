@@ -1219,6 +1219,224 @@ function TabMensagens() {
   )
 }
 
+// ─── Tab: Análise de Atrasos ─────────────────────────────────────────────────────
+
+function TabAnaliseAtrasos() {
+  const [dias, setDias] = useState(30)
+  const [dados, setDados] = useState(null)
+  const [loading, setLoading] = useState(false)
+
+  useEffect(() => { buscarAtrasos() }, [dias])
+
+  async function buscarAtrasos() {
+    setLoading(true)
+    try {
+      const { data } = await api.get('/admin/analise-atrasos', { params: { dias } })
+      setDados(data)
+    } catch {
+      setDados(null)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  function corBarra(pct) {
+    if (pct > 25) return '#A32D2D'
+    if (pct > 10) return '#854F0B'
+    return '#3B6D11'
+  }
+
+  function bgBarra(pct) {
+    if (pct > 25) return '#FCEBEB'
+    if (pct > 10) return '#FAEEDA'
+    return '#EAF3DE'
+  }
+
+  const TAG_CONFIG = {
+    evitar_acumulo: { label: 'Evitar acúmulo', bg: '#FCEBEB', color: '#A32D2D' },
+    cobrar_mais:    { label: 'Cobrar mais',    bg: '#FAEEDA', color: '#854F0B' },
+    atencao:        { label: 'Atenção',         bg: '#FAEEDA', color: '#854F0B' },
+    manter:         { label: 'Manter',          bg: '#EAF3DE', color: '#3B6D11' },
+  }
+
+  const vg = dados?.visao_geral
+
+  return (
+    <div className="space-y-4">
+      {/* Seletor de período */}
+      <div className="card">
+        <p className="font-bold text-sm text-gray-600 mb-2">Período de análise</p>
+        <div className="flex gap-2">
+          {[7, 30, 60, 90].map(d => (
+            <button
+              key={d}
+              onClick={() => setDias(d)}
+              className="flex-1 py-2 rounded-xl font-bold text-sm transition-colors"
+              style={dias === d
+                ? { backgroundColor: '#3E1F12', color: 'white', border: '1px solid #3E1F12' }
+                : { backgroundColor: 'white', color: '#4B5563', border: '1px solid #F0F0F0' }}
+            >
+              {d}d
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {loading && <p className="text-center py-10 text-gray-500">Carregando...</p>}
+
+      {!loading && vg && vg.total_atrasadas === 0 && (
+        <div className="card text-center py-10">
+          <p className="text-3xl">🎉</p>
+          <p className="font-bold mt-3" style={{ color: '#3B6D11' }}>
+            Nenhum atraso registrado neste período. Continue assim!
+          </p>
+          <p className="text-sm text-gray-400 mt-1">({vg.total_os} OS analisadas)</p>
+        </div>
+      )}
+
+      {!loading && vg && vg.total_atrasadas > 0 && (
+        <>
+          {/* Cards de visão geral */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="card text-center" style={{ borderLeft: '3px solid #A32D2D' }}>
+              <p className="font-semibold text-sm" style={{ color: '#999999' }}>OS com atraso</p>
+              <p className="text-5xl font-black mt-1" style={{ color: '#A32D2D' }}>{vg.total_atrasadas}</p>
+              <p className="text-xs text-gray-400 mt-0.5">de {vg.total_os} OS</p>
+            </div>
+
+            <div className="card text-center" style={{
+              borderLeft: `3px solid ${vg.taxa_atraso > 25 ? '#A32D2D' : vg.taxa_atraso > 10 ? '#854F0B' : '#3B6D11'}`
+            }}>
+              <p className="font-semibold text-sm" style={{ color: '#999999' }}>Taxa de atraso</p>
+              <p className="text-4xl font-black mt-1" style={{
+                color: vg.taxa_atraso > 25 ? '#A32D2D' : vg.taxa_atraso > 10 ? '#854F0B' : '#3B6D11'
+              }}>
+                {vg.taxa_atraso}%
+              </p>
+            </div>
+
+            <div className="card text-center" style={{ borderLeft: '3px solid #854F0B' }}>
+              <p className="font-semibold text-sm" style={{ color: '#999999' }}>Atraso médio</p>
+              <p className="text-4xl font-black mt-1" style={{ color: '#3E1F12' }}>{vg.atraso_medio_dias}</p>
+              <p className="text-xs text-gray-400 mt-0.5">dias</p>
+            </div>
+
+            <div className="card text-center" style={{ borderLeft: '3px solid #A32D2D' }}>
+              <p className="font-semibold text-sm" style={{ color: '#999999' }}>Pior atraso</p>
+              <p className="text-4xl font-black mt-1" style={{ color: '#A32D2D' }}>{vg.pior_atraso_dias}d</p>
+              {vg.pior_atraso_servico && (
+                <p className="text-xs text-gray-500 mt-0.5 truncate px-1">{vg.pior_atraso_servico}</p>
+              )}
+            </div>
+          </div>
+
+          {/* Ranking de categorias */}
+          {dados.ranking_categorias.length > 0 && (
+            <div className="card">
+              <h3 className="font-bold text-gray-700 text-lg mb-4">Categorias por atraso</h3>
+              <div className="space-y-3">
+                {dados.ranking_categorias.map((item, i) => (
+                  <div key={item.nome}>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="font-semibold text-gray-800 text-sm">
+                        {i + 1}. {item.nome}
+                      </span>
+                      <div className="text-right shrink-0 ml-2">
+                        <span className="font-black text-sm" style={{ color: corBarra(item.percentual_atraso) }}>
+                          {item.percentual_atraso}%
+                        </span>
+                        <span className="text-xs text-gray-400 ml-1">·  {item.media_dias_atraso}d avg</span>
+                      </div>
+                    </div>
+                    <div className="w-full rounded-full h-2.5" style={{ backgroundColor: bgBarra(item.percentual_atraso) }}>
+                      <div
+                        className="h-2.5 rounded-full"
+                        style={{
+                          backgroundColor: corBarra(item.percentual_atraso),
+                          width: `${Math.min(item.percentual_atraso, 100)}%`,
+                        }}
+                      />
+                    </div>
+                    <p className="text-xs text-gray-400 mt-0.5">
+                      {item.total_atrasadas} atrasadas de {item.total_os} OS
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Ranking de serviços */}
+          {dados.ranking_servicos.length > 0 && (
+            <div className="card">
+              <h3 className="font-bold text-gray-700 text-lg mb-4">Serviços por atraso</h3>
+              <div className="space-y-3">
+                {dados.ranking_servicos.map((item, i) => (
+                  <div key={item.nome}>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="font-semibold text-gray-800 text-sm">
+                        {i + 1}. {item.nome}
+                        <span className="text-xs text-gray-400 font-normal ml-1">({item.total_ocorrencias}×)</span>
+                      </span>
+                      <div className="text-right shrink-0 ml-2">
+                        <span className="font-black text-sm" style={{ color: corBarra(item.percentual_atraso) }}>
+                          {item.percentual_atraso}%
+                        </span>
+                        <span className="text-xs text-gray-400 ml-1">·  {item.media_dias_atraso}d avg</span>
+                      </div>
+                    </div>
+                    <div className="w-full rounded-full h-2.5" style={{ backgroundColor: bgBarra(item.percentual_atraso) }}>
+                      <div
+                        className="h-2.5 rounded-full"
+                        style={{
+                          backgroundColor: corBarra(item.percentual_atraso),
+                          width: `${Math.min(item.percentual_atraso, 100)}%`,
+                        }}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Retorno x Eficiência */}
+          {dados.retorno_eficiencia.length > 0 && (
+            <div className="card">
+              <h3 className="font-bold text-gray-700 text-lg mb-4">Retorno × Eficiência</h3>
+              <div className="space-y-0">
+                {dados.retorno_eficiencia.map(item => {
+                  const tag = TAG_CONFIG[item.tag] || TAG_CONFIG.manter
+                  return (
+                    <div
+                      key={item.nome}
+                      className="flex items-center justify-between py-2.5"
+                      style={{ borderBottom: '1px solid #F0F0F0' }}
+                    >
+                      <div className="flex-1 min-w-0 mr-3">
+                        <p className="font-semibold text-gray-800 text-sm truncate">{item.nome}</p>
+                        <p className="text-xs text-gray-400 mt-0.5">
+                          {formatarValor(item.valor_medio)} médio · {item.percentual_atraso}% atraso
+                        </p>
+                      </div>
+                      <span
+                        className="text-xs font-bold px-2.5 py-1 rounded-lg shrink-0"
+                        style={{ backgroundColor: tag.bg, color: tag.color }}
+                      >
+                        {tag.label}
+                      </span>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  )
+}
+
 // ─── Componente principal ────────────────────────────────────────────────────────
 
 export default function Admin() {
@@ -1235,6 +1453,7 @@ export default function Admin() {
     { id: 'diario', label: 'Dia' },
     { id: 'produtos', label: 'Produtos' },
     { id: 'mensagens', label: 'Mensagens' },
+    { id: 'atrasos', label: 'Atrasos' },
   ]
 
   return (
@@ -1266,6 +1485,7 @@ export default function Admin() {
       {aba === 'diario' && <TabRelatorioDia />}
       {aba === 'produtos' && <TabProdutos />}
       {aba === 'mensagens' && <TabMensagens />}
+      {aba === 'atrasos' && <TabAnaliseAtrasos />}
     </div>
   )
 }
