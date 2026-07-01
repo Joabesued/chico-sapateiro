@@ -92,9 +92,16 @@ function formatarServicosTexto(item) {
 }
 
 const LARGURA_ETIQUETA = 32
+const MARGEM_ETIQUETA = 2
 
 function removerAcentos(str) {
   return String(str).normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+}
+
+function centrar(str, largura) {
+  const s = String(str)
+  if (s.length >= largura) return s
+  return ' '.repeat(Math.floor((largura - s.length) / 2)) + s
 }
 
 function subtrairDia(dataISO) {
@@ -108,6 +115,7 @@ function gerarTextoEtiquetaItem(os, item, indice) {
   const numero = String(os.numero).padStart(3, '0')
   const nome = removerAcentos(os.cliente.nome).toUpperCase()
   const servicosTexto = removerAcentos(formatarServicosTexto(item)).toUpperCase()
+  const m = ' '.repeat(MARGEM_ETIQUETA)
 
   const dataEntrega = os.prazo_entrega
     ? subtrairDia(String(os.prazo_entrega).split('T')[0])
@@ -119,28 +127,29 @@ function gerarTextoEtiquetaItem(os, item, indice) {
     '='.repeat(LARGURA_ETIQUETA),
   ]
   if (item.urgente) {
-    linhas.push('** URGENTE **')
+    linhas.push(centrar('** URGENTE **', LARGURA_ETIQUETA))
   }
   linhas.push(
-    `#${numero} | Item ${indice}`,
-    nome,
+    centrar(`#${numero}`, LARGURA_ETIQUETA),
+    centrar(nome, LARGURA_ETIQUETA),
   )
   if (os.cliente.telefone) {
-    linhas.push(os.cliente.telefone)
+    linhas.push(centrar(os.cliente.telefone, LARGURA_ETIQUETA))
   }
   linhas.push(
     '-'.repeat(LARGURA_ETIQUETA),
-    `SERV: ${servicosTexto}`,
-    `ENTREGA: ${dataEntrega}`,
+    `${m}SERV: ${servicosTexto}`,
+    `${m}ENTREGA: ${dataEntrega}`,
   )
   if (item.observacao_servico) {
-    linhas.push(`OBS: ${removerAcentos(item.observacao_servico)}`)
+    linhas.push(`${m}OBS: ${removerAcentos(item.observacao_servico)}`)
   }
   linhas.push('='.repeat(LARGURA_ETIQUETA))
   if (pago) {
-    linhas.push('PAGO')
+    const pagoStr = 'PAGO'
+    linhas.push(' '.repeat(LARGURA_ETIQUETA - pagoStr.length) + pagoStr)
   } else {
-    linhas.push(`RESTANTE: ${formatarValor(os.resta).replace(/ /g, ' ')}`)
+    linhas.push(`${m}RESTANTE: ${formatarValor(os.resta).replace(/ /g, ' ')}`)
   }
   return linhas.join('\n')
 }
